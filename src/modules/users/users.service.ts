@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Admin, Doctor, Patient, User } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserType } from './enum/user-type.enum';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -18,51 +18,51 @@ export class UsersService {
     ){}
 
     async create(dto: CreateUserDto): Promise<User> {
-
+        
         let user: User;
 
         switch (dto.type) {
             case UserType.ADMIN:
-                user = this.userRepository.create(dto) as Admin;
-                break;
+                const admin = new Admin();
+                Object.assign(admin, dto);
+                user = admin;
+            break;
+
             case UserType.DOCTOR:
-                user = this.userRepository.create(dto) as Doctor;
-                break;
+                const doctor = new Doctor();
+                Object.assign(doctor, dto);
+                user = doctor;
+            break;
+
             case UserType.PATIENT:
-                user = this.userRepository.create(dto) as Patient;
-                break;
+                const patient = new Patient();
+                Object.assign(patient, dto);
+                user = patient;
+            break;
+
             default:
-                throw new BadRequestException('Tipo de usuário inválido');
+            throw new BadRequestException('Tipo inválido');
         }
 
-        try {
-            return await this.userRepository.save(user);
-        } catch (error) {
-            console.error('Erro ao criar usuário:', error);
-            throw new ConflictException('Erro ao criar usuário: possivelmente email já cadastrado');
-        }
-
+        return await this.userRepository.save(user);
     }
-
     async findAll(query: PaginationQueryDto): Promise<PaginatedResponseDto<User>> {
-        
         const { page, limit, sort, search } = query;
         const skip = (page - 1) * limit;
 
-        const queryBuilder = this.userRepository.createQueryBuilder('user');
+        const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
 
-        if (search) 
-            queryBuilder.where('user.name LIKE :search OR user.email LIKE :search', { search: `%${search}%` });
-
-        if(sort){
-            const [field, direction] = sort.split(':');
-            queryBuilder.orderBy(`user.${field}`, direction.toUpperCase() === 'DESC' ? 'DESC' : 'ASC');
-        }else 
-            queryBuilder.orderBy('user.id', 'ASC');
-
-        queryBuilder.skip(skip).take(limit);
-
-        const [items, totalItems] = await queryBuilder.getManyAndCount();
+        const [items, totalItems] = await this.userRepository.findAndCount({
+            where: search
+                ? [
+                    { name: Like(`%${search}%`) },
+                    { email: Like(`%${search}%`) },
+                ]
+                : undefined,
+            order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
+            skip,
+            take: limit,
+        });
 
         return {
             items,
@@ -75,7 +75,6 @@ export class UsersService {
             },
         };
     }
-
     async findOne(id: number): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id } });
 

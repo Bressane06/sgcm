@@ -11,9 +11,10 @@ import {
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Exclude } from "class-transformer";
+import { UserType } from '../enum/user-type.enum';
 
 @Entity()
-@TableInheritance({ column: { type: 'text', name: 'type' } })
+@TableInheritance({ column: { name: 'type', type: 'varchar' } })
 export abstract class User {
     @PrimaryGeneratedColumn()
     id: number;
@@ -24,10 +25,13 @@ export abstract class User {
     @Column({ unique: true })
     email: string;
 
-    // Feito para não retornar a senha do usuário em consultas
     @Exclude()
     @Column()
     password: string;
+
+    @Column({ nullable: true })
+    type: UserType;
+
 
     @Column({ default: true })
     isActive: boolean;
@@ -41,7 +45,6 @@ export abstract class User {
     @UpdateDateColumn()
     updatedAt!: Date;
 
-    // Methods 
     activate() {
         this.isActive = true;
     }
@@ -67,7 +70,6 @@ export abstract class User {
     }
 }
 
-@Entity()
 @ChildEntity('ADMIN')
 export class Admin extends User {
     
@@ -75,7 +77,6 @@ export class Admin extends User {
     accessLevel: string;
 }
 
-@Entity()
 @ChildEntity('DOCTOR')
 export class Doctor extends User {
 
@@ -84,7 +85,6 @@ export class Doctor extends User {
 
 }
 
-@Entity()
 @ChildEntity('PATIENT')
 export class Patient extends User {
     
