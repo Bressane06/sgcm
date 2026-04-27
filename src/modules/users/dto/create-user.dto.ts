@@ -6,20 +6,21 @@ import { Type } from 'class-transformer';
 export class CreateUserDto {
 	@ApiProperty()
 	@IsString()
-	@IsNotEmpty()
+	@IsNotEmpty({ message: 'Nome é obrigatório' })
 	name!: string;
 
 	@ApiProperty()
-	@IsEmail()
+	@IsEmail({}, { message: 'E-mail deve ser um formato válido' })
+	@IsNotEmpty({ message: 'E-mail é obrigatório' })
 	email!: string;
 
 	@ApiProperty()
-	@IsNotEmpty()
-	@MinLength(8)
+	@MinLength(6, { message: 'A senha deve ter no mínimo 6 caracteres' })
+	@IsNotEmpty({ message: 'Senha é obrigatória' })
 	password!: string;
 
 	@ApiProperty({ enum: UserType })
-	@IsEnum(UserType)
+	@IsEnum(UserType, { message: 'Tipo de usuário inválido' })
 	type!: UserType;
 
 	@ApiPropertyOptional()
