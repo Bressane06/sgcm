@@ -1,50 +1,28 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Admin, Doctor, Patient, User } from './entities/user.entity';
+import { User } from '../entities/user.entity';
 import { Like, Repository } from 'typeorm';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UserType } from './enum/user-type.enum';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { CreateUserDto } from '../dto/create-user.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
+import { NotFoundException } from '@nestjs/common';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
+import { UsersFactoryService } from './users-factory.service';
 
 @Injectable()
 export class UsersService {
 
     constructor(
         @InjectRepository(User)
-        private readonly userRepository: Repository<User>
+        
+        private readonly userRepository: Repository<User>,
+        private readonly usersFactoryService: UsersFactoryService
     ){}
 
     async create(dto: CreateUserDto): Promise<User> {
+        const userEntity = this.usersFactoryService.create(dto);
         
-        let user: User;
-
-        switch (dto.type) {
-            case UserType.ADMIN:
-                const admin = new Admin();
-                Object.assign(admin, dto);
-                user = admin;
-            break;
-
-            case UserType.DOCTOR:
-                const doctor = new Doctor();
-                Object.assign(doctor, dto);
-                user = doctor;
-            break;
-
-            case UserType.PATIENT:
-                const patient = new Patient();
-                Object.assign(patient, dto);
-                user = patient;
-            break;
-
-            default:
-            throw new BadRequestException('Tipo inválido');
-        }
-
-        return await this.userRepository.save(user);
+        return await this.userRepository.save(userEntity);
     }
     async findAll(query: PaginationQueryDto): Promise<PaginatedResponseDto<User>> {
         const { page, limit, sort, search } = query;
