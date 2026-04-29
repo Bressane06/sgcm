@@ -2,11 +2,9 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseInterceptors
 import { UsersService } from './services/users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
-import { SerializeInterceptor } from 'src/common/interceptors/serialize.interceptor';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 @Controller('users')
-@UseInterceptors(SerializeInterceptor) 
 export class UsersController {
     constructor(private readonly usersService: UsersService) {}
 
