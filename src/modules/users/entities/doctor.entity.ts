@@ -4,6 +4,6 @@ import { UserType } from '../enum/user-type.enum';
 
 @ChildEntity(UserType.DOCTOR)
 export class Doctor extends User {
-  @Column({ nullable: true })
+  @Column({ unique: true })
   crm: string;
 }

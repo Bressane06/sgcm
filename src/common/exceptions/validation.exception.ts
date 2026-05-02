@@ -11,6 +11,5 @@ export class ValidationException extends AppException {
       400,
       detail,
     );
-    this.name = 'ValidationException';
   }
 }

@@ -8,6 +8,5 @@ export class UnauthorizedException extends AppException {
       401,
       detail,
     );
-    this.name = 'UnauthorizedException';
   }
 }

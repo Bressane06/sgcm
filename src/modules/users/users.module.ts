@@ -7,11 +7,12 @@ import { Patient } from './entities/patient.entity';
 import { UsersController } from './users.controller';
 import { UsersService } from './services/users.service';
 import { UsersFactoryService } from './services/users-factory.service';
+import { UsersUniquenessService } from './services/users-uniqueness.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Admin, Doctor, Patient])],
   controllers: [UsersController],
-  providers: [UsersService, UsersFactoryService],
+  providers: [UsersService, UsersFactoryService, UsersUniquenessService],
   exports: [UsersService],
 })
 export class UsersModule {}

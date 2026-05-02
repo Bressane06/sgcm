@@ -15,6 +15,5 @@ export class NotFoundException extends AppException {
       404,
       detail,
     );
-    this.name = 'NotFoundException';
   }
 }
