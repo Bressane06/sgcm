@@ -1,9 +1,15 @@
-import { ChildEntity, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn } from 'typeorm';
 import { User } from './user.entity';
-import { UserType } from '../enum/user-type.enum';
 
-@ChildEntity(UserType.DOCTOR)
-export class Doctor extends User {
+@Entity('doctor')
+export class Doctor {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @OneToOne(() => User, { cascade: true, eager: true })
+  @JoinColumn()
+  user!: User;
+
   @Column({ unique: true })
-  crm: string;
+  crm!: string;
 }
