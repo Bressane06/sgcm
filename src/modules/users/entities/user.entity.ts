@@ -17,23 +17,23 @@ import { UserType } from '../enum/user-type.enum';
 @TableInheritance({ column: { name: 'type', type: 'varchar' } })
 export abstract class User {
 	@PrimaryGeneratedColumn()
-	id: number;
+	id!: number;
 
 	@Column()
-	name: string;
+	name!: string;
 
 	@Column({ unique: true })
-	email: string;
+	email!: string;
 
 	@Exclude()
 	@Column()
-	password: string;
+	password!: string;
 
-	@Column({ nullable: true })
-	type: UserType;
+	@Column()
+	type!: UserType;
 
 	@Column({ default: true })
-	isActive: boolean;
+	isActive!: boolean;
 
 	@Column({ nullable: true, select: false })
 	@Exclude()
