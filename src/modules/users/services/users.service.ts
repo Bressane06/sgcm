@@ -4,7 +4,7 @@ import { User } from '../entities/user.entity';
 import { Like, Repository } from 'typeorm';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '../../../common/exceptions';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
 import { UsersFactoryService } from './users-factory.service';
@@ -57,7 +57,7 @@ export class UsersService {
         const user = await this.userRepository.findOne({ where: { id } });
 
         if (!user) {
-            throw new NotFoundException('Usuário não encontrado');
+            throw new NotFoundException('Usuário', id);
         }
 
         return user;
