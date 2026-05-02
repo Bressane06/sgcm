@@ -8,6 +8,5 @@ export class ForbiddenException extends AppException {
       403,
       detail,
     );
-    this.name = 'ForbiddenException';
   }
 }
