@@ -11,10 +11,7 @@ import { UsersFactoryService } from './services/users-factory.service';
 @Module({
   imports: [TypeOrmModule.forFeature([User, Admin, Doctor, Patient])],
   controllers: [UsersController],
-  providers: [
-    UsersService,
-    UsersFactoryService
-  ],
+  providers: [UsersService, UsersFactoryService],
   exports: [UsersService],
 })
 export class UsersModule {}
