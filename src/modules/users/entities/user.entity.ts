@@ -36,6 +36,7 @@ export abstract class User {
 	isActive: boolean;
 
 	@Column({ nullable: true, select: false })
+	@Exclude()
 	refreshToken?: string;
 
 	@CreateDateColumn()
