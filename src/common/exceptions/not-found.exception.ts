@@ -1,10 +1,7 @@
 import { AppException } from './app.exception';
 
 export class NotFoundException extends AppException {
-  constructor(
-    resource: string,
-    identifier?: string | number,
-  ) {
+  constructor(resource: string, identifier?: string | number) {
     const detail = identifier
       ? `${resource} com id ${identifier} não foi encontrado.`
       : `${resource} não foi encontrado.`;

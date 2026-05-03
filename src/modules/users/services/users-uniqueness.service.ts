@@ -1,5 +1,5 @@
-// Isso foi feito para centralizar a lógica de verificação de 
-// unicidade de campos como email, CRM e CPF, evitando duplicação 
+// Isso foi feito para centralizar a lógica de verificação de
+// unicidade de campos como email, CRM e CPF, evitando duplicação
 // de código entre os serviços de criação e atualização de usuários.
 
 import { Injectable } from '@nestjs/common';
@@ -25,9 +25,11 @@ export class UsersUniquenessService {
   ) {}
 
   // Verifica se o email é único, considerando o ID do usuário atual para atualizações
-  private async assertUniqueEmail(email?: string, currentUserId?: number): Promise<void> {
-    if (!email) 
-        return;
+  private async assertUniqueEmail(
+    email?: string,
+    currentUserId?: number,
+  ): Promise<void> {
+    if (!email) return;
 
     const existingUser = await this.userRepository.findOneBy({ email });
     if (existingUser && existingUser.id !== currentUserId) {
@@ -36,9 +38,11 @@ export class UsersUniquenessService {
   }
 
   // Verifica se o CRM é único para médicos, considerando o ID do usuário atual para atualizações
-  private async assertUniqueDoctorCrm(crm?: string, currentUserId?: number): Promise<void> {
-    if (!crm) 
-        return;
+  private async assertUniqueDoctorCrm(
+    crm?: string,
+    currentUserId?: number,
+  ): Promise<void> {
+    if (!crm) return;
 
     const existingDoctor = await this.doctorRepository.findOneBy({ crm });
     if (existingDoctor && existingDoctor.id !== currentUserId) {
@@ -47,9 +51,11 @@ export class UsersUniquenessService {
   }
 
   // Verifica se o CPF é único para pacientes, considerando o ID do usuário atual para atualizações
-  private async assertUniquePatientCpf(cpf?: string, currentUserId?: number): Promise<void> {
-    if (!cpf) 
-        return;
+  private async assertUniquePatientCpf(
+    cpf?: string,
+    currentUserId?: number,
+  ): Promise<void> {
+    if (!cpf) return;
 
     const existingPatient = await this.patientRepository.findOneBy({ cpf });
     if (existingPatient && existingPatient.id !== currentUserId) {
@@ -59,7 +65,10 @@ export class UsersUniquenessService {
 
   // Método público para validar os campos de unicidade com base no tipo de usuário
   async validateUniqueFields(
-    payload: Pick<CreateUserDto | UpdateUserDto, 'email' | 'crm' | 'cpf' | 'type'>,
+    payload: Pick<
+      CreateUserDto | UpdateUserDto,
+      'email' | 'crm' | 'cpf' | 'type'
+    >,
     currentUserId?: number,
   ): Promise<void> {
     await this.assertUniqueEmail(payload.email, currentUserId);

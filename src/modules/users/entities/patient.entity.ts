@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('patient')
@@ -22,7 +28,10 @@ export class Patient {
     const birth = new Date(this.birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const diffMonth = today.getMonth() - birth.getMonth();
-    if (diffMonth < 0 || (diffMonth === 0 && today.getDate() < birth.getDate())) {
+    if (
+      diffMonth < 0 ||
+      (diffMonth === 0 && today.getDate() < birth.getDate())
+    ) {
       age--;
     }
     return age;

@@ -1,4 +1,4 @@
-import { IsNotEmpty, isNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 import { CreateUserDto } from './create-user.dto';
 
 export class CreateDoctorDto extends CreateUserDto {

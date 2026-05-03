@@ -13,7 +13,7 @@ export class ConflictException extends AppException {
   }
 
   static uniqueConstraint(field: string, value?: string): ConflictException {
-    const detail = value 
+    const detail = value
       ? `${field} "${value}" já existe no sistema.`
       : `${field} já existe no sistema.`;
     const errors = { [field]: ['já existe'] };
@@ -25,7 +25,10 @@ export class ConflictException extends AppException {
     return new ConflictException(message);
   }
 
-  static duplicateResource(resource: string, identifier: string): ConflictException {
+  static duplicateResource(
+    resource: string,
+    identifier: string,
+  ): ConflictException {
     const detail = `${resource} com identificador "${identifier}" já está cadastrado.`;
     return new ConflictException(detail);
   }

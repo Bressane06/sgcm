@@ -26,7 +26,7 @@ export abstract class User {
   @Column()
   password!: string;
 
-  @Column({ type: 'varchar' })  
+  @Column({ type: 'varchar' })
   type!: UserType;
 
   @Column({ default: true })
@@ -42,8 +42,12 @@ export abstract class User {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  activate() { this.isActive = true; }
-  deactivate() { this.isActive = false; }
+  activate() {
+    this.isActive = true;
+  }
+  deactivate() {
+    this.isActive = false;
+  }
 
   @BeforeInsert()
   @BeforeUpdate()

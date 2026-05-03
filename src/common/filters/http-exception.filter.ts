@@ -28,7 +28,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
-    
+
     // Identificadores únicos para rastreamento de erros
     const traceId = randomUUID();
     const timestamp = new Date().toISOString();
@@ -97,19 +97,22 @@ export class HttpExceptionFilter implements ExceptionFilter {
   }
 
   /**
-   * Converte erros específicos do driver do banco de dados (ex: SQLite) 
+   * Converte erros específicos do driver do banco de dados (ex: SQLite)
    * em exceções de negócio.
    */
-  private convertDatabaseErrorToException(exception: QueryFailedError): AppException {
+  private convertDatabaseErrorToException(
+    exception: QueryFailedError,
+  ): AppException {
     const driverError = exception.driverError as DatabaseDriverError;
 
     // Tratamento específico para SQLite
     if (driverError?.code === 'SQLITE_CONSTRAINT') {
-      
       // Erro de Unicidade (ex: Email já cadastrado)
       if (driverError?.message?.includes('UNIQUE constraint failed')) {
         let column = 'campo';
-        const match = driverError.message.match(/UNIQUE constraint failed: (\w+)\.(\w+)/);
+        const match = driverError.message.match(
+          /UNIQUE constraint failed: (\w+)\.(\w+)/,
+        );
         if (match) {
           column = match[2] || column;
         } else {
@@ -131,7 +134,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
       // Erro de Campo Obrigatório (NOT NULL)
       if (driverError?.message?.includes('NOT NULL constraint failed')) {
-        const match = driverError.message.match(/NOT NULL constraint failed: (\w+)\.(\w+)/);
+        const match = driverError.message.match(
+          /NOT NULL constraint failed: (\w+)\.(\w+)/,
+        );
         if (match) {
           const [, , column] = match;
           return new AppException(
@@ -187,7 +192,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     traceId: string,
     timestamp: string,
   ): ProblemDetailsDto {
-    const hasErrors = !!exception.errors && Object.keys(exception.errors).length > 0;
+    const hasErrors =
+      !!exception.errors && Object.keys(exception.errors).length > 0;
 
     return {
       type: exception.type,
@@ -219,7 +225,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
       type: 'https://sgcm.example.com/problems/validation-error',
       title: 'Erro de validação',
       status: HttpStatus.BAD_REQUEST,
-      detail: 'Um ou mais campos contêm valores inválidos. Verifique os detalhes.',
+      detail:
+        'Um ou mais campos contêm valores inválidos. Verifique os detalhes.',
       instance: request.path,
       method: request.method,
       timestamp,
@@ -238,7 +245,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     timestamp: string,
   ): ProblemDetailsDto {
     const status = exception.getStatus();
-    const errorResponse = exception.getResponse() as ValidationErrorResponse | string;
+    const errorResponse = exception.getResponse() as
+      | ValidationErrorResponse
+      | string;
 
     let title = 'Erro na requisição';
     let type = 'https://sgcm.example.com/problems/http-error';
@@ -269,9 +278,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       detail:
         typeof errorResponse === 'string'
           ? errorResponse
-          : (typeof errorResponse.message === 'string'
-              ? errorResponse.message
-              : exception.message),
+          : typeof errorResponse.message === 'string'
+            ? errorResponse.message
+            : exception.message,
       instance: request.path,
       method: request.method,
       timestamp,
@@ -297,7 +306,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
       type: 'https://sgcm.example.com/problems/internal-server-error',
       title: 'Erro interno do servidor',
       status: HttpStatus.INTERNAL_SERVER_ERROR,
-      detail: 'Ocorreu um erro inesperado. Por favor, tente novamente mais tarde.',
+      detail:
+        'Ocorreu um erro inesperado. Por favor, tente novamente mais tarde.',
       instance: request.path,
       method: request.method,
       timestamp,
