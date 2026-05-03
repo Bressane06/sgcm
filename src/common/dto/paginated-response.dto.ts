@@ -1,11 +1,10 @@
 export class PaginatedResponseDto<List> {
-  items!: List[];
+  data!: List[];
 
   meta!: {
-    itemCount: number;
     totalItems: number;
-    itemsPerPage: number;
+    page: number;
+    limit: number;
     totalPages: number;
-    currentPage: number;
   };
 }

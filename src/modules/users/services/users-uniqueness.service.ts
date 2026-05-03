@@ -44,8 +44,12 @@ export class UsersUniquenessService {
   ): Promise<void> {
     if (!crm) return;
 
-    const existingDoctor = await this.doctorRepository.findOneBy({ crm });
-    if (existingDoctor && existingDoctor.id !== currentUserId) {
+    const existingDoctor = await this.doctorRepository.findOne({
+      where: { crm },
+      relations: { user: true },
+    });
+
+    if (existingDoctor && existingDoctor.user.id !== currentUserId) {
       throw new ConflictException(`CRM "${crm}" já existe`);
     }
   }
@@ -57,8 +61,12 @@ export class UsersUniquenessService {
   ): Promise<void> {
     if (!cpf) return;
 
-    const existingPatient = await this.patientRepository.findOneBy({ cpf });
-    if (existingPatient && existingPatient.id !== currentUserId) {
+    const existingPatient = await this.patientRepository.findOne({
+      where: { cpf },
+      relations: { user: true },
+    });
+
+    if (existingPatient && existingPatient.user.id !== currentUserId) {
       throw new ConflictException(`CPF "${cpf}" já existe`);
     }
   }
