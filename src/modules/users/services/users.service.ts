@@ -41,13 +41,12 @@ export class UsersService {
     });
 
     return {
-      items,
+      data: items,
       meta: {
-        itemCount: items.length,
         totalItems,
-        itemsPerPage: limit,
+        page,
+        limit,
         totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
       },
     };
   }
