@@ -1,0 +1,21 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
+import { User } from './user.entity';
+
+@Entity('admin')
+export class Admin {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @OneToOne(() => User, { cascade: true, eager: true })
+  @JoinColumn()
+  user!: User;
+
+  @Column({ nullable: true })
+  accessLevel!: string;
+}
