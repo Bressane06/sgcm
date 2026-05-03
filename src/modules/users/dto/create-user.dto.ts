@@ -32,22 +32,22 @@ export class CreateUserDto {
   type!: UserType;
 
   @ApiPropertyOptional()
-  @ValidateIf((o) => o.type === UserType.ADMIN)
+  @ValidateIf((o: CreateUserDto) => o.type === UserType.ADMIN)
   @IsNotEmpty()
   accessLevel?: string;
 
   @ApiPropertyOptional()
-  @ValidateIf((o) => o.type === UserType.DOCTOR)
+  @ValidateIf((o: CreateUserDto) => o.type === UserType.DOCTOR)
   @IsNotEmpty()
   crm?: string;
 
   @ApiPropertyOptional()
-  @ValidateIf((o) => o.type === UserType.PATIENT)
+  @ValidateIf((o: CreateUserDto) => o.type === UserType.PATIENT)
   @IsNotEmpty()
   cpf?: string;
 
   @ApiPropertyOptional()
-  @ValidateIf((o) => o.type === UserType.PATIENT)
+  @ValidateIf((o: CreateUserDto) => o.type === UserType.PATIENT)
   @IsDate()
   @Type(() => Date)
   birthDate?: Date;
