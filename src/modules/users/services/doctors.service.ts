@@ -5,6 +5,7 @@ import { Like, Repository } from 'typeorm';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
 import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
 import { NotFoundException } from '../../../common';
+import { create } from 'domain';
 
 @Injectable()
 export class DoctorsService {
@@ -65,5 +66,21 @@ export class DoctorsService {
       email: doctor.user.email,
       crm: doctor.crm,
     };
+  }
+
+  findSpecialities(id: number) {
+    return `Listar especialidades do médico ${id}`;
+  }
+
+  createSpeciality(id: number, createSpecialityDto: any) {
+    return `Criar especialidade para o médico ${id} com dados ${createSpecialityDto}`;
+  }
+
+  removeSpeciality(id: number, specialityId: number) {
+    return `Remover especialidade do médico ${id} com id ${specialityId}`;
+  }
+
+  findSchedules(id: number) {
+    return `Listar horários disponíveis do médico ${id}`;
   }
 }
