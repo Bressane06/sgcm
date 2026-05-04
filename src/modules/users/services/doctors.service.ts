@@ -4,6 +4,7 @@ import { Doctor } from './../entities/doctor.entity';
 import { Like, Repository } from 'typeorm';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
 import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
+import { NotFoundException } from '../../../common';
 
 @Injectable()
 export class DoctorsService {
@@ -46,7 +47,23 @@ export class DoctorsService {
     };
   }
 
-  findOne(id: number) {
-    return `this action returns a #${id} doctor`;
+  async findOne(
+    id: number,
+  ): Promise<{ id: number; name: string; email: string; crm: string }> {
+    const doctor = await this.doctorRepository.findOne({
+      where: { user: { id } },
+      relations: { user: true },
+    });
+
+    if (!doctor) {
+      throw new NotFoundException('Médico', id);
+    }
+
+    return {
+      id: doctor.user.id,
+      name: doctor.user.name,
+      email: doctor.user.email,
+      crm: doctor.crm,
+    };
   }
 }
