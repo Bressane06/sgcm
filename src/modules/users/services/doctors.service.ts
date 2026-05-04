@@ -5,7 +5,6 @@ import { Like, Repository } from 'typeorm';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
 import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
 import { NotFoundException } from '../../../common';
-import { create } from 'domain';
 
 @Injectable()
 export class DoctorsService {

@@ -18,4 +18,7 @@ export class Doctor {
 
   @Column({ unique: true })
   crm!: string;
+
+  // getActiveSchedules(): Schedules[] {}
+  // getAppointments(): Appointments[]
 }
