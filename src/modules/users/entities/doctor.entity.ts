@@ -4,8 +4,10 @@ import {
   Column,
   OneToOne,
   JoinColumn,
+  OneToMany
 } from 'typeorm';
 import { User } from './user.entity';
+import { DoctorSpecialty } from '../../specialties/entities/doctor-specialty.entity';
 
 @Entity('doctor')
 export class Doctor {
@@ -18,6 +20,9 @@ export class Doctor {
 
   @Column({ unique: true })
   crm!: string;
+  
+  @OneToMany(() => DoctorSpecialty, doctorSpecialty => doctorSpecialty.doctor)
+  specialties!: DoctorSpecialty[];
 
   // getActiveSchedules(): Schedules[] {}
   // getAppointments(): Appointments[]

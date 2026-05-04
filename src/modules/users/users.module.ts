@@ -12,6 +12,7 @@ import { PatientsController } from './patients.controller';
 import { PatientsService } from './services/patients.service';
 import { DoctorsController } from './doctors.controller';
 import { DoctorsService } from './services/doctors.service';
+import { SpecialtiesModule } from '../specialties/specialties.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Admin, Doctor, Patient])],
