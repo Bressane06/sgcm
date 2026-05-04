@@ -24,9 +24,7 @@ export class UsersService {
     return await this.usersFactoryService.create(dto);
   }
 
-  async findAll(
-    query: FindUsersQueryDto,
-  ): Promise<PaginatedResponseDto<User>> {
+  async findAll(query: FindUsersQueryDto): Promise<PaginatedResponseDto<User>> {
     const { page, limit, sort, search } = query;
     const skip = (page - 1) * limit;
     const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];

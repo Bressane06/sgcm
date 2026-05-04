@@ -28,14 +28,13 @@ export class PatientsService {
         ]
       : undefined;
 
-    const [patients, totalItems] =
-      await this.patientRepository.findAndCount({
-        where,
-        relations: { user: true },
-        order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
-        skip,
-        take: limit,
-      });
+    const [patients, totalItems] = await this.patientRepository.findAndCount({
+      where,
+      relations: { user: true },
+      order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
+      skip,
+      take: limit,
+    });
 
     const data = patients.map((p) => ({
       id: p.user.id,

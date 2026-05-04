@@ -10,10 +10,11 @@ import { UsersFactoryService } from './services/users-factory.service';
 import { UsersUniquenessService } from './services/users-uniqueness.service';
 import { PatientsController } from './patients.controller';
 import { PatientsService } from './services/patients.service';
+import { DoctorsController } from './doctors.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Admin, Doctor, Patient])],
-  controllers: [UsersController, PatientsController],
+  controllers: [UsersController, PatientsController, DoctorsController],
   providers: [
     UsersService,
     PatientsService,
