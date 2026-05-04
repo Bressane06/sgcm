@@ -15,7 +15,7 @@ export class PatientsService {
 
   async findAll(
     query: FindPatientsQueryDto,
-  ): Promise<PaginatedResponseDto<any>> {
+  ): Promise<PaginatedResponseDto<Patient>> {
     const { page, limit, sort, search } = query;
 
     const skip = (page - 1) * limit;
@@ -36,16 +36,8 @@ export class PatientsService {
       take: limit,
     });
 
-    const data = patients.map((p) => ({
-      id: p.user.id,
-      name: p.user.name,
-      email: p.user.email,
-      cpf: p.cpf,
-      birthDate: p.birthDate,
-    }));
-
     return {
-      data,
+      data: patients,
       meta: {
         totalItems,
         page,

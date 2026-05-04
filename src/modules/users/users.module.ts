@@ -11,6 +11,7 @@ import { UsersUniquenessService } from './services/users-uniqueness.service';
 import { PatientsController } from './patients.controller';
 import { PatientsService } from './services/patients.service';
 import { DoctorsController } from './doctors.controller';
+import { DoctorsService } from './services/doctors.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Admin, Doctor, Patient])],
@@ -19,7 +20,8 @@ import { DoctorsController } from './doctors.controller';
     UsersService,
     PatientsService,
     UsersFactoryService,
-    UsersUniquenessService
+    UsersUniquenessService,
+    DoctorsService,
   ],
   exports: [UsersService],
 })
