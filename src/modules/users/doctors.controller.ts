@@ -19,26 +19,26 @@ export class DoctorsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar médicos' })
-  findAll(@Query() query: FindDoctorsQueryDto) {
-    return this.doctorsService.findAll(query);
+  async findAll(@Query() query: FindDoctorsQueryDto) {
+    return await this.doctorsService.findAll(query);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Buscar médico por ID' })
-  findOne(@Param('id') id: number) {
-    return this.doctorsService.findOne(Number(id));
+  async findOne(@Param('id') id: number) {
+    return await this.doctorsService.findOne(Number(id));
   }
 
   @Get(':id/specialities')
   @ApiOperation({ summary: 'Listar especialidades de um médico' })
-  findSpecialities(@Param('id') id: number) {
-    return this.doctorsService.findSpecialities(Number(id));
+  async findSpecialities(@Param('id') id: number) {
+    return await this.doctorsService.findSpecialities(Number(id));
   }
 
   @Post(':id/specialities')
   @ApiOperation({ summary: 'Criar um nova especialidade para um médico' })
-  createSpeciality(@Param('id') id: number, @Body() createSpecialityDto: CreateSpecialtyDto) {
-    return this.doctorsService.createSpeciality(
+  async createSpeciality(@Param('id') id: number, @Body() createSpecialityDto: CreateSpecialtyDto) {
+    return await this.doctorsService.createSpeciality(
       Number(id),
       createSpecialityDto,
     );
@@ -46,11 +46,11 @@ export class DoctorsController {
 
   @Delete(':id/specialities/:specialityId')
   @ApiOperation({ summary: 'Remover uma especialidade de um médico' })
-  removeSpeciality(
+  async removeSpeciality(
     @Param('id') id: number,
     @Param('specialityId') specialityId: number,
   ) {
-    return this.doctorsService.removeSpeciality(
+    return await this.doctorsService.removeSpeciality(
       Number(id),
       Number(specialityId),
     );
@@ -58,7 +58,7 @@ export class DoctorsController {
 
   @Get(':id/schedules')
   @ApiOperation({ summary: 'Listar horários disponíveis de um médico' })
-  findSchedules(@Param('id') id: number) {
-    return this.doctorsService.findSchedules(Number(id));
+  async findSchedules(@Query() query: FindDoctorsQueryDto, @Param('id') id: number) {
+    return await this.doctorsService.findSchedules(Number(id));
   }
 }

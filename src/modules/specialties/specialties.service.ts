@@ -19,7 +19,7 @@ export class SpecialtiesService {
     private readonly doctorRepository: Repository<Doctor>,
   ) {}
 
-  async create(dto: CreateSpecialtyDto) {
+  async create(dto: CreateSpecialtyDto): Promise<Specialty> {
     const specialty = this.specialtyRepository.create({
       name: dto.name,
       description: dto.description
@@ -95,23 +95,20 @@ export class SpecialtiesService {
     const skip = (page - 1) * limit;
     const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
 
-    const where = search
-      ? [
-          { specialty: { name: Like(`%${search}%`) } },
-          { specialty: { id: Like(`%${search}%`) } },
-        ]
-      : undefined;
-
-    
     const doctors = await this.specialtyRepository
       .createQueryBuilder('specialty')
+
       .innerJoin('specialty.doctors', 'doctorSpecialty')
       .innerJoin('doctorSpecialty.doctor', 'doctor')
       .innerJoinAndSelect('doctor.user', 'user')
+
       .where('specialty.id = :id', { id })
+      .andWhere('user.name LIKE :search OR user.email LIKE :search', { search: `%${search}%` })
+
       .orderBy(`doctor.${field}`, direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC')
       .skip(skip)
       .limit(limit)
+      
       .getMany();
 
     if (!doctors) {

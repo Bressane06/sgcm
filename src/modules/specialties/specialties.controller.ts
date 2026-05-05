@@ -22,40 +22,40 @@ export class SpecialtiesController {
 
   @Post()
   @ApiOperation({ summary: 'Cria uma nova especialidade.' })
-  create(@Body() createSpecialtyDto: CreateSpecialtyDto) {
-    return this.specialtiesService.create(createSpecialtyDto);
+  async create(@Body() createSpecialtyDto: CreateSpecialtyDto) {
+    return await this.specialtiesService.create(createSpecialtyDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Retorna todas as especialidades.' })
-  findAll(@Query() query: FindSpecialtiesQueryDto) {
-    return this.specialtiesService.findAll(query);
+  async findAll(@Query() query: FindSpecialtiesQueryDto) {
+    return await this.specialtiesService.findAll(query);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Retorna uma especialidade específica.' })
-  findOne(@Param('id') id: string) {
-    return this.specialtiesService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    return await this.specialtiesService.findOne(+id);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Atualiza uma especialidade específica.' })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateSpecialtyDto: UpdateSpecialtyDto,
   ) {
-    return this.specialtiesService.update(+id, updateSpecialtyDto);
+    return await this.specialtiesService.update(+id, updateSpecialtyDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remove uma especialidade específica.' })
-  remove(@Param('id') id: string) {
-    return this.specialtiesService.remove(+id);
+  async remove(@Param('id') id: string) {
+    return await this.specialtiesService.remove(+id);
   }
 
   @Get(':id/doctors')
   @ApiOperation({ summary: 'Retorna os médicos da especialidade.' })
-  findDoctors(@Query() query: FindDoctorsQueryDto, @Param('id') id: string) {
-    return this.specialtiesService.findDoctors(query, +id);
+  async findDoctors(@Query() query: FindDoctorsQueryDto, @Param('id') id: string) {
+    return await this.specialtiesService.findDoctors(query, +id);
   }
 }

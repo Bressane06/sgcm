@@ -68,8 +68,8 @@ export class DoctorsService {
     };
   }
 
-  findSpecialities(id: number) {
-    return `Listar especialidades do médico ${id}`;
+  findSpecialities(id: number): {
+    return;
   }
 
   createSpeciality(id: number, createSpecialityDto: CreateSpecialtyDto) {
