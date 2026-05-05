@@ -23,6 +23,7 @@ import { SpecialtiesModule } from '../specialties/specialties.module';
     UsersFactoryService,
     UsersUniquenessService,
     DoctorsService,
+    SpecialtiesModule,
   ],
   exports: [UsersService],
 })

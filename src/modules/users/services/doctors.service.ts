@@ -5,6 +5,7 @@ import { Like, Repository } from 'typeorm';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
 import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
 import { NotFoundException } from '../../../common';
+import { CreateSpecialtyDto } from '../../specialties/dto/create-specialty.dto';
 
 @Injectable()
 export class DoctorsService {
@@ -71,7 +72,7 @@ export class DoctorsService {
     return `Listar especialidades do médico ${id}`;
   }
 
-  createSpeciality(id: number, createSpecialityDto: any) {
+  createSpeciality(id: number, createSpecialityDto: CreateSpecialtyDto) {
     return `Criar especialidade para o médico ${id} com dados ${createSpecialityDto}`;
   }
 

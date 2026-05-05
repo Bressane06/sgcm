@@ -10,6 +10,7 @@ import {
 import { DoctorsService } from './services/doctors.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { FindDoctorsQueryDto } from './dto/find-doctors-query.dto';
+import { CreateSpecialtyDto } from '../specialties/dto/create-specialty.dto';
 
 @ApiTags('Doctors')
 @Controller('doctors')
@@ -36,7 +37,7 @@ export class DoctorsController {
 
   @Post(':id/specialities')
   @ApiOperation({ summary: 'Criar um nova especialidade para um médico' })
-  createSpeciality(@Param('id') id: number, @Body() createSpecialityDto: any) {
+  createSpeciality(@Param('id') id: number, @Body() createSpecialityDto: CreateSpecialtyDto) {
     return this.doctorsService.createSpeciality(
       Number(id),
       createSpecialityDto,

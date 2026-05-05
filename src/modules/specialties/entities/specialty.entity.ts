@@ -6,7 +6,7 @@ export class Specialty {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column()
+    @Column({ unique: true })
     name!: string;
 
     @Column()
@@ -19,5 +19,5 @@ export class Specialty {
     updatedAt!: Date;
     
     @OneToMany(() => DoctorSpecialty, doctorSpecialty => doctorSpecialty.specialty)
-    doctors!: DoctorSpecialty[];
+    doctors?: DoctorSpecialty[];
 }

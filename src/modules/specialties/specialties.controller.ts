@@ -6,11 +6,14 @@ import {
   Param,
   Delete,
   Put,
+  Query,
 } from '@nestjs/common';
 import { SpecialtiesService } from './specialties.service';
 import { CreateSpecialtyDto } from './dto/create-specialty.dto';
 import { UpdateSpecialtyDto } from './dto/update-specialty.dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FindSpecialtiesQueryDto } from './dto/find-specialties-query.dto';
+import { FindDoctorsQueryDto } from '../users/dto/find-doctors-query.dto';
 
 @ApiTags('Specialties')
 @Controller('specialties')
@@ -25,8 +28,8 @@ export class SpecialtiesController {
 
   @Get()
   @ApiOperation({ summary: 'Retorna todas as especialidades.' })
-  findAll() {
-    return this.specialtiesService.findAll();
+  findAll(@Query() query: FindSpecialtiesQueryDto) {
+    return this.specialtiesService.findAll(query);
   }
 
   @Get(':id')
@@ -52,7 +55,7 @@ export class SpecialtiesController {
 
   @Get(':id/doctors')
   @ApiOperation({ summary: 'Retorna os médicos da especialidade.' })
-  findDoctors(@Param('id') id: string) {
-    return this.specialtiesService.findDoctors(+id);
+  findDoctors(@Query() query: FindDoctorsQueryDto, @Param('id') id: string) {
+    return this.specialtiesService.findDoctors(query, +id);
   }
 }
