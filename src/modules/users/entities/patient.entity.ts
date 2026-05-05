@@ -16,10 +16,10 @@ export class Patient {
   @JoinColumn()
   user!: User;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ unique: true })
   cpf!: string;
 
-  @Column({ nullable: true })
+  @Column({ })
   birthDate!: Date;
 
   getAge(): number {

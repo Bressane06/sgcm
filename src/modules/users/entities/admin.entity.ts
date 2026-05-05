@@ -16,6 +16,6 @@ export class Admin {
   @JoinColumn()
   user!: User;
 
-  @Column({ nullable: true })
+  @Column({ })
   accessLevel!: string;
 }
