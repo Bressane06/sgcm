@@ -2,25 +2,16 @@ import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGenerat
 import { Doctor } from "../../users/entities/doctor.entity";
 import { Specialty } from "./specialty.entity";
 
-@Entity('doctor_specialty')
+@Entity('doctorSpecialty')
 export class DoctorSpecialty {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column()
+    @ManyToOne(() => Doctor, doctor => doctor.specialties, { onDelete: 'CASCADE' })
     doctorId!: number;
 
-    //nota: essas cascates nas ainda precisam ser diligenciada de acordo com o enunciado, mas por hora, fica aí
-    @ManyToOne(() => Doctor, doctor => doctor.specialties, { onDelete: 'CASCADE' })
-    @JoinColumn()
-    doctor?: Doctor;
-    
-    @Column()
-    specialtyId!: number;
-
     @ManyToOne(() => Specialty, specialty => specialty.doctors, { onDelete: 'CASCADE' })
-    @JoinColumn()
-    specialty?: Specialty;
+    specialtyId!: number;
     
     @CreateDateColumn()
     assignAt!: Date;

@@ -10,7 +10,8 @@ import {
 import { DoctorsService } from './services/doctors.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { FindDoctorsQueryDto } from './dto/find-doctors-query.dto';
-import { CreateSpecialtyDto } from '../specialties/dto/create-specialty.dto';
+import { UpdateSpecialtyDto } from '../specialties/dto/update-specialty.dto';
+import { FindSpecialtiesBodyDto } from '../specialties/dto/find-specialties-body.dto';
 
 @ApiTags('Doctors')
 @Controller('doctors')
@@ -18,46 +19,46 @@ export class DoctorsController {
   constructor(private readonly doctorsService: DoctorsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Listar médicos' })
+  @ApiOperation({ description: 'Listar médicos com paginação, filtro por especialidade e nome.' })
   async findAll(@Query() query: FindDoctorsQueryDto) {
     return await this.doctorsService.findAll(query);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Buscar médico por ID' })
+  @ApiOperation({ description: 'Buscar médico por ID com especialidades incluídas na resposta.' })
   async findOne(@Param('id') id: number) {
     return await this.doctorsService.findOne(Number(id));
   }
 
-  @Get(':id/specialities')
-  @ApiOperation({ summary: 'Listar especialidades de um médico' })
-  async findSpecialities(@Param('id') id: number) {
-    return await this.doctorsService.findSpecialities(Number(id));
+  @Get(':id/specialties')
+  @ApiOperation({ description: 'Listar especialidades de um médico' })
+  async findSpecialties(@Query() query: FindDoctorsQueryDto, @Param('id') id: number) {
+    return await this.doctorsService.findSpecialties(query, Number(id));
   }
 
-  @Post(':id/specialities')
-  @ApiOperation({ summary: 'Criar um nova especialidade para um médico' })
-  async createSpeciality(@Param('id') id: number, @Body() createSpecialityDto: CreateSpecialtyDto) {
-    return await this.doctorsService.createSpeciality(
+  @Post(':id/specialties')
+  @ApiOperation({ description: 'Associar especialidade a um médico.' })
+  async associateSpecialty(@Param('id') id: number, @Body() specialtyDto: FindSpecialtiesBodyDto) {
+    return await this.doctorsService.associateSpecialty(
       Number(id),
-      createSpecialityDto,
+      specialtyDto,
     );
   }
 
-  @Delete(':id/specialities/:specialityId')
-  @ApiOperation({ summary: 'Remover uma especialidade de um médico' })
-  async removeSpeciality(
+  @Delete(':id/specialties/:specialtyId')
+  @ApiOperation({ description: 'Desassociar especialidade de um médico' })
+  async removeSpecialty(  
     @Param('id') id: number,
-    @Param('specialityId') specialityId: number,
+    @Param('specialtyId') specialtyId: number,
   ) {
-    return await this.doctorsService.removeSpeciality(
+    return await this.doctorsService.dessociateSpecialty(
       Number(id),
-      Number(specialityId),
+      Number(specialtyId),
     );
   }
 
   @Get(':id/schedules')
-  @ApiOperation({ summary: 'Listar horários disponíveis de um médico' })
+  @ApiOperation({ description: 'Listar agendamentos de um médico com filtros e paginação.' })
   async findSchedules(@Query() query: FindDoctorsQueryDto, @Param('id') id: number) {
     return await this.doctorsService.findSchedules(Number(id));
   }

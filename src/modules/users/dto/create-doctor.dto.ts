@@ -5,7 +5,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class CreateDoctorDto extends CreateUserDto {
   @ApiProperty({
     description: 'CRM do médico',
-    example: '123456/SP'
+    example: '123456-SP'
   })
   @IsString()
   @IsNotEmpty({ message: 'CRM é obrigatório para médicos' })

@@ -13,9 +13,11 @@ import { PatientsService } from './services/patients.service';
 import { DoctorsController } from './doctors.controller';
 import { DoctorsService } from './services/doctors.service';
 import { SpecialtiesModule } from '../specialties/specialties.module';
+import { Specialty } from '../specialties/entities/specialty.entity';
+import { DoctorSpecialty } from '../specialties/entities/doctor-specialty.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Admin, Doctor, Patient])],
+  imports: [TypeOrmModule.forFeature([User, Admin, Doctor, Patient, Specialty, DoctorSpecialty])],
   controllers: [UsersController, PatientsController, DoctorsController],
   providers: [
     UsersService,

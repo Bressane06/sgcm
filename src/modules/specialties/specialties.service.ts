@@ -86,10 +86,7 @@ export class SpecialtiesService {
     return this.specialtyRepository.remove(specialty);
   }
 
-  async findDoctors(@Query() query: FindDoctorsQueryDto, id: number): Promise<PaginatedResponseDto<Specialty>> {
-    
-    // essa parte acessando o repositório de médicos é um possível gargalo de acoplamento,
-    // discutir o que fazer com o grupo
+  async findDoctors(query: FindDoctorsQueryDto, id: number): Promise<PaginatedResponseDto<Specialty>> {
     const { page, limit, sort, search } = query;
 
     const skip = (page - 1) * limit;
@@ -99,7 +96,7 @@ export class SpecialtiesService {
       .createQueryBuilder('specialty')
 
       .innerJoin('specialty.doctors', 'doctorSpecialty')
-      .innerJoin('doctorSpecialty.doctor', 'doctor')
+      .innerJoin('doctorSpecialty.doctorId', 'doctor')
       .innerJoinAndSelect('doctor.user', 'user')
 
       .where('specialty.id = :id', { id })
