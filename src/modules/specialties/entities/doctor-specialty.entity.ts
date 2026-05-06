@@ -8,9 +8,17 @@ export class DoctorSpecialty {
     id!: number;
 
     @ManyToOne(() => Doctor, doctor => doctor.specialties, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'doctorId' })
+    doctor!: Doctor;
+
+    @Column()
     doctorId!: number;
 
     @ManyToOne(() => Specialty, specialty => specialty.doctors, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'specialtyId' })
+    specialty!: Specialty;
+
+    @Column()
     specialtyId!: number;
     
     @CreateDateColumn()

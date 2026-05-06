@@ -30,7 +30,7 @@ export class SpecialtiesService {
   }
 
   async findAll(
-    query: FindSpecialtiesQueryDto,
+    query: FindSpecialtiesQueryDto
   ): Promise<PaginatedResponseDto<Specialty>> { 
     const {page, limit, sort, search} = query;
 

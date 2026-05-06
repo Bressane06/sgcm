@@ -18,6 +18,6 @@ export class Specialty {
     @UpdateDateColumn()
     updatedAt!: Date;
 
-    @OneToMany(() => DoctorSpecialty, doctorSpecialty => doctorSpecialty.specialtyId)
+    @OneToMany(() => DoctorSpecialty, doctorSpecialty => doctorSpecialty.specialty)
     doctors?: DoctorSpecialty[];
 }

@@ -11,7 +11,6 @@ import { DoctorsService } from './services/doctors.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { FindDoctorsQueryDto } from './dto/find-doctors-query.dto';
 import { UpdateSpecialtyDto } from '../specialties/dto/update-specialty.dto';
-import { FindSpecialtiesBodyDto } from '../specialties/dto/find-specialties-body.dto';
 
 @ApiTags('Doctors')
 @Controller('doctors')
@@ -38,7 +37,7 @@ export class DoctorsController {
 
   @Post(':id/specialties')
   @ApiOperation({ description: 'Associar especialidade a um médico.' })
-  async associateSpecialty(@Param('id') id: number, @Body() specialtyDto: FindSpecialtiesBodyDto) {
+  async associateSpecialty(@Param('id') id: number, @Body() specialtyDto: UpdateSpecialtyDto) {
     return await this.doctorsService.associateSpecialty(
       Number(id),
       specialtyDto,

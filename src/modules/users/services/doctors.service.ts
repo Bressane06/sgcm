@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Doctor } from './../entities/doctor.entity';
-import { Like, Repository } from 'typeorm';
+import { Brackets, Like, Repository } from 'typeorm';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
 import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
 import { NotFoundException } from '../../../common';
 import { Specialty } from '../../specialties/entities/specialty.entity';
 import { DoctorSpecialty } from '../../specialties/entities/doctor-specialty.entity';
 import { ConflictException } from '../../../common/exceptions/conflict.exception';
-import { FindSpecialtiesBodyDto } from '../../specialties/dto/find-specialties-body.dto';
+import { ValidationException } from '../../../common/exceptions/validation.exception';
+import { UpdateSpecialtyDto } from '../../specialties/dto/update-specialty.dto';
 
 @Injectable()
 export class DoctorsService {
@@ -89,26 +90,25 @@ export class DoctorsService {
       throw new NotFoundException('Médico', id);
     }
 
-    const specialties = await this.doctorRepository
-      .createQueryBuilder('doctor')
-
-      .innerJoin('doctor.specialties', 'doctorSpecialty')
-      .innerJoinAndSelect('doctorSpecialty.specialtyId', 'specialty')
-
-      .where('doctor.id = :id', { id })
-      .andWhere('specialty.name LIKE :search OR specialty.description LIKE :search', { search: `%${search}%` })
-
+    const doctorSpecialties = await this.doctorSpecialtyRepository
+      .createQueryBuilder('ds')
+      .innerJoinAndSelect('ds.specialty', 'specialty')
+      .where('ds.doctorId = :doctorId', { doctorId: doctor.id })
+      .andWhere(
+        new Brackets((qb) => {
+          if (search) {
+            qb.where('specialty.name LIKE :search', { search: `%${search}%` })
+              .orWhere('specialty.description LIKE :search', { search: `%${search}%` });
+          }
+        }),
+      )
       .orderBy(`specialty.${field}`, direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC')
       .skip(skip)
       .limit(limit)
-      
       .getMany();
 
-    if (!specialties) {
-      throw new NotFoundException('Doctor', id);
-    }
-
-    const totalItems = specialties.length;
+    const specialties = doctorSpecialties.map(ds => ds.specialty);
+    const totalItems = doctorSpecialties.length; 
 
     return {
       data: specialties,
@@ -121,18 +121,18 @@ export class DoctorsService {
     };
   }
 
-  async associateSpecialty(idDoctor: number, specialtyDto: FindSpecialtiesBodyDto) {
-    if (!specialtyDto?.name) {
-      throw new NotFoundException('Especialidade', 'Nome não fornecido');
+  async associateSpecialty(idDoctor: number, specialtyDto: UpdateSpecialtyDto) {
+    if (!specialtyDto.name || specialtyDto.name === '') {
+      throw new ValidationException('Neste caso, o nome da especialidade é obrigatório');
     }
 
     const specialty = await this.specialtyRepository.findOne({ where: { name: specialtyDto.name } })
-    if (!specialty) {
-      throw new NotFoundException('Especialidade', specialtyDto.name);
+    if (!specialty ) {
+      throw new NotFoundException('Especialidade', specialtyDto.name, true);
     }
 
     const doctor = await this.doctorRepository.findOne({
-      where: { id: idDoctor },
+      where: { user: { id: idDoctor } },
       relations: { user: true }
     });
     if (!doctor) {
@@ -143,38 +143,37 @@ export class DoctorsService {
       where: { specialtyId: specialty.id, doctorId: doctor.id } });
     if (doctorSpecialtyExists) {
       throw ConflictException.businessRule(
-        `O médico ${doctor.user.name} já possui a especialidade ${specialty.name}`);
+        `O médico ${doctor.user.name} já possui a especialidade ${specialty.name} associada.  `);
     }
 
-    const doctorSpecialty = this.doctorSpecialtyRepository.create({
+    const doctorSpecialty =  this.doctorSpecialtyRepository.create({
       specialtyId: specialty.id,
       doctorId: doctor.id
     });
 
-    await this.doctorSpecialtyRepository.save(doctorSpecialty);
+    console.log(doctorSpecialty);
 
-    return;
+    return await this.doctorSpecialtyRepository.save(doctorSpecialty);
   }
 
   async dessociateSpecialty(id: number, specialtyId: number) {
-    const doctorSpecialty = await this.doctorSpecialtyRepository.findOne({
-      where: { specialtyId, doctorId: id } });
+    const doctor = await this.doctorRepository.findOne({ where: { user: { id } }, relations: { specialties: true } });
+    if (!doctor) {
+      throw new NotFoundException('Médico', id);
+    }
+
+    const doctorSpecialty = await this.doctorSpecialtyRepository.findOne({ where: { specialtyId, doctorId: doctor.id } });
     if (!doctorSpecialty) {
       throw new NotFoundException('Associação entre médico e especialidade', `Médico ID: ${id}, Especialidade ID: ${specialtyId}`);
     }
 
-    const specialty = await this.specialtyRepository.findOne({ where: { id: specialtyId } })
+    const specialty = await this.specialtyRepository.findOne({ where: { id: specialtyId }, relations: { doctors: true } })
     if (!specialty) {
       throw new NotFoundException('Especialidade', specialtyId);//PENDENTE
     }
 
-    const doctor = await this.doctorRepository.findOne({ where: { id: id } });
-    if (!doctor) {
-      throw new NotFoundException('Médico', id);
-    }
-  
     // Remover a associação da especialidade no médico, o filter ja resolve pq existe apenas uma associação entre médico e especialidade
-    specialty.doctors = specialty.doctors?.filter(ds => ds.doctorId !== id);
+    specialty.doctors = specialty.doctors?.filter(ds => ds.doctorId !== doctor.id);
     await this.specialtyRepository.save(specialty);
 
     doctor.specialties = doctor.specialties?.filter(ds => ds.specialtyId !== specialtyId);
