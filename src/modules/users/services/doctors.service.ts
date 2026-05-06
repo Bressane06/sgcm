@@ -157,7 +157,7 @@ export class DoctorsService {
   }
 
   async dessociateSpecialty(id: number, specialtyId: number) {
-    const doctor = await this.doctorRepository.findOne({ where: { user: { id } }, relations: { specialties: true } });
+    const doctor = await this.doctorRepository.findOne({ where: { user: { id } } });
     if (!doctor) {
       throw new NotFoundException('Médico', id);
     }
@@ -167,18 +167,13 @@ export class DoctorsService {
       throw new NotFoundException('Associação entre médico e especialidade', `Médico ID: ${id}, Especialidade ID: ${specialtyId}`);
     }
 
-    const specialty = await this.specialtyRepository.findOne({ where: { id: specialtyId }, relations: { doctors: true } })
+    const specialty = await this.specialtyRepository.findOne({ where: { id: specialtyId }})
     if (!specialty) {
-      throw new NotFoundException('Especialidade', specialtyId);//PENDENTE
+      throw new NotFoundException('Especialidade', specialtyId);
     }
 
-    // Remover a associação da especialidade no médico, o filter ja resolve pq existe apenas uma associação entre médico e especialidade
-    specialty.doctors = specialty.doctors?.filter(ds => ds.doctorId !== doctor.id);
-    await this.specialtyRepository.save(specialty);
-
-    doctor.specialties = doctor.specialties?.filter(ds => ds.specialtyId !== specialtyId);
-    await this.doctorRepository.save(doctor);
-
+    // Remover apenas a associação da tabela de junção
+    // O cascade: true na relação do Doctor cuida do resto
     await this.doctorSpecialtyRepository.remove(doctorSpecialty);
 
     return;
