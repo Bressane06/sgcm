@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Post,
   Query,
@@ -45,6 +46,7 @@ export class DoctorsController {
   }
 
   @Delete(':id/specialties/:specialtyId')
+  @HttpCode(204)
   @ApiOperation({ description: 'Desassociar especialidade de um médico' })
   async removeSpecialty(  
     @Param('id') id: number,

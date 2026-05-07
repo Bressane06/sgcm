@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  HttpCode,
   Post,
   Body,
   Param,
@@ -48,6 +49,7 @@ export class SpecialtiesController {
   }
 
   @Delete(':id')
+  @HttpCode(204)
   @ApiOperation({ summary: 'Remove uma especialidade específica.' })
   async remove(@Param('id') id: string) {
     return await this.specialtiesService.remove(+id);
