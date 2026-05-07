@@ -8,10 +8,10 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { DoctorsService } from './services/doctors.service';
+import { DoctorsService } from '../services/doctors.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { FindDoctorsQueryDto } from './dto/find-doctors-query.dto';
-import { UpdateSpecialtyDto } from '../specialties/dto/update-specialty.dto';
+import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
+import { UpdateSpecialtyDto } from '../../specialties/dto/update-specialty.dto';
 
 @ApiTags('Doctors')
 @Controller('doctors')
