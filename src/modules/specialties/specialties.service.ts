@@ -1,14 +1,14 @@
-import { Injectable, Query } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CreateSpecialtyDto } from './dto/create-specialty.dto';
 import { UpdateSpecialtyDto } from './dto/update-specialty.dto';
 import { FindSpecialtiesQueryDto } from './dto/find-specialties-query.dto';
 import { Specialty } from './entities/specialty.entity';
-import { Like, Repository } from 'typeorm';
+import { Brackets, Like, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import { NotFoundException } from '../../common';
-import { Doctor } from '../users/entities/doctor.entity';
 import { FindDoctorsQueryDto } from '../users/dto/find-doctors-query.dto';
+import { Doctor } from '../users/entities/doctor.entity';
 
 @Injectable()
 export class SpecialtiesService {
@@ -86,33 +86,33 @@ export class SpecialtiesService {
     return this.specialtyRepository.remove(specialty);
   }
 
-  async findDoctors(query: FindDoctorsQueryDto, id: number): Promise<PaginatedResponseDto<Specialty>> {
-    const { page, limit, sort, search } = query;
-
-    const skip = (page - 1) * limit;
-    const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
-
-    const doctors = await this.specialtyRepository
-      .createQueryBuilder('specialty')
-
-      .innerJoin('specialty.doctors', 'doctorSpecialty')
-      .innerJoin('doctorSpecialty.doctorId', 'doctor')
-      .innerJoinAndSelect('doctor.user', 'user')
-
-      .where('specialty.id = :id', { id })
-      .andWhere('user.name LIKE :search OR user.email LIKE :search', { search: `%${search}%` })
-
-      .orderBy(`doctor.${field}`, direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC')
-      .skip(skip)
-      .limit(limit)
-      
-      .getMany();
-
-    if (!doctors) {
+  async findDoctors(query: FindDoctorsQueryDto, id: number): Promise<PaginatedResponseDto<Doctor>> {
+    const specialty = await this.specialtyRepository.findOne({ where: { id } });
+    if (!specialty) {
       throw new NotFoundException('Especialidade', id);
     }
 
-    const totalItems = doctors.length;
+    const { page, limit, sort, search } = query;
+    const skip = (page - 1) * limit;
+    const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
+
+    const [doctors, totalItems] = await this.doctorRepository
+      .createQueryBuilder('doctor')
+      .innerJoinAndSelect('doctor.user', 'user')
+      .innerJoin('doctor.specialties', 'doctorSpecialty')
+      .where('doctorSpecialty.specialtyId = :id', { id })
+      .andWhere(
+        new Brackets((qb) => {
+          if (search) {
+            qb.where('user.name LIKE :search', { search: `%${search}%` })
+              .orWhere('user.email LIKE :search', { search: `%${search}%` });
+          }
+        }),
+      )
+      .orderBy(`doctor.${field}`, direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
 
     return {
       data: doctors,

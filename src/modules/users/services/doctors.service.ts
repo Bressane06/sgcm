@@ -75,7 +75,7 @@ export class DoctorsService {
     };
   }
 
-  async findSpecialties( query: FindDoctorsQueryDto, id: number) {
+  async findSpecialties( query: FindDoctorsQueryDto, id: number): Promise<PaginatedResponseDto<Specialty>> {
     const { page, limit, sort, search } = query;
 
     const skip = (page - 1) * limit;
