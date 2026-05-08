@@ -2,7 +2,6 @@ import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class PaginationQueryDto {
-
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -17,7 +16,7 @@ export class PaginationQueryDto {
 
   @IsOptional()
   @IsString()
-  sort?: string; // ex: name:asc
+  sort?: string;
 
   @IsOptional()
   @IsString()

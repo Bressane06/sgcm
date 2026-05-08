@@ -1,23 +1,25 @@
 import { Exclude, Expose } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { UserType } from '../enum/user-type.enum';
 
 @Exclude()
-export class UserResponseDto {
+export class PatientResponseDto {
+  @Expose()
+  @ApiProperty()
+  id!: number;
 
   @Expose()
   @ApiProperty()
-  id: number;
+  name!: string;
 
   @Expose()
   @ApiProperty()
-  name: string;
+  email!: string;
 
   @Expose()
   @ApiProperty()
-  email: string;
+  cpf!: string;
 
   @Expose()
-  @ApiProperty({ enum: UserType })
-  type: UserType;
+  @ApiProperty()
+  birthDate!: Date;
 }

@@ -10,11 +10,11 @@ import { UsersModule } from './modules/users/users.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot({
       type: 'sqlite',
-      database: process.env.DATABASE_PATH,
-      autoLoadEntities: true, // Automatically load entities from the project
+      database: process.env.DATABASE_PATH ?? './database.db',
+      autoLoadEntities: true,
       synchronize: true,
     }),
-    UsersModule
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
