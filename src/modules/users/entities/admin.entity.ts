@@ -12,10 +12,10 @@ export class Admin {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @OneToOne(() => User, { cascade: true, eager: true })
+  @OneToOne(() => User, { cascade: true, eager: true, onDelete: 'CASCADE' })
   @JoinColumn()
   user!: User;
 
-  @Column({ nullable: true })
+  @Column({ })
   accessLevel!: string;
 }
