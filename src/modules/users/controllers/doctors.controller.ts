@@ -12,7 +12,7 @@ import { DoctorsService } from '../services/doctors.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
 import { UpdateSpecialtyDto } from '../../specialties/dto/update-specialty.dto';
-import { FindSchedulesQueryDto } from '../../schedules/dto/find-schedules-query.dto';
+import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
 
 @ApiTags('Doctors')
 @Controller('doctors')
@@ -63,7 +63,7 @@ export class DoctorsController {
   @ApiOperation({ description: 'Listar agendamentos de um médico' })
   async findSchedules(
     @Param('id') id: number,
-    @Query() query: FindSchedulesQueryDto,
+    @Query() query: FindRelatedSchedulesQueryDto,
   ) {
     return this.doctorsService.findSchedules(Number(id), query);
   }
