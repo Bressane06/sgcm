@@ -12,14 +12,14 @@ export class Patient {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @OneToOne(() => User, { cascade: true, eager: true })
+  @OneToOne(() => User, { cascade: true, eager: true, onDelete: 'CASCADE' })
   @JoinColumn()
   user!: User;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ unique: true })
   cpf!: string;
 
-  @Column({ nullable: true })
+  @Column({ })
   birthDate!: Date;
 
   getAge(): number {

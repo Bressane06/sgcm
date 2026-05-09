@@ -9,7 +9,8 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserType } from '../enum/user-type.enum';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
+import { IsCPF } from 'class-validator-cpf';
 
 export class CreateUserDto {
   @ApiProperty()
@@ -44,6 +45,10 @@ export class CreateUserDto {
   @ApiPropertyOptional()
   @ValidateIf((o: CreateUserDto) => o.type === UserType.PATIENT)
   @IsNotEmpty()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.replace(/\D/g, '') : value,
+  )
+  @IsCPF({ message: 'CPF inválido' })
   cpf?: string;
 
   @ApiPropertyOptional()

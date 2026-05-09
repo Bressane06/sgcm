@@ -1,13 +1,15 @@
-import { IsNotEmpty, IsString, Matches, IsDate } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNotEmpty, IsString, IsDate } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsCPF } from 'class-validator-cpf';
 import { CreateUserDto } from './create-user.dto';
 
 export class CreatePatientDto extends CreateUserDto {
   @IsString()
   @IsNotEmpty({ message: 'CPF é obrigatório' })
-  @Matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, {
-    message: 'CPF deve estar no formato 000.000.000-00',
-  })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.replace(/\D/g, '') : value,
+  )
+  @IsCPF({ message: 'CPF inválido' })
   declare cpf: string;
 
   @Type(() => Date)
