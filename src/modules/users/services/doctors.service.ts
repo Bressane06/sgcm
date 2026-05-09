@@ -32,7 +32,7 @@ export class DoctorsService {
 
     const where = search
       ? [
-          { user: { name: Like(`%${search}%`) } },//PENDENTE: adicionar filtro por especialidade
+          { user: { name: Like(`%${search}%`) } },
         ]
       : undefined;
 
