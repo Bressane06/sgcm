@@ -17,7 +17,17 @@ import { Specialty } from '../specialties/entities/specialty.entity';
 import { DoctorSpecialty } from '../specialties/entities/doctor-specialty.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Admin, Doctor, Patient, Specialty, DoctorSpecialty])],
+  imports: [
+    TypeOrmModule.forFeature([
+      User,
+      Admin,
+      Doctor,
+      Patient,
+      Specialty,
+      DoctorSpecialty
+    ]),
+    SpecialtiesModule,
+  ],
   controllers: [UsersController, PatientsController, DoctorsController],
   providers: [
     UsersService,
@@ -25,8 +35,7 @@ import { DoctorSpecialty } from '../specialties/entities/doctor-specialty.entity
     UsersFactoryService,
     UsersUniquenessService,
     DoctorsService,
-    SpecialtiesModule,
   ],
-  exports: [UsersService],
+  exports: [UsersService, DoctorsService, PatientsService],
 })
 export class UsersModule {}
