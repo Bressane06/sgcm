@@ -22,7 +22,7 @@ export class UpdateScheduleStatusDto {
     description:
       'Campo temporário até a autenticação ser implementada na Etapa 2.',
   })
-  @IsOptional()
+  @ValidateIf((dto: UpdateScheduleStatusDto) => dto.status === ScheduleStatus.CANCELLED)
   @IsString()
   cancelledBy?: string;
 }

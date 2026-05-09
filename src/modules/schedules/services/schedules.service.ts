@@ -19,6 +19,8 @@ import { Schedule } from '../entities/schedule.entity';
 import { ScheduleStatus } from '../enum/schedule-status.enum';
 import { ScheduleType } from '../enum/schedule-type.enum';
 import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
+import { ScheduleResponseDto } from '../dto/schedule-response.dto';
+
 
 @Injectable()
 export class SchedulesService {
@@ -37,7 +39,39 @@ export class SchedulesService {
     private readonly patientRepository: Repository<Patient>,
   ) {}
 
-  async create(dto: CreateScheduleDto): Promise<Schedule> {
+  private assertAllowedFieldsForType(dto: CreateScheduleDto): void {
+    const receivedWrongFieldsByType: Record<ScheduleType, string[]> = {
+      [ScheduleType.IN_PERSON]: [
+        ...(dto.accessLink ? ['accessLink'] : []),
+        ...(dto.platform ? ['platform'] : []),
+        ...(dto.fullAddress ? ['fullAddress'] : []),
+        ...(dto.accessNotes ? ['accessNotes'] : []),
+      ],
+      [ScheduleType.ONLINE]: [
+        ...(dto.room ? ['room'] : []),
+        ...(dto.unit ? ['unit'] : []),
+        ...(dto.fullAddress ? ['fullAddress'] : []),
+        ...(dto.accessNotes ? ['accessNotes'] : []),
+      ],
+      [ScheduleType.HOME]: [
+        ...(dto.room ? ['room'] : []),
+        ...(dto.unit ? ['unit'] : []),
+        ...(dto.accessLink ? ['accessLink'] : []),
+        ...(dto.platform ? ['platform'] : []),
+      ],
+    };
+
+    const wrongFields = receivedWrongFieldsByType[dto.type];
+
+    if (wrongFields.length > 0) {
+      throw new BadRequestException(
+        `Campos inválidos para agendamento ${dto.type}: ${wrongFields.join(', ')}.`,
+      );
+    }
+  }
+
+  async create(dto: CreateScheduleDto): Promise<ScheduleResponseDto> {
+    this.assertAllowedFieldsForType(dto);
     this.assertFutureDate(dto.scheduledAt);
 
     const doctor = await this.findDoctorOrFail(dto.doctorId);
@@ -56,8 +90,8 @@ export class SchedulesService {
     };
 
     switch (dto.type) {
-      case ScheduleType.IN_PERSON:
-        return this.inPersonScheduleRepository.save(
+      case ScheduleType.IN_PERSON: {
+        const schedule = await this.inPersonScheduleRepository.save(
           this.inPersonScheduleRepository.create({
             ...baseData,
             room: dto.room,
@@ -65,8 +99,11 @@ export class SchedulesService {
           }),
         );
 
-      case ScheduleType.ONLINE:
-        return this.onlineScheduleRepository.save(
+        return this.toResponse(schedule);
+      }
+
+      case ScheduleType.ONLINE: {
+        const schedule = await this.onlineScheduleRepository.save(
           this.onlineScheduleRepository.create({
             ...baseData,
             accessLink: dto.accessLink,
@@ -74,14 +111,20 @@ export class SchedulesService {
           }),
         );
 
-      case ScheduleType.HOME:
-        return this.homeScheduleRepository.save(
+        return this.toResponse(schedule);
+      }
+
+      case ScheduleType.HOME: {
+        const schedule = await this.homeScheduleRepository.save(
           this.homeScheduleRepository.create({
             ...baseData,
             fullAddress: dto.fullAddress,
             accessNotes: dto.accessNotes,
           }),
         );
+
+        return this.toResponse(schedule);
+      }
 
       default:
         throw new BadRequestException('Tipo de agendamento inválido.');
@@ -90,7 +133,7 @@ export class SchedulesService {
 
   async findAll(
     query: FindSchedulesQueryDto,
-  ): Promise<PaginatedResponseDto<Schedule>> {
+  ): Promise<PaginatedResponseDto<ScheduleResponseDto>> {
     const { page, limit, sort, doctorId, patientId, status, type, startDate, endDate } = query;
 
     const skip = (page - 1) * limit;
@@ -119,7 +162,7 @@ export class SchedulesService {
     });
 
     return {
-      data,
+      data: data.map((schedule) => this.toResponse(schedule)),
       meta: {
         totalItems,
         page,
@@ -129,7 +172,7 @@ export class SchedulesService {
     };
   }
 
-  async findOne(id: number): Promise<Schedule> {
+  private async findEntityOrFail(id: number): Promise<Schedule> {
     const schedule = await this.scheduleRepository.findOne({ where: { id } });
 
     if (!schedule) {
@@ -139,8 +182,13 @@ export class SchedulesService {
     return schedule;
   }
 
-  async update(id: number, dto: UpdateScheduleDto): Promise<Schedule> {
-    const schedule = await this.findOne(id);
+  async findOne(id: number): Promise<ScheduleResponseDto> {
+    const schedule = await this.findEntityOrFail(id);
+    return this.toResponse(schedule);
+  }
+
+  async update(id: number, dto: UpdateScheduleDto): Promise<ScheduleResponseDto> {
+    const schedule = await this.findEntityOrFail(id);
 
     if (dto.scheduledAt) {
       this.assertFutureDate(dto.scheduledAt);
@@ -173,14 +221,24 @@ export class SchedulesService {
       patientId,
     });
 
-    return this.scheduleRepository.save(schedule);
+    const saved = await this.scheduleRepository.save(schedule);
+    return this.toResponse(saved);
   }
 
   async updateStatus(
     id: number,
     dto: UpdateScheduleStatusDto,
-  ): Promise<Schedule> {
-    const schedule = await this.findOne(id);
+  ): Promise<ScheduleResponseDto> {
+    const schedule = await this.findEntityOrFail(id);
+
+    if (
+      dto.status !== ScheduleStatus.CANCELLED &&
+      (dto.cancellationReason || dto.cancelledBy)
+    ) {
+      throw new BadRequestException(
+        'cancellationReason e cancelledBy só podem ser enviados quando o status for CANCELLED.',
+      );
+    }
 
     if (dto.status === ScheduleStatus.COMPLETED) {
       throw new BadRequestException(
@@ -206,11 +264,12 @@ export class SchedulesService {
       schedule.cancelledBy = dto.cancelledBy ?? 'SYSTEM';
     }
 
-    return this.scheduleRepository.save(schedule);
+    const saved = await this.scheduleRepository.save(schedule);
+    return this.toResponse(saved);
   }
 
   async remove(id: number): Promise<void> {
-    const schedule = await this.findOne(id);
+    const schedule = await this.findEntityOrFail(id);
 
     if (schedule.status === ScheduleStatus.COMPLETED) {
       throw ConflictException.businessRule(
@@ -225,7 +284,7 @@ export class SchedulesService {
   async findByDoctor(
     doctorId: number,
     query: FindSchedulesQueryDto,
-  ): Promise<PaginatedResponseDto<Schedule>> {
+  ): Promise<PaginatedResponseDto<ScheduleResponseDto>> {
     await this.findDoctorOrFail(doctorId);
     return this.findAll({ ...query, doctorId });
   }
@@ -233,13 +292,13 @@ export class SchedulesService {
   async findByPatient(
     patientId: number,
     query: FindSchedulesQueryDto,
-  ): Promise<PaginatedResponseDto<Schedule>> {
+  ): Promise<PaginatedResponseDto<ScheduleResponseDto>> {
     await this.findPatientOrFail(patientId);
     return this.findAll({ ...query, patientId });
   }
 
-  async complete(id: number): Promise<Schedule> {
-    const schedule = await this.findOne(id);
+  async complete(id: number): Promise<ScheduleResponseDto> {
+    const schedule = await this.findEntityOrFail(id);
 
     if (schedule.status !== ScheduleStatus.CONFIRMED) {
       throw new BadRequestException(
@@ -248,7 +307,8 @@ export class SchedulesService {
     }
 
     schedule.status = ScheduleStatus.COMPLETED;
-    return this.scheduleRepository.save(schedule);
+    const saved = await this.scheduleRepository.save(schedule);
+    return this.toResponse(saved);
   }
 
   private assertFutureDate(value: string): void {
@@ -327,5 +387,38 @@ export class SchedulesService {
         `Transição de status inválida: ${currentStatus} → ${nextStatus}.`,
       );
     }
+  }
+
+  private toResponse(schedule: Schedule): ScheduleResponseDto {
+    const response: ScheduleResponseDto = {
+      id: schedule.id,
+      scheduledAt: schedule.scheduledAt,
+      status: schedule.status,
+      type: schedule.type,
+      doctorId: schedule.doctorId,
+      patientId: schedule.patientId,
+      cancelledAt: schedule.cancelledAt,
+      cancellationReason: schedule.cancellationReason,
+      cancelledBy: schedule.cancelledBy,
+      createdAt: schedule.createdAt,
+      updatedAt: schedule.updatedAt,
+    };
+
+    if (schedule instanceof InPersonSchedule) {
+      response.room = schedule.room;
+      response.unit = schedule.unit;
+    }
+
+    if (schedule instanceof OnlineSchedule) {
+      response.accessLink = schedule.accessLink;
+      response.platform = schedule.platform;
+    }
+
+    if (schedule instanceof HomeSchedule) {
+      response.fullAddress = schedule.fullAddress;
+      response.accessNotes = schedule.accessNotes;
+    }
+
+    return response;
   }
 }
