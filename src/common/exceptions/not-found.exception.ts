@@ -1,9 +1,13 @@
 import { AppException } from './app.exception';
 
 export class NotFoundException extends AppException {
-  constructor(resource: string, identifier?: string | number) {
+  // Assinaturas de sobrecarga (sem corpo)
+  constructor(resource: string, identifier?: string | number);
+  constructor(resource: string, identifier: string, identifierIsName: boolean);
+  
+  constructor(resource: string, identifier?: string | number, identifierIsName?: boolean) {
     const detail = identifier
-      ? `${resource} com id ${identifier} não foi encontrado.`
+      ? `${resource} com ${identifierIsName ? 'nome' : 'id'} ${identifier} não foi encontrado.`
       : `${resource} não foi encontrado.`;
 
     super(

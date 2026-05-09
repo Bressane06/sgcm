@@ -4,17 +4,20 @@ import { User } from './entities/user.entity';
 import { Admin } from './entities/admin.entity';
 import { Doctor } from './entities/doctor.entity';
 import { Patient } from './entities/patient.entity';
-import { UsersController } from './users.controller';
+import { UsersController } from './controllers/users.controller';
 import { UsersService } from './services/users.service';
 import { UsersFactoryService } from './services/users-factory.service';
 import { UsersUniquenessService } from './services/users-uniqueness.service';
-import { PatientsController } from './patients.controller';
+import { PatientsController } from './controllers/patients.controller';
 import { PatientsService } from './services/patients.service';
-import { DoctorsController } from './doctors.controller';
+import { DoctorsController } from './controllers/doctors.controller';
 import { DoctorsService } from './services/doctors.service';
+import { SpecialtiesModule } from '../specialties/specialties.module';
+import { Specialty } from '../specialties/entities/specialty.entity';
+import { DoctorSpecialty } from '../specialties/entities/doctor-specialty.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Admin, Doctor, Patient])],
+  imports: [TypeOrmModule.forFeature([User, Admin, Doctor, Patient, Specialty, DoctorSpecialty])],
   controllers: [UsersController, PatientsController, DoctorsController],
   providers: [
     UsersService,
@@ -22,6 +25,7 @@ import { DoctorsService } from './services/doctors.service';
     UsersFactoryService,
     UsersUniquenessService,
     DoctorsService,
+    SpecialtiesModule,
   ],
   exports: [UsersService],
 })

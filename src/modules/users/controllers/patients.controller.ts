@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { PatientsService } from './services/patients.service';
-import { FindPatientsQueryDto } from './dto/find-patients-query.dto';
+import { PatientsService } from '../services/patients.service';
+import { FindPatientsQueryDto } from '../dto/find-patients-query.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('Patients')
