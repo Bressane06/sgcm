@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsDate } from 'class-validator';
+import { IsNotEmpty, IsString, IsDate, MaxDate } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { IsCPF } from 'class-validator-cpf';
 import { CreateUserDto } from './create-user.dto';
@@ -15,5 +15,6 @@ export class CreatePatientDto extends CreateUserDto {
   @Type(() => Date)
   @IsDate({ message: 'Data de nascimento inválida' })
   @IsNotEmpty({ message: 'Data de nascimento é obrigatória' })
+  @MaxDate(new Date(), { message: 'Data de nascimento deve estar no passado' })
   declare birthDate: Date;
 }

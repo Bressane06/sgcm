@@ -111,6 +111,17 @@ Impacto na documentação Swagger:
 - Cada grupo de endpoints aparece com escopo bem definido, facilitando consumo por quem integra a API.
 - Menor risco de ambiguidades em endpoints específicos, já que as rotas não dependem de interpretação por tipo dentro de uma única tag.
 
+#### 3.3.1 Contrato explícito entre `/users?type=DOCTOR` e `/doctors`
+
+Decisão adotada: cada uma tem propósito e payload distintos.
+
+Definição de retorno por rota:
+
+- `/users?type=DOCTOR`: retorna a visão base de identidade do usuário (dados comuns de `user`), sem enriquecimento de domínio.
+- `/doctors`: retorna visão de domínio de médico, com dados específicos de doctor e relacionamento com especialidades.
+
+
+
 ---
 
 ### 3.4 Tratamento de erros com RFC 7807
@@ -294,6 +305,98 @@ Impacto:
 - Contrato de API mais explícito e seguro.
 - Menor risco de corrupção de dados de perfil por atualização indevida.
 - Preparação para evolução futura com endpoint dedicado de senha.
+
+### 3.14 Relação muitos-para-muitos entre Doctor e Specialty
+
+Decisão adotada: modelar a relação com entidade de junção explícita, por meio de `DoctorSpecialty`, em vez de usar apenas tabela de junção automática do TypeORM.
+
+Por que a escolhida foi adotada:
+
+- Mantém aderência ao diagrama de classes do projeto, que já prevê `DoctorSpecialty`.
+- Dá maior controle sobre associação e desassociação, com validações e mensagens de erro específicas.
+- Facilita evolução do domínio para incluir atributos na relação (por exemplo: data da associação, status, origem da vinculação) sem refatoração estrutural.
+
+Impacto nos requisitos atuais e na evolução:
+
+- Atende os requisitos atuais de associação/desassociação entre médico e especialidade com clareza de regra.
+- Evita acoplamento excessivo da lógica de vínculo aos objetos principais.
+- Reduz custo de evolução futura para a Etapa 3 e seguintes, mantendo a relação preparada para novas regras de negócio.
+
+### 3.15 Estratégia de herança para `Schedule`
+
+Decisão adotada: usar **STI (Single Table Inheritance)** para a hierarquia de agendamentos (`Schedule`, `InPersonSchedule`, `OnlineSchedule`, `HomeSchedule`) com `@TableInheritance` e `@ChildEntity`.
+
+Por que a escolhida foi adotada:
+
+- O sistema frequentemente precisa listar agendamentos misturados por modalidade (ex.: agenda do médico), e o STI simplifica essa consulta em uma tabela única.
+- Reduz complexidade de JOINs/unions para operações de leitura geral.
+- Para o cenário atual em SQLite com TypeORM, STI tem suporte nativo e implementação direta.
+- Esse custo foi considerado aceitável nesta etapa devido ao ganho de simplicidade em listagem e paginação unificada.
+
+### 3.16 Regra de conflito de horário
+
+Decisão adotada: conflito ocorre quando existe **outro agendamento CONFIRMED com o mesmo `doctorId` e o mesmo `scheduledAt`**.
+
+Onde a verificação ocorre:
+
+- No `SchedulesService`, método `assertNoConfirmedConflict`.
+- Antes da criação de agendamento.
+- Na transição de status para `CONFIRMED`.
+- Em atualização de agendamento já confirmado quando data/médico mudam.
+
+Justificativa:
+
+- Regra objetiva e determinística para o estágio atual do projeto.
+- Evita sobreposição de consultas confirmadas do mesmo médico no mesmo instante.
+- A proteção atual é em nível de service (checagem prévia em banco), o que cobre o fluxo comum.
+
+### 3.17 Preenchimento de `cancelledBy` antes da autenticação
+
+Decisão adotada nesta etapa: qualquer requisição pode cancelar, e o campo `cancelledBy` é preenchido com o valor informado no DTO ou, na ausência, com `SYSTEM`.
+
+Regras atuais:
+
+- `cancellationReason` e `cancelledBy` só podem ser enviados quando o status é `CANCELLED`.
+- Ao cancelar, o sistema grava `cancelledAt` automaticamente.
+
+Evolução para a Etapa 2 (com autenticação):
+
+- `cancelledBy` deixará de vir livremente do payload.
+- O valor passará a ser derivado do usuário autenticado no contexto da requisição (ex.: `PATIENT:<id>`, `DOCTOR:<id>`, `ADMIN:<id>` ou identificação equivalente).
+- O endpoint deverá validar autorização de cancelamento por perfil/regra de negócio.
+
+### 3.18 DTO único versus DTOs por modalidade em agendamentos
+
+Decisão adotada: manter **DTO único** (`CreateScheduleDto`) com validação condicional (`ValidateIf`) por `type`, combinada com validação adicional no service para rejeitar campos incompatíveis com a modalidade.
+
+Justificativa da escolha atual:
+
+- Contrato único simplifica o endpoint de criação e reduz duplicação dos campos comuns.
+- Implementação atual já está consistente no DTO e no `SchedulesService`.
+- Mantém custo de manutenção menor nesta etapa.
+
+Impacto no Swagger:
+
+- Documentação mais simples por endpoint único.
+- Menor precisão semântica que uma união discriminada formal, compensada por exemplos e validações condicionais.
+
+### 3.19 Diferenciação de criação por perfil em `POST /users`
+
+Decisão adotada: usar o padrão **Factory** em classe auxiliar (`UsersFactoryService`) para decidir, a partir de `type`, qual subtipo será instanciado e persistido.
+
+Onde a decisão reside no código:
+
+- `UsersController` permanece enxuto e apenas delega a chamada ao service.
+- `UsersService` orquestra validações de regra de negócio (ex.: unicidade) e delega a criação para a factory.
+- `UsersFactoryService` concentra o `switch` por `type` e a montagem/persistência de `Admin`, `Doctor` e `Patient`.
+
+Justificativa:
+
+- Mantém separação de responsabilidades e reduz acoplamento do controller com detalhes de persistência.
+- Evita crescimento de complexidade no service principal de usuários.
+- Facilita manutenção do fluxo de criação por perfil em um único ponto.
+
+
 
 ---
 
