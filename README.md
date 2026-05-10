@@ -3,9 +3,9 @@
 API REST para gerenciamento de usuários com perfis diferenciados (Admin, Doctor e Patient), validações, documentação Swagger e herança de tabelas no banco de dados.
 
 **Integrantes**
-- Arthur Coutinho
-- Estela Medeiros
-- Gabriel Bressane
+- [Arthur Coutinho](https://github.com/ArthurCoutinhoSI)
+- [Estela Medeiros](https://github.com/estelamdrs)
+- [Gabriel Bressane](https://github.com/Bressane06)
 
 ## Tecnologias
 
@@ -14,7 +14,7 @@ API REST para gerenciamento de usuários com perfis diferenciados (Admin, Doctor
 | Node.js    | `>= 18.x`            |
 | NestJS     | `11.x`               |
 | TypeORM    | `0.3.x`              |
-| SQLite     | via `better-sqlite3` |
+| SQLite     | via `sqlite3`        |
 
 ---
 
@@ -103,19 +103,16 @@ Para recriar o banco do zero, basta apagar o arquivo `.db` e reiniciar o projeto
 
 ```
 sgcm/
-├── .env
-├── .gitignore
-├── .prettierrc
+├── diagrama.puml
 ├── eslint.config.mjs
 ├── nest-cli.json
-├── package-lock.json
 ├── package.json
 ├── README.md
 ├── REPORT.md
 ├── tsconfig.build.json
 ├── tsconfig.json
 ├── db/
-│   └── database.db
+│   └── ...
 ├── src/
 │   ├── app.controller.spec.ts
 │   ├── app.controller.ts
@@ -141,15 +138,56 @@ sgcm/
 │   │       ├── http-exception.types.ts
 │   │       └── index.ts
 │   └── modules/
+│       ├── schedules/
+│       │   ├── schedules.controller.ts
+│       │   ├── schedules.module.ts
+│       │   ├── dto/
+│       │   │   ├── create-schedule.dto.ts
+│       │   │   ├── find-related-schedules-query.dto.ts
+│       │   │   ├── find-schedules-query.dto.ts
+│       │   │   ├── schedule-response.dto.ts
+│       │   │   ├── update-schedule-status.dto.ts
+│       │   │   └── update-schedule.dto.ts
+│       │   ├── entities/
+│       │   │   ├── home-schedule.entity.ts
+│       │   │   ├── in-person-schedule.entity.ts
+│       │   │   ├── online-schedule.entity.ts
+│       │   │   └── schedule.entity.ts
+│       │   ├── enum/
+│       │   │   ├── schedule-status.enum.ts
+│       │   │   └── schedule-type.enum.ts
+│       │   └── services/
+│       │       └── schedules.service.ts
+│       ├── specialties/
+│       │   ├── specialties.controller.spec.ts
+│       │   ├── specialties.controller.ts
+│       │   ├── specialties.module.ts
+│       │   ├── specialties.service.spec.ts
+│       │   ├── specialties.service.ts
+│       │   ├── dto/
+│       │   │   ├── create-specialty.dto.ts
+│       │   │   ├── find-specialties-query.dto.ts
+│       │   │   └── update-specialty.dto.ts
+│       │   └── entities/
+│       │       ├── doctor-specialty.entity.ts
+│       │       └── specialty.entity.ts
 │       └── users/
+│           ├── doctors.controller.spec.ts
 │           ├── users.controller.spec.ts
-│           ├── users.controller.ts
 │           ├── users.module.ts
 │           ├── users.service.spec.ts
+│           ├── controllers/
+│           │   ├── doctors.controller.ts
+│           │   ├── patients.controller.ts
+│           │   └── users.controller.ts
 │           ├── dto/
 │           │   ├── create-doctor.dto.ts
 │           │   ├── create-patient.dto.ts
 │           │   ├── create-user.dto.ts
+│           │   ├── find-doctors-query.dto.ts
+│           │   ├── find-patients-query.dto.ts
+│           │   ├── find-users-query.dto.ts
+│           │   ├── patient-response.dto.ts
 │           │   ├── update-doctor.dto.ts
 │           │   ├── update-patient.dto.ts
 │           │   └── update-user.dto.ts
@@ -157,10 +195,13 @@ sgcm/
 │           │   ├── admin.entity.ts
 │           │   ├── doctor.entity.ts
 │           │   ├── patient.entity.ts
-│           │   └── user.entity.ts
+│           │   ├── user.entity.ts
+│           │   └── ...
 │           ├── enum/
 │           │   └── user-type.enum.ts
 │           └── services/
+│               ├── doctors.service.ts
+│               ├── patients.service.ts
 │               ├── users-factory.service.ts
 │               ├── users-uniqueness.service.ts
 │               └── users.service.ts

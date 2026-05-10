@@ -26,10 +26,10 @@ export class PatientsService {
 
     const where = search
       ? [
-          { user: { name: Like(`%${search}%`) } },
-          { user: { email: Like(`%${search}%`) } },
+          { user: { name: Like(`%${search}%`), isActive: true } },
+          { user: { email: Like(`%${search}%`), isActive: true } },
         ]
-      : undefined;
+      : { user: { isActive: true } };
 
     const [patients, totalItems] = await this.patientRepository.findAndCount({
       where,
@@ -52,7 +52,7 @@ export class PatientsService {
 
   async findOne(id: number) {
     const patient = await this.patientRepository.findOne({
-      where: { user: { id } },
+      where: { user: { id, isActive: true } },
       relations: { user: true },
     });
 

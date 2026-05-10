@@ -10,8 +10,13 @@ import { User } from '../entities/user.entity';
 import { Doctor } from '../entities/doctor.entity';
 import { Patient } from '../entities/patient.entity';
 import { UserType } from '../enum/user-type.enum';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
+
+type UniqueFieldsPayload = {
+  email?: string;
+  crm?: string;
+  cpf?: string;
+  type?: UserType;
+};
 
 @Injectable()
 export class UsersUniquenessService {
@@ -73,10 +78,7 @@ export class UsersUniquenessService {
 
   // Método público para validar os campos de unicidade com base no tipo de usuário
   async validateUniqueFields(
-    payload: Pick<
-      CreateUserDto | UpdateUserDto,
-      'email' | 'crm' | 'cpf' | 'type'
-    >,
+    payload: UniqueFieldsPayload,
     currentUserId?: number,
   ): Promise<void> {
     await this.assertUniqueEmail(payload.email, currentUserId);

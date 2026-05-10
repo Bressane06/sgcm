@@ -6,6 +6,7 @@ import {
   MinLength,
   ValidateIf,
   IsDate,
+  MaxDate,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserType } from '../enum/user-type.enum';
@@ -54,6 +55,7 @@ export class CreateUserDto {
   @ApiPropertyOptional()
   @ValidateIf((o: CreateUserDto) => o.type === UserType.PATIENT)
   @IsDate()
+  @MaxDate(new Date(), { message: 'Data de nascimento deve estar no passado' })
   @Type(() => Date)
   birthDate?: Date;
 }
