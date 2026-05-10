@@ -10,12 +10,15 @@ import { DoctorSpecialty } from '../../specialties/entities/doctor-specialty.ent
 import { ConflictException } from '../../../common/exceptions/conflict.exception';
 import { ValidationException } from '../../../common/exceptions/validation.exception';
 import { UpdateSpecialtyDto } from '../../specialties/dto/update-specialty.dto';
+import { SchedulesService } from '../../schedules/services/schedules.service';
+import { FindSchedulesQueryDto } from '../../schedules/dto/find-schedules-query.dto';
 
 @Injectable()
 export class DoctorsService {
   constructor(
     @InjectRepository(Doctor)
     private readonly doctorRepository: Repository<Doctor>,
+    private readonly schedulesService: SchedulesService,
     @InjectRepository(Specialty)
     private readonly specialtyRepository: Repository<Specialty>,
     @InjectRepository(DoctorSpecialty)
@@ -179,7 +182,7 @@ export class DoctorsService {
     return;
   }
 
-  findSchedules(id: number) {
-    return `Listar horários disponíveis do médico ${id}`;
+  findSchedules(id: number, query: FindSchedulesQueryDto) {
+    return this.schedulesService.findByDoctor(id, query);
   }
 }
