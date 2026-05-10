@@ -32,14 +32,22 @@ export class UsersService {
 
     if (search) {
       where.push(
-        { name: Like(`%${search}%`), ...(query.type && { type: query.type }) },
-        { email: Like(`%${search}%`), ...(query.type && { type: query.type }) },
+        {
+          name: Like(`%${search}%`),
+          isActive: true,
+          ...(query.type && { type: query.type }),
+        },
+        {
+          email: Like(`%${search}%`),
+          isActive: true,
+          ...(query.type && { type: query.type }),
+        },
       );
     }
 
     const defaultWhere: FindOptionsWhere<User> | undefined = query.type
-      ? { type: query.type }
-      : undefined;
+      ? { type: query.type, isActive: true }
+      : { isActive: true };
 
     const [items, totalItems] = await this.userRepository.findAndCount({
       where: search ? where : defaultWhere,
@@ -60,17 +68,18 @@ export class UsersService {
   }
 
   async findOne(id: number): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id } });
+    const user = await this.userRepository.findOne({
+      where: { id, isActive: true },
+    });
     if (!user) throw new NotFoundException('Usuário', id);
     return user;
   }
 
   async update(id: number, dto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
-    const targetType = dto.type ?? user.type;
 
     await this.usersUniquenessService.validateUniqueFields(
-      { type: targetType, email: dto.email, crm: dto.crm, cpf: dto.cpf },
+      { type: user.type, email: dto.email, crm: dto.crm },
       id,
     );
 
@@ -80,6 +89,7 @@ export class UsersService {
 
   async remove(id: number): Promise<void> {
     const user = await this.findOne(id);
-    await this.userRepository.remove(user);
+    user.deactivate();
+    await this.userRepository.save(user);
   }
 }

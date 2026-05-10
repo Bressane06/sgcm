@@ -46,7 +46,7 @@ export class UsersController {
 
   @Delete(':id')
   @HttpCode(204)
-  @ApiOperation({ summary: 'Remover usuário' })
+  @ApiOperation({ summary: 'Inativar usuário' })
   async remove(@Param('id') id: number) {
     return await this.usersService.remove(Number(id));
   }

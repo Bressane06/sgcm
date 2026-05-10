@@ -35,9 +35,9 @@ export class DoctorsService {
 
     const where = search
       ? [
-          { user: { name: Like(`%${search}%`) } },
+          { user: { name: Like(`%${search}%`), isActive: true } },
         ]
-      : undefined;
+      : { user: { isActive: true } };
 
     const [doctors, totalItems] = await this.doctorRepository.findAndCount({
       where,
@@ -62,7 +62,7 @@ export class DoctorsService {
     id: number,
   ): Promise<{ id: number; name: string; email: string; crm: string }> {
     const doctor = await this.doctorRepository.findOne({
-      where: { user: { id } },
+      where: { user: { id, isActive: true } },
       relations: { user: true },
     });
 
@@ -85,7 +85,7 @@ export class DoctorsService {
     const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
 
     const doctor = await this.doctorRepository.findOne({
-      where: { user: { id } },
+      where: { user: { id, isActive: true } },
       relations: { user: true },
     });
 
@@ -135,7 +135,7 @@ export class DoctorsService {
     }
 
     const doctor = await this.doctorRepository.findOne({
-      where: { user: { id: idDoctor } },
+      where: { user: { id: idDoctor, isActive: true } },
       relations: { user: true }
     });
     if (!doctor) {
@@ -160,7 +160,9 @@ export class DoctorsService {
   }
 
   async dessociateSpecialty(id: number, specialtyId: number) {
-    const doctor = await this.doctorRepository.findOne({ where: { user: { id } } });
+    const doctor = await this.doctorRepository.findOne({
+      where: { user: { id, isActive: true } },
+    });
     if (!doctor) {
       throw new NotFoundException('Médico', id);
     }

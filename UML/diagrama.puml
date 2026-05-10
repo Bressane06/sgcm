@@ -1,6 +1,6 @@
 @startuml SGCM
 
-package "Users" {
+package "SGCM" {
 
     package "Modules" {
 

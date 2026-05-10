@@ -323,7 +323,7 @@ export class SchedulesService {
 
   private async findDoctorOrFail(id: number): Promise<Doctor> {
     const doctor = await this.doctorRepository.findOne({
-      where: { id },
+      where: { id, user: { isActive: true } },
       relations: { user: true },
     });
 
@@ -336,7 +336,7 @@ export class SchedulesService {
 
   private async findPatientOrFail(id: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
-      where: { id },
+      where: { id, user: { isActive: true } },
       relations: { user: true },
     });
 
