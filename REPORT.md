@@ -1,5 +1,13 @@
 # Relatório Técnico — SGCM API
 
+## Sumário
+
+- [1 - Integrantes e contribuições](#1---integrantes-e-contribuições)
+- [2 - Diagrama de classes](#2---diagrama-de-classes)
+- [3 - Decisões técnicas](#3---decisões-técnicas)
+- [4 - Dificuldades e aprendizados](#4---dificuldades-e-aprendizados)
+- [Conclusão](#conclusão)
+
 ## 1 - INTEGRANTES E CONTRIBUIÇÕES
 
 | Integrante | Contribuições nesta etapa |
@@ -429,33 +437,34 @@ Justificativa:
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
-Durante o desenvolvimento da **SGCM API**, a equipe enfrentou desafios técnicos e organizacionais que contribuíram diretamente para o aprendizado coletivo do grupo.
+- Dificuldades:
+  - Implementar manualmente a estratégia JTI no TypeORM devido à falta de suporte nativo.
+  - Definir validações condicionais dos DTOs sem criar múltiplos contratos redundantes.
+  - Garantir consistência no tratamento de erros (RFC 7807) e mapeamento de exceções do banco.
+  - Lidar com checagens de conflito de horário e condições de concorrência em agendamentos.
 
-### 4.1 Herança JTI (Joined Table Inheritance) no TypeORM
-Um dos principais desafios foi a implementação da estratégia de herança **JTI (Joined Table Inheritance)**. Como o TypeORM não oferece suporte nativo total a esse modelo de forma automática para todos os casos de uso complexos, a equipe precisou:
-* Estudar alternativas arquiteturais de persistência.
-* Construir manualmente a estrutura utilizando relacionamentos `OneToOne` e `cascade`.
-* Gerenciar a separação lógica entre a entidade base e seus subtipos.
+- Aprendizados:
+  - Entendimento mais profundo sobre as limitações e extensibilidade do TypeORM.
+  - Benefício claro da separação de responsabilidades (factory, serviços de unicidade, controllers).
+  - Importância de contratos de API bem documentados (Swagger) e exemplos claros para consumidores.
+  - Vantagem de diagramas (PlantUML) para alinhar modelagem de domínio com a equipe.
 
-**Aprendizado:** Esse processo aprofundou o entendimento sobre modelagem relacional avançada, o funcionamento interno de ORMs e a importância da integridade referencial em estruturas de herança no banco de dados.
-
-### 4.2 Documentação e Padronização com Swagger
-A organização da API com **Swagger (OpenAPI)** foi um ponto crucial de aprendizado. A equipe aprendeu a importância de:
-* Definir contratos de entrada e saída rigorosos através de **DTOs**.
-* Padronizar rotas e códigos de status HTTP.
-* Documentar explicitamente as respostas de erro e sucesso para facilitar o consumo por terceiros.
-
-**Aprendizado:** Reforçou a clareza na separação de responsabilidades entre módulos e controllers, resultando em um código mais limpo e uma API mais profissional.
-
-### 4.3 Fluxo de Trabalho e Colaboração no GitHub
-No aspecto organizacional, o uso do **GitHub** trouxe desafios de coordenação. A equipe adotou práticas como:
-* Criação de *branches* específicas por *feature*.
-* Abertura e revisão de **Pull Requests (PRs)**.
-* Resolução de conflitos de código (*merge conflicts*).
-
-**Aprendizado:** Essas práticas melhoraram significativamente a comunicação entre os integrantes, fortaleceram a cultura de revisão por pares (*code review*) e garantiram a estabilidade da *branch* principal do projeto.
 ## Conclusão
 
-Durante o desenvolvimento da SGCM API, a equipe conseguiu aplicar na prática conceitos importantes de arquitetura backend, modelagem relacional e organização modular utilizando NestJS e TypeORM. As decisões técnicas adotadas ao longo do projeto, como a implementação manual de JTI, a separação de responsabilidades entre services, o uso de validações condicionais e o tratamento padronizado de erros com RFC 7807, contribuíram para tornar a aplicação mais organizada, coesa e preparada para futuras evoluções.
+Nesta primeira etapa, o objetivo é construir a base funcional do SGCM — modelando o domínio de uma clínica médica, implementando as operações essenciais e organizando o código de forma que o projeto possa evoluir com consistência nas etapas seguintes.
 
-Além da implementação das funcionalidades propostas, o trabalho também proporcionou aprendizado coletivo em relação à colaboração em equipe, revisão de código, organização de branches e utilização do fluxo de desenvolvimento com GitHub. De forma geral, avaliamos que o projeto atingiu os objetivos da etapa, permitindo consolidar conhecimentos técnicos e melhorar a capacidade do grupo de projetar e estruturar aplicações backend de maneira mais consistente e escalável.
+Durante a execução, foram alcançados os seguintes marcos:
+
+**Modelagem do domínio da aplicação** — representamos usuários, especialidades e agendamentos como entidades com atributos, relacionamentos e hierarquias de herança bem definidas no banco de dados. A adoção do JTI manual para a hierarquia `User` e do STI para `Schedule` refletiu decisões técnicas conscientes de normalização e performance.
+
+**Aplicação da arquitetura do NestJS** — organizamos o código em módulos (`UsersModule`, `SpecialtiesModule`, `SchedulesModule`) com controllers, services e repositórios que mantêm responsabilidades claramente separadas. A injeção de dependência foi aplicada de forma consistente, evitando acoplamentos desnecessários entre módulos.
+
+**Validação robusta de dados de entrada** — implementamos camada de validação com DTOs e class-validator, rejeição prévia de requisições inválidas antes que cheguem aos services, e mensagens de erro descritivas conforme o padrão RFC 7807.
+
+**Operações essenciais do domínio** — implementamos cadastro, consulta, listagem, atualização e remoção de entidades (CRUD completo) respeitando as regras da clínica médica. Cada operação foi testada e documentada.
+
+**Controle de estados e regras de negócio** — o sistema agora rejeita operações inválidas (ex.: conflito de horário, duplicidade de CPF/CRM/email) e mantém consistência de dados em qualquer sequência de requisições.
+
+**Documentação com Swagger** — todos os endpoints foram documentados de forma acessível, com exemplos de requisição, resposta e tratamento de erros padronizado.
+
+**Preparação para evolução** — as decisões tomadas nesta etapa (separação de controllers por domínio, factory pattern para criação de usuários, inativação lógica em vez de deleção física, conceito de `traceId` no filtro de erros) facilitam a introdução futura de autenticação JWT (Etapa 2), controle de acesso por perfil (Etapa 2) e entidades clínicas complexas como atendimentos, procedimentos, prontuários e laudos (Etapa 3).
