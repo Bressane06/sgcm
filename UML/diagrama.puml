@@ -1,0 +1,145 @@
+@startuml SGCM
+
+package "SGCM" {
+
+    package "Modules" {
+
+        package "Users" {
+            
+            enum UserType {
+                ADMIN
+                DOCTOR
+                PATIENT
+            }
+
+            abstract class User {
+                +id: number
+                +name: string
+                +email: string
+                -password: string
+                +type: UserType
+                +isActive: boolean
+                -refreshToken: string?
+                +createdAt: Date
+                +updatedAt: Date
+
+                +activate(): void
+                +deactivate(): void
+                +hashPassword(): Promise<void>
+                +validatePassword(password: string): Promise<boolean>
+            }
+
+            User --> UserType : type
+
+            class Patient {
+                +id: number
+                +user: User
+                +cpf: string
+                +birthDate: Date
+
+                +getAge(): number
+            }
+
+            class Admin {
+                +id: number
+                +user: User
+                +accessLevel: string
+            }
+
+            class Doctor {
+                +id: number
+                +user: User
+                +crm: string
+                +specialties: DoctorSpecialty[]
+
+                +getActiveSchedules(): Schedules[]
+            }
+
+            Patient --> User : user
+            Admin --> User : user
+            Doctor --> User : user
+
+        }
+
+        package "Specialties" {
+
+            class Specialty {
+                +id: number
+                +name: string
+                +description: string
+                +createdAt: Date
+                +updatedAt: Date
+            }
+
+            class DoctorSpecialty {
+                +id: number
+                +doctor: Doctor
+                +specialty: Specialty
+                +createdAt: Date
+                +updatedAt: Date
+            }
+
+            Doctor "1" -- "0..*" DoctorSpecialty
+            Specialty "1" -- "0..*" DoctorSpecialty
+        }
+
+        package "Schedules" {
+
+            enum ScheduleStatus {
+                PENDING
+                CONFIRMED
+                CANCELLED
+                COMPLETED
+            }
+
+            enum ScheduleType {
+                IN_PERSON
+                ONLINE
+                HOME
+            }
+
+            abstract class Schedule {
+                +id: number
+                +scheduledAt: Date
+                +status: ScheduleStatus
+                +type: ScheduleType
+                +doctorId: number
+                +patientId: number
+                +cancelledAt: Date?
+                +cancellationReason: string?
+                +cancelledBy: string?
+                +createdAt: Date
+                +updatedAt: Date
+            }
+
+            Schedule --> ScheduleStatus : status
+            Schedule --> ScheduleType : type
+
+            class InPersonSchedule {
+                +room: string
+                +unit: string
+            }
+
+            class OnlineSchedule {
+                +accessLink: string
+                +platform: string
+            }
+
+            class HomeSchedule {
+                +fullAddress: string
+                +accessNotes: string?
+            }
+
+            InPersonSchedule --|> Schedule
+            OnlineSchedule --|> Schedule
+            HomeSchedule --|> Schedule
+
+            Doctor "1" -- "0..*" Schedule : doctor
+            Patient "1" -- "0..*" Schedule : patient
+        }
+
+    }
+
+}
+
+@enduml
