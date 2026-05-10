@@ -8,6 +8,8 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { DoctorSpecialty } from '../../specialties/entities/doctor-specialty.entity';
+import { Schedule } from '../../schedules/entities/schedule.entity';
+import { ScheduleStatus } from '../../schedules/enum/schedule-status.enum';
 
 @Entity('doctor')
 export class Doctor {
@@ -24,6 +26,18 @@ export class Doctor {
   @OneToMany(() => DoctorSpecialty, doctorSpecialty => doctorSpecialty.doctor, { cascade: true })
   specialties!: DoctorSpecialty[];
 
-  // getActiveSchedules(): Schedules[] {}
+  @OneToMany(() => Schedule, (schedule) => schedule.doctor)
+  schedules!: Schedule[];
+
+  getActiveSchedules(): Schedule[] {
+    return (
+      this.schedules?.filter((schedule) =>
+        [ScheduleStatus.PENDING, ScheduleStatus.CONFIRMED].includes(
+          schedule.status,
+        ),
+      ) ?? []
+    );
+  }
+
   // getAppointments(): Appointments[]
 }

@@ -5,12 +5,15 @@ import { Repository, Like } from 'typeorm';
 import { NotFoundException } from '../../../common/exceptions';
 import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
 import { FindPatientsQueryDto } from '../dto/find-patients-query.dto';
+import { SchedulesService } from '../../schedules/services/schedules.service';
+import { FindSchedulesQueryDto } from '../../schedules/dto/find-schedules-query.dto';
 
 @Injectable()
 export class PatientsService {
   constructor(
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
+    private readonly schedulesService: SchedulesService,
   ) {}
 
   async findAll(
@@ -64,5 +67,9 @@ export class PatientsService {
       cpf: patient.cpf,
       birthDate: patient.birthDate,
     };
+  }
+
+  async findSchedules(id: number, query: FindSchedulesQueryDto) {
+    return await this.schedulesService.findByPatient(id, query);
   }
 }
