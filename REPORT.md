@@ -429,8 +429,33 @@ Justificativa:
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
+Durante o desenvolvimento da **SGCM API**, a equipe enfrentou desafios técnicos e organizacionais que contribuíram diretamente para o aprendizado coletivo do grupo.
+
+### 4.1 Herança JTI (Joined Table Inheritance) no TypeORM
+Um dos principais desafios foi a implementação da estratégia de herança **JTI (Joined Table Inheritance)**. Como o TypeORM não oferece suporte nativo total a esse modelo de forma automática para todos os casos de uso complexos, a equipe precisou:
+* Estudar alternativas arquiteturais de persistência.
+* Construir manualmente a estrutura utilizando relacionamentos `OneToOne` e `cascade`.
+* Gerenciar a separação lógica entre a entidade base e seus subtipos.
+
+**Aprendizado:** Esse processo aprofundou o entendimento sobre modelagem relacional avançada, o funcionamento interno de ORMs e a importância da integridade referencial em estruturas de herança no banco de dados.
+
+### 4.2 Documentação e Padronização com Swagger
+A organização da API com **Swagger (OpenAPI)** foi um ponto crucial de aprendizado. A equipe aprendeu a importância de:
+* Definir contratos de entrada e saída rigorosos através de **DTOs**.
+* Padronizar rotas e códigos de status HTTP.
+* Documentar explicitamente as respostas de erro e sucesso para facilitar o consumo por terceiros.
+
+**Aprendizado:** Reforçou a clareza na separação de responsabilidades entre módulos e controllers, resultando em um código mais limpo e uma API mais profissional.
+
+### 4.3 Fluxo de Trabalho e Colaboração no GitHub
+No aspecto organizacional, o uso do **GitHub** trouxe desafios de coordenação. A equipe adotou práticas como:
+* Criação de *branches* específicas por *feature*.
+* Abertura e revisão de **Pull Requests (PRs)**.
+* Resolução de conflitos de código (*merge conflicts*).
+
+**Aprendizado:** Essas práticas melhoraram significativamente a comunicação entre os integrantes, fortaleceram a cultura de revisão por pares (*code review*) e garantiram a estabilidade da *branch* principal do projeto.
 ## Conclusão
 
-A escolha pelo JTI foi técnica e consciente: o schema resultante é mais limpo, normalizado e preparado para crescimento. O custo foi a necessidade de uma implementação manual, já que o TypeORM não oferece suporte nativo a essa estratégia. Essa abordagem exigiu um entendimento mais profundo tanto do ORM quanto do modelo relacional, mas resultou em uma arquitetura mais robusta e alinhada com as boas práticas de modelagem de banco de dados.
+Durante o desenvolvimento da SGCM API, a equipe conseguiu aplicar na prática conceitos importantes de arquitetura backend, modelagem relacional e organização modular utilizando NestJS e TypeORM. As decisões técnicas adotadas ao longo do projeto, como a implementação manual de JTI, a separação de responsabilidades entre services, o uso de validações condicionais e o tratamento padronizado de erros com RFC 7807, contribuíram para tornar a aplicação mais organizada, coesa e preparada para futuras evoluções.
 
-As demais decisões — separação de serviços, validação condicional por tipo, hash na entidade, paginação padronizada e tratamento de erros RFC 7807 — refletem o mesmo princípio: soluções que isolam responsabilidades, reduzem duplicação e tornam o sistema mais fácil de evoluir e manter.
+Além da implementação das funcionalidades propostas, o trabalho também proporcionou aprendizado coletivo em relação à colaboração em equipe, revisão de código, organização de branches e utilização do fluxo de desenvolvimento com GitHub. De forma geral, avaliamos que o projeto atingiu os objetivos da etapa, permitindo consolidar conhecimentos técnicos e melhorar a capacidade do grupo de projetar e estruturar aplicações backend de maneira mais consistente e escalável.
