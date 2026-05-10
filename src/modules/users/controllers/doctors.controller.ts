@@ -19,25 +19,25 @@ export class DoctorsController {
   constructor(private readonly doctorsService: DoctorsService) {}
 
   @Get()
-  @ApiOperation({ description: 'Listar médicos com paginação, filtro por especialidade e nome.' })
+  @ApiOperation({ summary: 'Listar médicos' })
   async findAll(@Query() query: FindDoctorsQueryDto) {
     return await this.doctorsService.findAll(query);
   }
 
   @Get(':id')
-  @ApiOperation({ description: 'Buscar médico por ID com especialidades incluídas na resposta.' })
+  @ApiOperation({ summary: 'Buscar médico por ID' })
   async findOne(@Param('id') id: number) {
     return await this.doctorsService.findOne(Number(id));
   }
 
   @Get(':id/specialties')
-  @ApiOperation({ description: 'Listar especialidades de um médico' })
+  @ApiOperation({ summary: 'Listar especialidades do médico' })
   async findSpecialties(@Query() query: FindDoctorsQueryDto, @Param('id') id: number) {
     return await this.doctorsService.findSpecialties(query, Number(id));
   }
 
   @Post(':id/specialties')
-  @ApiOperation({ description: 'Associar especialidade a um médico.' })
+  @ApiOperation({ summary: 'Associar especialidade ao médico' })
   async associateSpecialty(@Param('id') id: number, @Body() specialtyDto: UpdateSpecialtyDto) {
     return await this.doctorsService.associateSpecialty(
       Number(id),
@@ -47,7 +47,7 @@ export class DoctorsController {
 
   @Delete(':id/specialties/:specialtyId')
   @HttpCode(204)
-  @ApiOperation({ description: 'Desassociar especialidade de um médico' })
+  @ApiOperation({ summary: 'Remover especialidade do médico' })
   async removeSpecialty(  
     @Param('id') id: number,
     @Param('specialtyId') specialtyId: number,
@@ -59,7 +59,7 @@ export class DoctorsController {
   }
 
   @Get(':id/schedules')
-  @ApiOperation({ description: 'Listar agendamentos de um médico com filtros e paginação.' })
+  @ApiOperation({ summary: 'Listar agendamentos do médico' })
   async findSchedules(@Query() query: FindDoctorsQueryDto, @Param('id') id: number) {
     return await this.doctorsService.findSchedules(Number(id));
   }

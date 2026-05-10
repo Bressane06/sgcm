@@ -52,8 +52,7 @@ package "Users" {
                 +crm: string
                 +specialties: DoctorSpecialty[]
 
-                // getActiveSchedules(): Schedules[]
-                // getAppointments(): Appointments[]
+                +getActiveSchedules(): Schedules[]
             }
 
             Patient --> User : user
