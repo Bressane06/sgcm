@@ -143,6 +143,33 @@ As exceções seguem o padrão **RFC 7807 (Problem Details for HTTP APIs)**, imp
 
 O `traceId` gerado por UUID em cada requisição facilita o rastreamento de erros em logs. Exceções customizadas (`NotFoundException`, `ConflictException`, `ValidationException`) são lançadas nos serviços e capturadas centralmente pelo filtro, evitando tratamento de erro espalhado pelo código.
 
+#### 3.4.1 Como o projeto implementa o tratamento de erros hoje
+
+Nesta etapa, o tratamento é centralizado no `HttpExceptionFilter` global registrado em `main.ts`, com resposta padronizada em Problem Details (RFC 7807).
+
+Mapeamento atualmente implementado:
+
+- `NotFoundException` (domínio ou Nest): `404` com `type` de recurso não encontrado.
+- `BadRequestException` (incluindo falhas de validação do ValidationPipe): `400` com detalhes de campos inválidos quando disponíveis.
+- `ConflictException` de domínio: `409` com mensagem de regra de negócio/duplicidade.
+- `ForbiddenException`: `403` (preparado para uso da Etapa 2).
+- `UnauthorizedException`: `401` (preparado para uso da Etapa 2).
+- `QueryFailedError` do TypeORM: convertido para erro semântico de domínio, retornando `409` para conflitos de constraint e `400` para erros de validação/driver.
+- Exceções não previstas: `500` com mensagem segura e genérica.
+
+Campos padrão retornados em todas as respostas de erro:
+
+- `type`
+- `title`
+- `status`
+- `detail`
+- `instance`
+- `method`
+- `timestamp`
+- `traceId`
+
+Com isso, o cliente da API recebe sempre um contrato consistente de erro, independentemente do ponto da aplicação onde a exceção foi lançada.
+
 ### 3.5 Feature Doctors
 A feature **Doctors** tem relação íntima com **Users**: um doctor é, na prática, um user. Por isso, seus arquivos relacionados ficam dentro de `users`.
 
