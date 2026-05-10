@@ -1,5 +1,13 @@
 # Relatório Técnico — SGCM API
 
+## Sumário
+
+- [1 - Integrantes e contribuições](#1---integrantes-e-contribuições)
+- [2 - Diagrama de classes](#2---diagrama-de-classes)
+- [3 - Decisões técnicas](#3---decisões-técnicas)
+- [4 - Dificuldades e aprendizados](#4---dificuldades-e-aprendizados)
+- [Conclusão](#conclusão)
+
 ## 1 - INTEGRANTES E CONTRIBUIÇÕES
 
 | Integrante | Contribuições nesta etapa |
@@ -429,8 +437,34 @@ Justificativa:
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
+- Dificuldades:
+  - Implementar manualmente a estratégia JTI no TypeORM devido à falta de suporte nativo.
+  - Definir validações condicionais dos DTOs sem criar múltiplos contratos redundantes.
+  - Garantir consistência no tratamento de erros (RFC 7807) e mapeamento de exceções do banco.
+  - Lidar com checagens de conflito de horário e condições de concorrência em agendamentos.
+
+- Aprendizados:
+  - Entendimento mais profundo sobre as limitações e extensibilidade do TypeORM.
+  - Benefício claro da separação de responsabilidades (factory, serviços de unicidade, controllers).
+  - Importância de contratos de API bem documentados (Swagger) e exemplos claros para consumidores.
+  - Vantagem de diagramas (PlantUML) para alinhar modelagem de domínio com a equipe.
+
 ## Conclusão
 
-A escolha pelo JTI foi técnica e consciente: o schema resultante é mais limpo, normalizado e preparado para crescimento. O custo foi a necessidade de uma implementação manual, já que o TypeORM não oferece suporte nativo a essa estratégia. Essa abordagem exigiu um entendimento mais profundo tanto do ORM quanto do modelo relacional, mas resultou em uma arquitetura mais robusta e alinhada com as boas práticas de modelagem de banco de dados.
+Nesta primeira etapa, o objetivo é construir a base funcional do SGCM — modelando o domínio de uma clínica médica, implementando as operações essenciais e organizando o código de forma que o projeto possa evoluir com consistência nas etapas seguintes.
 
-As demais decisões — separação de serviços, validação condicional por tipo, hash na entidade, paginação padronizada e tratamento de erros RFC 7807 — refletem o mesmo princípio: soluções que isolam responsabilidades, reduzem duplicação e tornam o sistema mais fácil de evoluir e manter.
+Durante a execução, foram alcançados os seguintes marcos:
+
+**Modelagem do domínio da aplicação** — representamos usuários, especialidades e agendamentos como entidades com atributos, relacionamentos e hierarquias de herança bem definidas no banco de dados. A adoção do JTI manual para a hierarquia `User` e do STI para `Schedule` refletiu decisões técnicas conscientes de normalização e performance.
+
+**Aplicação da arquitetura do NestJS** — organizamos o código em módulos (`UsersModule`, `SpecialtiesModule`, `SchedulesModule`) com controllers, services e repositórios que mantêm responsabilidades claramente separadas. A injeção de dependência foi aplicada de forma consistente, evitando acoplamentos desnecessários entre módulos.
+
+**Validação robusta de dados de entrada** — implementamos camada de validação com DTOs e class-validator, rejeição prévia de requisições inválidas antes que cheguem aos services, e mensagens de erro descritivas conforme o padrão RFC 7807.
+
+**Operações essenciais do domínio** — implementamos cadastro, consulta, listagem, atualização e remoção de entidades (CRUD completo) respeitando as regras da clínica médica. Cada operação foi testada e documentada.
+
+**Controle de estados e regras de negócio** — o sistema agora rejeita operações inválidas (ex.: conflito de horário, duplicidade de CPF/CRM/email) e mantém consistência de dados em qualquer sequência de requisições.
+
+**Documentação com Swagger** — todos os endpoints foram documentados de forma acessível, com exemplos de requisição, resposta e tratamento de erros padronizado.
+
+**Preparação para evolução** — as decisões tomadas nesta etapa (separação de controllers por domínio, factory pattern para criação de usuários, inativação lógica em vez de deleção física, conceito de `traceId` no filtro de erros) facilitam a introdução futura de autenticação JWT (Etapa 2), controle de acesso por perfil (Etapa 2) e entidades clínicas complexas como atendimentos, procedimentos, prontuários e laudos (Etapa 3).
