@@ -1,0 +1,75 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Patient } from '../entities/patient.entity';
+import { Repository, Like } from 'typeorm';
+import { NotFoundException } from '../../../common/exceptions';
+import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
+import { FindPatientsQueryDto } from '../dto/find-patients-query.dto';
+import { SchedulesService } from '../../schedules/services/schedules.service';
+import { FindSchedulesQueryDto } from '../../schedules/dto/find-schedules-query.dto';
+
+@Injectable()
+export class PatientsService {
+  constructor(
+    @InjectRepository(Patient)
+    private readonly patientRepository: Repository<Patient>,
+    private readonly schedulesService: SchedulesService,
+  ) {}
+
+  async findAll(
+    query: FindPatientsQueryDto,
+  ): Promise<PaginatedResponseDto<Patient>> {
+    const { page, limit, sort, search } = query;
+
+    const skip = (page - 1) * limit;
+    const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
+
+    const where = search
+      ? [
+          { user: { name: Like(`%${search}%`), isActive: true } },
+          { user: { email: Like(`%${search}%`), isActive: true } },
+        ]
+      : { user: { isActive: true } };
+
+    const [patients, totalItems] = await this.patientRepository.findAndCount({
+      where,
+      relations: { user: true },
+      order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
+      skip,
+      take: limit,
+    });
+
+    return {
+      data: patients,
+      meta: {
+        totalItems,
+        page,
+        limit,
+        totalPages: Math.ceil(totalItems / limit),
+      },
+    };
+  }
+
+  async findOne(id: number) {
+    const patient = await this.patientRepository.findOne({
+      where: { user: { id, isActive: true } },
+      relations: { user: true },
+    });
+
+    if (!patient) {
+      throw new NotFoundException('Paciente', id);
+    }
+
+    return {
+      id: patient.user.id,
+      name: patient.user.name,
+      email: patient.user.email,
+      cpf: patient.cpf,
+      birthDate: patient.birthDate,
+    };
+  }
+
+  async findSchedules(id: number, query: FindSchedulesQueryDto) {
+    return await this.schedulesService.findByPatient(id, query);
+  }
+}
