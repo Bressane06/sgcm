@@ -4,7 +4,10 @@ import { User } from '../entities/user.entity';
 import { FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
-import { ConflictException, NotFoundException } from '../../../common/exceptions';
+import {
+  ConflictException,
+  NotFoundException,
+} from '../../../common/exceptions';
 import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
 import { UsersFactoryService } from './users-factory.service';
 import { UsersUniquenessService } from './users-uniqueness.service';
@@ -50,7 +53,9 @@ export class UsersService {
     }
   }
 
-  private async assertDoctorHasNoActiveSchedules(userId: number): Promise<void> {
+  private async assertDoctorHasNoActiveSchedules(
+    userId: number,
+  ): Promise<void> {
     const doctor = await this.doctorRepository.findOne({
       where: { user: { id: userId } },
       relations: { user: true },
@@ -75,7 +80,9 @@ export class UsersService {
     }
   }
 
-  private async assertPatientHasNoActiveSchedules(userId: number): Promise<void> {
+  private async assertPatientHasNoActiveSchedules(
+    userId: number,
+  ): Promise<void> {
     const patient = await this.patientRepository.findOne({
       where: { user: { id: userId } },
       relations: { user: true },
@@ -156,9 +163,12 @@ export class UsersService {
     return user;
   }
 
-  async findByEmail(email: string, includePassword: boolean = false): Promise<User> {
+  async findByEmail(
+    email: string,
+    includePassword: boolean = false,
+  ): Promise<User> {
     // Esse método será usado principalmente para autenticação, onde precisamos do hash da senha, por isso a opção includePassword.
-    
+
     const user = await this.userRepository
       .createQueryBuilder('user')
       .addSelect('user.password')
