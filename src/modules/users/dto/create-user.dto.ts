@@ -7,6 +7,8 @@ import {
   ValidateIf,
   IsDate,
   MaxDate,
+  MaxLength,
+  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserType } from '../enum/user-type.enum';
@@ -25,8 +27,13 @@ export class CreateUserDto {
   email!: string;
 
   @ApiProperty()
-  @MinLength(6, { message: 'A senha deve ter no mínimo 6 caracteres' })
   @IsNotEmpty({ message: 'Senha é obrigatória' })
+  @IsString()
+  @MinLength(4)
+  @MaxLength(20)
+  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+    message: 'password too weak',
+  })
   password!: string;
 
   @ApiProperty({ enum: UserType })
