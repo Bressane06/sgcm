@@ -156,6 +156,27 @@ export class UsersService {
     return user;
   }
 
+  async findByEmail(email: string, includePassword: boolean = false): Promise<User> {
+    // Esse método será usado principalmente para autenticação, onde precisamos do hash da senha, por isso a opção includePassword.
+    
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.email = :email', { email })
+      .getOne();
+
+    if (!user) {
+      throw new NotFoundException('Usuário', email); // marcação de duvida: essa exceptiuon ta certa?
+    }
+
+    if (includePassword) {
+      return user;
+    } else {
+      const { password, ...result } = user;
+      return result as User;
+    }
+  }
+
   async update(id: number, dto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
 
