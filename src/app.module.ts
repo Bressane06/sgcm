@@ -6,7 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './modules/users/users.module';
 import { SpecialtiesModule } from './modules/specialties/specialties.module';
 import { SchedulesModule } from './modules/schedules/schedules.module';
-import { JwtAuthGuard } from './modules/auth/local-auth/jwt-auth.guard';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
