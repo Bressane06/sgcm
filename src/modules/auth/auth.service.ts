@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
-import { compareSync } from 'bcrypt';
+import { compareSync, hashSync } from 'bcrypt';
 import { UsersService } from '../users/services/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserToken } from './models/user-token.model';
 import { UserPayload } from './models/user-payload.model';
+import { AuthResponseDto } from './dto/auth-response.dto';
 
 @Injectable()
 export class AuthService {
@@ -13,7 +14,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async login(user: User): Promise<UserToken> {
+  private async generateTokens(user: User): Promise<AuthResponseDto> {
     const payload: UserPayload = {
       sub: user.id,
       email: user.email,
@@ -21,10 +22,48 @@ export class AuthService {
       type: user.type,
     };
 
+    const access_token = this.jwtService.sign(payload);
+    const refresh_token = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+    user.refreshToken = hashSync(refresh_token, 10);
+    await this.usersService.saveRefreshToken(user.id, user.refreshToken);
+
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token,
+      refresh_token,
       token_type: 'Bearer',
     };
+  }
+
+  async login(user: User): Promise<AuthResponseDto> {
+    return this.generateTokens(user);
+  }
+
+  async refresh(refreshToken: string): Promise<AuthResponseDto> {
+    try {
+      const payload = this.jwtService.verify(refreshToken);
+      const user = await this.usersService.findOne(payload.sub);
+
+      if (!user.refreshToken || !this.validateRefreshToken(refreshToken, user.refreshToken)) {
+        throw new UnauthorizedException('Refresh token inválido ou expirado');
+      }
+
+      return this.generateTokens(user);
+    } catch (error) {
+      throw new UnauthorizedException('Refresh token inválido ou expirado');
+    }
+  }
+
+  async me(user: User): Promise<User> {
+    return user;
+  }
+
+  async logout(userId: number): Promise<void> {
+    await this.usersService.clearRefreshToken(userId);
+  }
+
+  private validateRefreshToken(token: string, hash: string): boolean {
+    return compareSync(token, hash);
   }
 
   async validateUser(email: string, pass: string): Promise<User | null> {
