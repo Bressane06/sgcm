@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters';
+import { TransformInterceptor } from './common/interceptors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,7 +12,13 @@ async function bootstrap() {
   // Global exception filter (RFC 7807 - Problem Details for HTTP APIs)
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  // Global interceptors: Transform deve ser registrado após ClassSerializer
+  // para que no pós-handler, ClassSerializer execute primeiro (removendo @Exclude())
+  // e depois Transform envolve os dados serializados no envelope padrão.
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(app.get(Reflector)),
+    new TransformInterceptor(),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
