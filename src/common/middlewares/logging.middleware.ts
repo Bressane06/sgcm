@@ -25,6 +25,15 @@ export class LoggingMiddleware implements NestMiddleware {
         durationMs,
       };
 
+      // Exemplo de log estruturado em JSON
+      // {
+      //   "timestamp": "2026-06-01T12:00:00.000Z",
+        //   "method": "GET",
+        //   "url": "/api/some-endpoint",
+        //   "ip": "
+        //   "statusCode": 200,
+        //   "durationMs": 123
+      // }
       this.logger.log(JSON.stringify(logEntry, null, 2));
     });
 
