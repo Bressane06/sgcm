@@ -12,12 +12,13 @@ async function bootstrap() {
   // Global exception filter (RFC 7807 - Problem Details for HTTP APIs)
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // Global interceptors: Transform deve ser registrado após ClassSerializer
-  // para que no pós-handler, ClassSerializer execute primeiro (removendo @Exclude())
-  // e depois Transform envolve os dados serializados no envelope padrão.
+  // Global interceptors: a ordem de registro funciona como uma pilha.
+  // Registramos Transform antes para que, no pós-handler, o ClassSerializer
+  // execute primeiro e remova campos marcados com @Exclude() antes de o
+  // TransformInterceptor montar o envelope { data, meta }.
   app.useGlobalInterceptors(
-    new ClassSerializerInterceptor(app.get(Reflector)),
     new TransformInterceptor(),
+    new ClassSerializerInterceptor(app.get(Reflector)),
   );
 
   app.useGlobalPipes(

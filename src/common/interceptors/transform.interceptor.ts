@@ -7,6 +7,7 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Request, Response } from 'express';
+import { isPaginatedResponse } from '../utils/is-paginated-response.util';
 
 @Injectable()
 export class TransformInterceptor implements NestInterceptor {
@@ -29,19 +30,7 @@ export class TransformInterceptor implements NestInterceptor {
         const timestamp = new Date().toISOString();
         const path = request.path;
 
-        // Detectar se já é uma resposta paginada pela estrutura
-        // (tem data como array e meta com campos de paginação)
-        if (
-          data &&
-          typeof data === 'object' &&
-          Array.isArray(data.data) &&
-          data.meta &&
-          typeof data.meta === 'object' &&
-          'totalItems' in data.meta &&
-          'page' in data.meta &&
-          'limit' in data.meta &&
-          'totalPages' in data.meta
-        ) {
+        if (isPaginatedResponse(data)) {
           // Enriquecer meta existente com timestamp e path
           return {
             data: data.data,
