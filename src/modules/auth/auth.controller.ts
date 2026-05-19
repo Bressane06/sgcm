@@ -8,6 +8,7 @@ import {
   Body,
 } from '@nestjs/common';
 import {
+  ApiBody,
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
@@ -21,6 +22,7 @@ import { AuthService } from './auth.service';
 import { IsPublic } from '../../common/decorators/is-public.decorator';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { LoginDto } from './dto/login.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -35,7 +37,15 @@ export class AuthController {
     summary: 'Autenticar usuário com e-mail e senha',
     description: 'Retorna token de acesso e refresh token',
   })
-  login(@CurrentUser() user: User) {
+  @ApiBody({ type: LoginDto })
+  @ApiOkResponse({
+    description: 'Autenticação realizada com sucesso',
+    type: AuthResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'E-mail ou senha inválidos',
+  })
+  login(@Body() _dto: LoginDto, @CurrentUser() user: User) {
     return this.authService.login(user);
   }
 
