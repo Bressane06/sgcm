@@ -523,6 +523,124 @@ O campo `event` informa qual evento disparou o log, permitindo identificar o cic
 }
 ```
 
+#### 3.21.1 Captura de tempo e status no middleware
+
+Decisão adotada no SGCM: capturar o tempo total de processamento e o status HTTP no próprio middleware, usando os eventos `finish` e `close` do objeto `Response`.
+
+Como funciona:
+
+- o middleware registra o instante inicial com `Date.now()` antes de chamar `next()`;
+- depois, ele escuta `response.on('finish')` para saber quando a resposta foi enviada com sucesso;
+- também escuta `response.on('close')` para registrar encerramentos prematuros da conexão;
+- no callback, calcula `durationMs` como a diferença entre o tempo atual e o instante inicial;
+- o `statusCode` é lido do próprio `response` no momento do evento, sem bloquear o pipeline.
+
+Trecho atual:
+
+Arquivo: [src/common/middlewares/logging.middleware.ts](src/common/middlewares/logging.middleware.ts)
+
+```ts
+const startedAt = Date.now();
+
+const writeLog = (event: 'finish' | 'close'): void => {
+  if (logWritten) {
+    return;
+  }
+
+  logWritten = true;
+
+  const durationMs = Date.now() - startedAt;
+  const statusCode = response.statusCode;
+
+  const logEntry = {
+    timestamp,
+    method,
+    url,
+    ip,
+    statusCode,
+    durationMs,
+    event,
+    completed: event === 'finish',
+  };
+
+  this.logger.log(JSON.stringify(logEntry, null, 2));
+};
+
+response.on('finish', () => writeLog('finish'));
+response.on('close', () => writeLog('close'));
+```
+
+Justificativa da abordagem:
+
+- o middleware observa a requisição desde o início e consegue medir o tempo total real, incluindo o processamento do handler;
+- o uso de `finish` e `close` cobre tanto respostas concluídas quanto conexões interrompidas, o que seria incompleto se o log dependesse apenas do pós-handler;
+- a coleta é assíncrona e não bloqueia o fluxo da requisição.
+
+Alternativa considerada:
+
+- usar um interceptor para registrar o pós-handler e complementar com middleware para os metadados iniciais da requisição.
+
+Decisão do grupo:
+
+- manter o middleware como fonte principal do logging temporal e de status, porque ele oferece a visão mais fiel do ciclo de vida da resposta;
+- deixar o interceptor para responsabilidades de transformação de resposta, não para logging principal.
+
+Limitação reconhecida:
+
+- o status HTTP fica disponível de forma confiável apenas no momento em que a resposta é finalizada; por isso, a captura no middleware depende dos eventos do `Response`, e não apenas do instante inicial da requisição.
+
+#### 3.21.2 Formato e destino dos logs
+
+Decisão adotada no SGCM: registrar os logs em formato JSON estruturado e escrevê-los apenas no console nesta etapa.
+
+Trecho atual:
+
+Arquivo: `src/common/middlewares/logging.middleware.ts`
+
+```ts
+this.logger.log(JSON.stringify(logEntry, null, 2));
+```
+
+Justificativa do formato:
+
+- JSON é mais consistente para produção, porque ferramentas externas conseguem parsear, filtrar e correlacionar os eventos com facilidade;
+- o mesmo formato continua legível durante o desenvolvimento, já que a estrutura do log fica explícita e padronizada;
+- manter um formato único evita variações entre ambiente local e produção.
+
+Justificativa do destino:
+
+- nesta etapa, o console atende ao objetivo do projeto sem exigir infraestrutura adicional de armazenamento;
+- evitar arquivo local reduz complexidade operacional e impede crescimento indefinido de logs dentro do repositório ou da máquina de execução;
+- em ambiente real, a escrita em arquivo só faria sentido se acompanhada de rotação e retenção controlada.
+
+Limitação reconhecida:
+
+- como não há persistência em arquivo nesta etapa, os logs dependem do coletor do ambiente (console, container ou plataforma de execução) para serem armazenados e analisados posteriormente.
+
+Evolução possível:
+
+- se o projeto exigir arquivo de log no futuro, a abordagem deve incluir rotação por tamanho ou por data, além de política de retenção para evitar crescimento ilimitado.
+
+#### 3.21.3 Middleware versus interceptor para logging
+
+Decisão arquitetural do SGCM: manter o middleware como mecanismo principal de logging.
+
+Motivo da escolha:
+
+- o SGCM considera mais importante registrar todas as tentativas de acesso, inclusive requisições rejeitadas por `401`/`403` e conexões encerradas antes do fim;
+- o middleware observa a requisição desde a entrada e registra `finish` e `close`, cobrindo tanto respostas completas quanto interrupções;
+- um interceptor é útil para enriquecer o contexto pós-handler, mas não cobre requisições bloqueadas pelos guards, portanto seria incompleto como logger principal.
+
+Papel do interceptor no projeto:
+
+- o `TransformInterceptor` permanece dedicado à padronização das respostas bem-sucedidas;
+- se houver necessidade futura de enriquecimento adicional do log com dados obtidos após o handler, um interceptor complementar poderá ser considerado, mas não como fonte principal de auditoria.
+
+Critério adotado para o SGCM:
+
+- priorizar cobertura e consistência da trilha de auditoria sobre enriquecimento de contexto do handler;
+- em um sistema clínico, registrar tentativas rejeitadas e acessos interrompidos é mais relevante do que capturar somente requisições que chegaram ao final do fluxo.
+
 ### 3.22 Mapa de dependências do módulo de autenticação
 
 A direção das dependências do módulo de autenticação foi definida para manter o sistema simples e evitar ciclos entre módulos. O `AuthModule` concentra o que é específico de autenticação: `AuthService`, `LocalStrategy` e `JwtStrategy`. O `JwtService` não precisa ser exportado pelo `AuthModule`, porque ele já é disponibilizado globalmente pelo `JwtModule` configurado na aplicação. Da mesma forma, a estratégia JWT não deve ser exportada como contrato público de outros módulos; ela funciona como detalhe interno do pipeline do Passport.
