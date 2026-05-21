@@ -10,8 +10,20 @@ export class LoggingMiddleware implements NestMiddleware {
     const timestamp = new Date().toISOString();
     const url = request.originalUrl;
     const method = request.method;
+    let logWritten = false;
 
-    response.on('finish', () => {
+    // finish -> resposta enviada com sucesso (ex: cliente recebeu a resposta)
+    // close -> conexão fechada antes da resposta ser enviada (ex: cliente desconectou)
+  
+    // isso foi implementado para garantir que mesmo em casos de desconexão do cliente, 
+    // o log seja registrado, indicando que a resposta não foi concluída.
+    const writeLog = (event: 'finish' | 'close'): void => {
+      if (logWritten) {
+        return;
+      }
+
+      logWritten = true;
+
       const durationMs = Date.now() - startedAt;
       const statusCode = response.statusCode;
       const ip = request.ip || request.socket.remoteAddress || 'unknown';
@@ -23,19 +35,15 @@ export class LoggingMiddleware implements NestMiddleware {
         ip,
         statusCode,
         durationMs,
+        event,
+        completed: event === 'finish',
       };
 
-      // Exemplo de log estruturado em JSON
-      // {
-      //   "timestamp": "2026-06-01T12:00:00.000Z",
-        //   "method": "GET",
-        //   "url": "/api/some-endpoint",
-        //   "ip": "
-        //   "statusCode": 200,
-        //   "durationMs": 123
-      // }
       this.logger.log(JSON.stringify(logEntry, null, 2));
-    });
+    };
+
+    response.on('finish', () => writeLog('finish'));
+    response.on('close', () => writeLog('close'));
 
     next();
   }
