@@ -10,7 +10,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { FindSchedulesQueryDto } from './dto/find-schedules-query.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
@@ -19,6 +19,7 @@ import { SchedulesService } from './services/schedules.service';
 
 @ApiTags('Schedules')
 @Controller('schedules')
+@ApiBearerAuth()
 export class SchedulesController {
   constructor(private readonly schedulesService: SchedulesService) {}
 

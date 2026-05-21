@@ -1,11 +1,12 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { PatientsService } from '../services/patients.service';
 import { FindPatientsQueryDto } from '../dto/find-patients-query.dto';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
 
 @ApiTags('Patients')
 @Controller('patients')
+@ApiBearerAuth()
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 

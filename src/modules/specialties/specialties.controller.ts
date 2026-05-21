@@ -12,12 +12,13 @@ import {
 import { SpecialtiesService } from './specialties.service';
 import { CreateSpecialtyDto } from './dto/create-specialty.dto';
 import { UpdateSpecialtyDto } from './dto/update-specialty.dto';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FindSpecialtiesQueryDto } from './dto/find-specialties-query.dto';
 import { FindDoctorsQueryDto } from '../users/dto/find-doctors-query.dto';
 
 @ApiTags('Specialties')
 @Controller('specialties')
+@ApiBearerAuth()
 export class SpecialtiesController {
   constructor(private readonly specialtiesService: SpecialtiesService) {}
 
