@@ -8,7 +8,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '../../../common/exceptions';
-import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
+import { PaginatedResponse } from '../../../common/interfaces/paginated-response.interface';
 import { UsersFactoryService } from './users-factory.service';
 import { UsersUniquenessService } from './users-uniqueness.service';
 import { FindUsersQueryDto } from '../dto/find-users-query.dto';
@@ -112,7 +112,7 @@ export class UsersService {
     return await this.usersFactoryService.create(dto);
   }
 
-  async findAll(query: FindUsersQueryDto): Promise<PaginatedResponseDto<User>> {
+  async findAll(query: FindUsersQueryDto): Promise<PaginatedResponse<User>> {
     const { page, limit, sort, search } = query;
     const skip = (page - 1) * limit;
     const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];

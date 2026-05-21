@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters';
+import { TransformInterceptor } from './common/interceptors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,7 +12,14 @@ async function bootstrap() {
   // Global exception filter (RFC 7807 - Problem Details for HTTP APIs)
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  // Global interceptors: a ordem de registro funciona como uma pilha.
+  // Registramos Transform antes para que, no pós-handler, o ClassSerializer
+  // execute primeiro e remova campos marcados com @Exclude() antes de o
+  // TransformInterceptor montar o envelope { data, meta }.
+  app.useGlobalInterceptors(
+    new TransformInterceptor(),
+    new ClassSerializerInterceptor(app.get(Reflector)),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
