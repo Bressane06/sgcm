@@ -3,9 +3,9 @@ import { User } from '../users/entities/user.entity';
 import { compareSync, hashSync } from 'bcrypt';
 import { UsersService } from '../users/services/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { UserToken } from './models/user-token.model';
 import { UserPayload } from './models/user-payload.model';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { UserType } from '../users/enum/user-type.enum';
 
 @Injectable()
 export class AuthService {
@@ -66,12 +66,12 @@ export class AuthService {
     return compareSync(token, hash);
   }
 
-  async validateUser(email: string, pass: string): Promise<User | null> {
+  async validateUser(email: string, pass: string, type: UserType | undefined): Promise<User | null> {
     const user = await this.usersService.findByEmail(email, true);
 
     if (user) {
       const isPasswordValid = compareSync(pass, user.password);
-      if (isPasswordValid) {
+      if (isPasswordValid && user.type === type) {
         const { password, ...result } = user;
         return result as User;
       }
