@@ -24,6 +24,8 @@
 
 ## 3 - DECISÕES TÉCNICAS
 
+## ETAPA 1
+
 ### 3.1 Estratégia de Herança: Por que escolhemos JTI
 
 O modelo de usuários possui três subtipos — `Admin`, `Doctor` e `Patient` — cada um com atributos comuns (nome, e-mail, senha, tipo) e atributos específicos (`accessLevel`, `crm`, `cpf`/`birthDate`). Era necessário escolher uma estratégia de herança que equilibrasse normalização do schema e performance.
@@ -431,7 +433,15 @@ Justificativa:
 - Evita crescimento de complexidade no service principal de usuários.
 - Facilita manutenção do fluxo de criação por perfil em um único ponto.
 
+## ETAPA 2
 
+### 3.20 Uso de interfaces e utils para paginação
+
+Nessa etapa, a separação em `interfaces` e `utils` foi adotada para tornar o contrato de paginação mais explícito, reutilizável e desacoplado da lógica do interceptor.
+
+As `interfaces` concentram exclusivamente a definição estrutural dos dados, em [paginated-response.interface.ts](src/common/interfaces/paginated-response.interface.ts) e [pagination-meta.interface.ts](src/common/interfaces/pagination-meta.interface.ts), mantendo a tipagem centralizada e reutilizável entre diferentes módulos da aplicação. Já a pasta `utils` reúne a função [is-paginated-response.util.ts](src/common/utils/is-paginated-response.util.ts), responsável por validar se o payload recebido corresponde a uma resposta paginada antes do processamento realizado pelo [TransformInterceptor](src/common/interceptors/transform.interceptor.ts).
+
+Essa abordagem reduz acoplamento, melhora a legibilidade do código e facilita manutenção futura, além de manter o interceptor focado apenas na orquestração e padronização das respostas HTTP.
 
 ---
 
