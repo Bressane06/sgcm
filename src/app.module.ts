@@ -1,15 +1,34 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from './modules/users/users.module';
 import { SpecialtiesModule } from './modules/specialties/specialties.module';
 import { SchedulesModule } from './modules/schedules/schedules.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Foi feito assim, pois o JwtModule precisa acessar a variável de ambiente 
+    // JWT_SECRET para configurar a chave secreta do JWT, e isso é feito 
+    // usando o ConfigService. O método registerAsync permite que o JwtModule 
+    // seja configurado de forma assíncrona, injetando o ConfigService para acessar 
+    // as variáveis de ambiente no momento da configuração.
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: '1d',
+        },
+      }),
+      global: true,
+    }),
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: process.env.DATABASE_PATH ?? './database.db',
@@ -19,8 +38,9 @@ import { SchedulesModule } from './modules/schedules/schedules.module';
     UsersModule,
     SpecialtiesModule,
     SchedulesModule,
+    AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
 export class AppModule {}

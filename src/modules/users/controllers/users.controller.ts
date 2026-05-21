@@ -9,19 +9,22 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UsersService } from '../services/users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { FindUsersQueryDto } from '../dto/find-users-query.dto';
+import { IsPublic } from '../../../common/decorators/is-public.decorator';
 
 @ApiTags('Users')
 @Controller('users')
+@ApiBearerAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @IsPublic()
   @Post()
-  @ApiOperation({ summary: 'Criar usuário' })
+  @ApiOperation({ summary: 'Criar usuário', security: [] })
   async create(@Body() dto: CreateUserDto) {
     return await this.usersService.create(dto);
   }

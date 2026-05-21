@@ -9,13 +9,14 @@ import {
   Query,
 } from '@nestjs/common';
 import { DoctorsService } from '../services/doctors.service';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
 import { UpdateSpecialtyDto } from '../../specialties/dto/update-specialty.dto';
 import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
 
 @ApiTags('Doctors')
 @Controller('doctors')
+@ApiBearerAuth()
 export class DoctorsController {
   constructor(private readonly doctorsService: DoctorsService) {}
 

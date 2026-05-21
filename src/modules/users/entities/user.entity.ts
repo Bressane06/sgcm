@@ -33,8 +33,8 @@ export abstract class User {
   isActive!: boolean;
 
   @Exclude()
-  @Column({ nullable: true, select: false })
-  refreshToken?: string;
+  @Column({ type: 'varchar', nullable: true, select: false })
+  refreshToken!: string | null;
 
   @CreateDateColumn()
   createdAt!: Date;
