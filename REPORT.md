@@ -10,11 +10,44 @@
 
 ## 1 - INTEGRANTES E CONTRIBUIÇÕES
 
-| Integrante | Contribuições nesta etapa |
-|---|---|
-| Arthur Coutinho | • Desenvolvimento da feature Doctors; <br> • Desenvolvimento da feature Specialties; <br> • Elaboração e organização da documentação Swagger; <br> • Criação e manutenção do diagrama PlantUML. |
-| Estela Medeiros | • Desenvolvimento da feature Patients; <br> • Desenvolvimento da feature Schedules; <br> • Apoio técnico e revisão nas demais branches do projeto. |
-| Gabriel Bressane | • Desenvolvimento do módulo Users; <br> • Implementação dos exception filters e tratamento global de erros; <br> • Elaboração da documentação técnica; <br> • Administração do repositório no GitHub, incluindo definição de regras e organização do fluxo de branches. |
+<table>
+  <thead>
+    <tr>
+      <th>Integrante</th>
+      <th>Contribuições</th>
+      <th>Etapa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="2"><b>Arthur Coutinho</b></td>
+      <td>• Desenvolvimento da feature Doctors;<br>• Desenvolvimento da feature Specialties;<br>• Elaboração e organização da documentação Swagger. <br>• Criação e manutenção do diagrama PlantUML.</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>• Módulo de autenticação.</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <td rowspan="2"><b>Estela Medeiros</b></td>
+      <td>• Desenvolvimento da feature Patients;<br>• Desenvolvimento da feature Schedules.<br>• Apoio técnico e revisão nas demais branches do projeto.</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>• Módulo de autenticação.</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <td rowspan="2"><b>Gabriel Bressane</b></td>
+      <td>• Desenvolvimento do módulo Users;<br>• Implementação dos exception filters e tratamento global de erros.<br>• Elaboração da documentação técnica;<br>• Administração do repositório no GitHub.</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>• Expansão do exception filter;<br>• Implementação do transform interceptor;<br>• Implementação do logging middleware;<br>• Atualização e organização da documentação técnica.</td>
+      <td>2</td>
+    </tr>
+  </tbody>
+</table>
 
 > Todos os membros participaram das Pull Requests e colaboraram entre si sempre que necessário, realizando revisões de código, suporte técnico e auxílio na integração das funcionalidades.
 
@@ -469,6 +502,232 @@ Nessa etapa, a separação em `interfaces` e `utils` foi adotada para tornar o c
 As `interfaces` concentram exclusivamente a definição estrutural dos dados, em [paginated-response.interface.ts](src/common/interfaces/paginated-response.interface.ts) e [pagination-meta.interface.ts](src/common/interfaces/pagination-meta.interface.ts), mantendo a tipagem centralizada e reutilizável entre diferentes módulos da aplicação. Já a pasta `utils` reúne a função [is-paginated-response.util.ts](src/common/utils/is-paginated-response.util.ts), responsável por validar se o payload recebido corresponde a uma resposta paginada antes do processamento realizado pelo [TransformInterceptor](src/common/interceptors/transform.interceptor.ts).
 
 Essa abordagem reduz acoplamento, melhora a legibilidade do código e facilita manutenção futura, além de manter o interceptor focado apenas na orquestração e padronização das respostas HTTP.
+
+### 3.21 Campos extras no logging middleware
+
+No logging middleware da Etapa 2, foram adicionados dois campos extras ao log: `event` e `completed`. Eles foram incluídos para diferenciar o fechamento normal da resposta (`finish`) do encerramento da conexão (`close`) e para deixar explícito, no registro, se a requisição foi concluída com sucesso ou interrompida antes do término completo.
+
+O campo `event` informa qual evento disparou o log, permitindo identificar o ciclo de vida da requisição com mais clareza. Já o campo `completed` funciona como um resumo semântico desse estado: quando está `true`, a resposta terminou normalmente; quando está `false`, a conexão foi encerrada antes da finalização total. Isso melhora a rastreabilidade e ajuda na investigação de requisições abortadas, falhas de rede ou cancelamentos feitos pelo cliente.
+
+```json
+{
+  "timestamp": "2026-05-21T19:25:19.308Z",
+  "method": "GET",
+  "url": "/patients",
+  "ip": "::1",
+  "statusCode": 401,
+  "durationMs": 9,
+  // Novos campos adicionados
+  "event": "finish",
+  "completed": true
+}
+```
+
+### 3.22 Mapa de dependências do módulo de autenticação
+
+A direção das dependências do módulo de autenticação foi definida para manter o sistema simples e evitar ciclos entre módulos. O `AuthModule` concentra o que é específico de autenticação: `AuthService`, `LocalStrategy` e `JwtStrategy`. O `JwtService` não precisa ser exportado pelo `AuthModule`, porque ele já é disponibilizado globalmente pelo `JwtModule` configurado na aplicação. Da mesma forma, a estratégia JWT não deve ser exportada como contrato público de outros módulos; ela funciona como detalhe interno do pipeline do Passport.
+
+Os guards também não precisam depender diretamente do `AuthModule` como consumidor externo. O `JwtAuthGuard` pode ficar no próprio contexto de autenticação, ou em `common` quando for reutilizado globalmente, mas sempre depender apenas do contrato do Passport e das exceções tipadas da aplicação. Isso evita que outros módulos passem a depender do `AuthModule` para conseguir autenticar rotas e reduz o risco de dependências cíclicas.
+
+Em termos práticos, a arquitetura adotada fica assim:
+
+```mermaid
+flowchart LR
+  AppModule --> AuthModule
+  AppModule --> UsersModule
+  AppModule --> SchedulesModule
+  AppModule --> SpecialtiesModule
+
+  AuthModule --> UsersModule
+  AuthModule --> LocalStrategy
+  AuthModule --> JwtStrategy
+  AuthModule --> AuthService
+
+  JwtAuthGuard --> PassportAuthGuard
+  JwtStrategy --> UsersService
+  LocalStrategy --> AuthService
+  AuthService --> UsersService
+  UsersService --> TypeORM
+  JwtStrategy --> JwtModule
+```
+
+Com isso, o fluxo fica direcionado da seguinte forma: o `AppModule` agrega os módulos principais; o `AuthModule` depende de `UsersModule` para validar credenciais e carregar usuários; as estratégias ficam encapsuladas dentro da autenticação; e os guards apenas consomem o Passport, sem forçar módulos externos a conhecerem detalhes de implementação do `AuthModule`.
+
+### 3.23 Guards globais versus guards por módulo
+
+Para a Etapa 2, a estratégia mais segura e escalável é manter o `JwtAuthGuard` como guard global. Isso reduz o risco de deixar algum endpoint desprotegido por esquecimento e simplifica a expansão do projeto na Etapa 3, quando novos módulos e rotas serão adicionados com frequência. Nessa abordagem, as rotas públicas precisam ser declaradas explicitamente com um decorator como `@Public()`, o que torna a exceção visível no próprio endpoint e evita ambiguidade.
+
+A alternativa de registrar guards por módulo ou por controller oferece controle mais granular, mas depende de disciplina manual em cada novo ponto de entrada. Em um projeto que continua crescendo, isso aumenta a chance de inconsistência de segurança. Por isso, para o SGCM, o guard global é a escolha mais consistente com o objetivo de proteger toda a API por padrão.
+
+Em relação ao `RolesGuard`, ele deve ser executado depois do `JwtAuthGuard`. A ordem importa porque o `RolesGuard` depende do usuário autenticado já colocado no request pelo JWT guard. Se o `RolesGuard` rodar antes, ele não terá o contexto necessário para verificar perfis e permissões e pode gerar comportamento incorreto, normalmente tratando um problema de autenticação como se fosse autorização. A regra correta é: primeiro autenticar, depois autorizar.
+
+Na prática, isso significa que o fluxo esperado é:
+
+- `JwtAuthGuard` valida o token e popula o usuário autenticado.
+- `RolesGuard` verifica se o usuário autenticado possui o perfil necessário para a rota.
+- Se não houver token válido, a resposta deve ser `401`.
+- Se o token for válido, mas o perfil não tiver permissão, a resposta deve ser `403`.
+
+Essa separação mantém a semântica correta entre autenticação e autorização e deixa a arquitetura preparada para a Etapa 3 sem exigir reestruturação dos módulos já existentes.
+
+### 3.24 Ordem de execução no NestJS e impacto no sistema
+
+O fluxo garantido é:
+
+- `middlewares` primeiro;
+- `guards` em seguida;
+- `interceptors` antes e depois do handler;
+- `pipes` no momento de transformação dos dados de entrada;
+- `exception filters` ao final, quando uma exceção é lançada.
+
+Na prática, isso significa que o `TransformInterceptor` nunca executa antes do `JwtAuthGuard`, porque interceptors só entram em ação depois que os guards já liberaram a requisição. Portanto, a hipótese de “transformar a resposta antes de autenticar” não se aplica ao NestJS como está configurado no projeto. A autenticação sempre acontece primeiro, e só depois a resposta bem-sucedida pode ser transformada pelo interceptor.
+
+O mesmo vale para o `RolesGuard`: ele deve vir depois do `JwtAuthGuard` na cadeia de autorização. Se a ordem fosse invertida, o `RolesGuard` tentaria validar permissões sem `req.user` disponível, o que comprometeria a decisão correta entre `401` e `403`. Nesse cenário, uma rota poderia ser negada por falta de contexto, mesmo quando o problema real fosse apenas a ausência ou invalidez do token. Por isso, a sequência correta é primeiro autenticar, depois verificar perfil/permissão.
+
+Como resultado, o fluxo observado no SGCM está alinhado com o comportamento do NestJS e com a arquitetura definida no relatório: middlewares cuidam da entrada e do logging, guards protegem o acesso, interceptors padronizam respostas de sucesso e filters tratam exceções.
+
+### 3.25 Principais superfícies de ataque do SGCM
+
+Nesta etapa, as principais superfícies de ataque do SGCM estão concentradas nos pontos que recebem entrada externa ou expõem informações sensíveis do sistema. As áreas mais críticas são:
+
+- `POST /auth/login`: alvo natural de força bruta, enumeração de usuários e tentativa de credenciais reutilizadas.
+- `POST /auth/refresh`: ponto sensível porque manipula tokens de renovação, que podem ser reutilizados indevidamente se não forem invalidados corretamente.
+- `Authorization: Bearer <token>`: o JWT pode ser interceptado em trânsito se a comunicação não estiver protegida por HTTPS.
+- Endpoints protegidos por guarda: acesso indevido a recursos de outro usuário, tentativa de burlar autorização e exploração de perfis sem permissão.
+- Endpoints com query params e filtros: risco de abuso por entradas inválidas, tentativas de injeção lógica e exploração de validações incompletas.
+- Logs da aplicação: embora úteis para auditoria, podem se tornar superfície de vazamento se armazenarem dados sensíveis demais.
+
+As principais medidas de mitigação implementadas são:
+
+- `JwtAuthGuard` global, com exceção explícita apenas para rotas públicas, reduzindo o risco de endpoints esquecidos sem proteção.
+- `RolesGuard` executado depois da autenticação, garantindo que a autorização só ocorra com `req.user` já validado.
+- Mensagens genéricas para falhas de login, evitando enumeração de usuários por diferença de resposta.
+- Expiração e rotação de refresh token, reduzindo a janela de reutilização indevida.
+- `HttpExceptionFilter` em RFC 7807, padronizando respostas e evitando vazamento de detalhes internos em erros inesperados.
+- `ValidationPipe` com `whitelist` e `forbidNonWhitelisted`, bloqueando campos extras e reduzindo entrada malformada.
+- Logging middleware com método, URL, IP, status e duração, mas sem registrar corpo da requisição, senha ou dados clínicos sensíveis.
+
+Alguns riscos permanecem fora do escopo deste trabalho ou dependem de infraestrutura externa:
+
+- Proteção contra força bruta em nível de rede ou de infraestrutura, como rate limiting avançado, WAF ou bloqueio progressivo por IP.
+- Garantia de HTTPS/TLS, que depende da configuração do ambiente de deploy e não apenas do código da aplicação.
+- Monitoramento e correlação centralizada de logs em produção, que exigem stack de observabilidade externa.
+- Proteção física e administrativa do banco de dados e das chaves secretas de ambiente, que não podem ser resolvidas só no código da API.
+
+Com isso, o SGCM cobre as superfícies de ataque mais relevantes da aplicação nesta etapa, reduzindo riscos mais prováveis no fluxo de autenticação, autorização, validação e auditoria, sem assumir responsabilidades que pertencem à camada de infraestrutura.
+
+### 3.26 O que colocar no payload do token de acesso
+
+Decisão adotada: manter o payload no menor formato útil para autenticação e autorização. No SGCM, os campos utilizados são `sub`, `email`, `type` e `name`.
+
+- `sub`: identificador estável do usuário, usado como referência principal no backend.
+- `email`: útil para contexto da sessão e rastreabilidade básica.
+- `type`: necessário para autorização por perfil (ex.: `RolesGuard`).
+- `name`: útil para UX.
+
+
+Campos deliberadamente excluídos:
+
+- `password` e `refreshToken`: dados críticos, nunca devem ir no payload.
+- `isActive`: estado dinâmico, deve ser validado no backend.
+- dados clínicos ou pessoais sensíveis: ampliam risco de exposição.
+
+Trecho atual de geração do payload:
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+const payload: UserPayload = {
+  sub: user.id,
+  email: user.email,
+  name: user.name,
+  type: user.type,
+};
+```
+
+Modelo de payload:
+
+Arquivo: `src/modules/auth/models/user-payload.model.ts`
+
+```ts
+export interface UserPayload {
+  sub: number;
+  email: string;
+  name: string;
+  type: UserType;
+  iat?: number;
+  exp?: number;
+}
+```
+
+Observação arquitetural: atualmente, o campo `name` permanece no payload por utilidade de UX em alguns fluxos. Como evolução, caso o projeto adote política mais restritiva de minimização, ele pode ser removido e resolvido por consulta ao perfil após autenticação.
+
+### 3.27 Tempo de expiração dos tokens
+
+Não existe um valor universal. A decisão deve equilibrar segurança e usabilidade no contexto clínico.
+
+Valores adotados na implementação atual:
+
+- Access token: `1d`.
+- Refresh token: `7d`.
+
+Trechos de código:
+
+Arquivo: `src/app.module.ts`
+
+```ts
+JwtModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    secret: configService.get<string>('JWT_SECRET'),
+    signOptions: {
+      expiresIn: '1d',
+    },
+  }),
+  global: true,
+}),
+```
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+const refresh_token = this.jwtService.sign(payload, { expiresIn: '7d' });
+```
+
+Justificativa:
+
+- Access token mais curto reduz a janela de abuso em caso de interceptação.
+- Refresh token mais longo reduz atrito de login para uso contínuo.
+
+Recomendação para evolução da Etapa 2:
+
+- parametrizar os valores por variáveis de ambiente (`JWT_ACCESS_TOKEN_EXPIRES_IN` e `JWT_REFRESH_TOKEN_EXPIRES_IN`) para ajuste por ambiente sem alteração de código.
+
+### 3.28 Como armazenar o refresh token
+
+Decisão adotada: armazenar refresh token em hash no banco, nunca em texto puro.
+
+Trecho de código:
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+user.refreshToken = hashSync(refresh_token, 10);
+await this.usersService.saveRefreshToken(user.id, user.refreshToken);
+
+private validateRefreshToken(token: string, hash: string): boolean {
+  return compareSync(token, hash);
+}
+```
+
+Implicações de segurança:
+
+- Se armazenado em texto puro: comprometimento do banco permite reutilização imediata do refresh token.
+- Com hash: o valor armazenado não é reutilizável diretamente, reduzindo impacto de vazamento.
+
+Trade-off de implementação:
+
+- com hash, o endpoint `/auth/refresh` precisa comparar token recebido x hash (não igualdade direta), centralizando a verificação no `AuthService`.
 
 ---
 
