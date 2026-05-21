@@ -23,6 +23,7 @@ import {
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
+  private readonly isDevelopment = process.env.NODE_ENV !== 'production';
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -176,7 +177,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
       title: exception.title,
       status: exception.status,
       detail: exception.detail,
-      instance: exception.instance || request.path,
+      // ajustado instance para usar a URL original da requisição, garantindo que seja sempre preenchida
+      instance: exception.instance || request.originalUrl || request.path,
       method: request.method,
       timestamp,
       traceId,
@@ -200,7 +202,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       title: exception.title,
       status: exception.status,
       detail: exception.detail,
-      instance: exception.instance || request.path,
+      instance: exception.instance || request.originalUrl || request.path,
       method: request.method,
       timestamp,
       traceId,
@@ -227,7 +229,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status: HttpStatus.BAD_REQUEST,
       detail:
         'Um ou mais campos contêm valores inválidos. Verifique os detalhes.',
-      instance: request.path,
+      instance: request.originalUrl || request.path,
       method: request.method,
       timestamp,
       traceId,
@@ -258,11 +260,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
         type = 'https://sgcm.example.com/problems/not-found';
         break;
       case HttpStatus.UNAUTHORIZED:
-        title = 'Não autorizado';
+        title = 'Não autenticado';
         type = 'https://sgcm.example.com/problems/unauthorized';
         break;
       case HttpStatus.FORBIDDEN:
-        title = 'Acesso proibido';
+        title = 'Acesso negado';
         type = 'https://sgcm.example.com/problems/forbidden';
         break;
       case HttpStatus.CONFLICT:
@@ -281,7 +283,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
           : typeof errorResponse.message === 'string'
             ? errorResponse.message
             : exception.message,
-      instance: request.path,
+      instance: request.originalUrl || request.path,
       method: request.method,
       timestamp,
       traceId,
@@ -306,9 +308,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       type: 'https://sgcm.example.com/problems/internal-server-error',
       title: 'Erro interno do servidor',
       status: HttpStatus.INTERNAL_SERVER_ERROR,
-      detail:
-        'Ocorreu um erro inesperado. Por favor, tente novamente mais tarde.',
-      instance: request.path,
+      detail: this.isDevelopment
+        ? exception instanceof Error
+          ? exception.message || 'Erro inesperado durante a requisição.'
+          : 'Erro inesperado durante a requisição.'
+        : 'Ocorreu um erro inesperado. Por favor, tente novamente mais tarde.',
+      instance: request.originalUrl || request.path,
       method: request.method,
       timestamp,
       traceId,

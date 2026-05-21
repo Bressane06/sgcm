@@ -178,6 +178,33 @@ Campos padrão retornados em todas as respostas de erro:
 
 Com isso, o cliente da API recebe sempre um contrato consistente de erro, independentemente do ponto da aplicação onde a exceção foi lançada.
 
+#### 3.4.2 Revisão crítica do filtro da Etapa 1
+
+Ao revisar o filtro existente, foi confirmado que ele já interceptava os principais cenários da aplicação por meio de um `HttpExceptionFilter` global:
+
+- erros de validação do `ValidationPipe`, convertidos para `400` em formato RFC 7807;
+- `NotFoundException` e demais `HttpException` do Nest;
+- conflitos do TypeORM convertidos em `409`;
+- erros inesperados, convertidos em `500` com mensagem segura.
+
+Os pontos ajustados nesta etapa foram:
+
+- expansão explícita do tratamento de `UnauthorizedException` e `ForbiddenException` no contrato da aplicação;
+- padronização dos títulos de erro para `401` e `403`;
+- preenchimento consistente do campo `instance` com o caminho da requisição;
+- diferenciação entre ambiente de desenvolvimento e produção para erros inesperados, exibindo mais detalhe em desenvolvimento e mensagem genérica em produção.
+
+#### 3.4.3 Política de mensagens para autenticação e autorização
+
+Foi adotada uma política híbrida:
+
+- `401` de token ausente, expirado, inválido ou refresh token rejeitado recebem mensagens específicas, porque ajudam o cliente legítimo a corrigir a ação necessária sem expor dados sensíveis adicionais;
+- falhas de login por e-mail/senha usam mensagem genérica (`E-mail ou senha incorretos.`), para evitar enumeração de usuários;
+- acesso a recurso de outro usuário deve ser tratado com `403 Acesso negado`, com mensagem genérica de permissão;
+- se um usuário for inativado depois da emissão do token, a sessão passa a ser tratada como inválida e retorna `401`, em vez de expor detalhes sobre a conta.
+
+Essa decisão mantém o fluxo usável para quem está autenticado corretamente e reduz o risco de revelar informações úteis para ataques de enumeração ou análise de permissões.
+
 ### 3.5 Feature Doctors
 A feature **Doctors** tem relação íntima com **Users**: um doctor é, na prática, um user. Por isso, seus arquivos relacionados ficam dentro de `users`.
 

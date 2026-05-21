@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
 import { compareSync, hashSync } from 'bcrypt';
 import { UsersService } from '../users/services/users.service';
@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserPayload } from './models/user-payload.model';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { UserType } from '../users/enum/user-type.enum';
+import { UnauthorizedException } from '../../common/exceptions';
 
 @Injectable()
 export class AuthService {
@@ -45,12 +46,12 @@ export class AuthService {
       const user = await this.usersService.findOne(payload.sub);
 
       if (!user.refreshToken || !this.validateRefreshToken(refreshToken, user.refreshToken)) {
-        throw new UnauthorizedException('Refresh token inválido ou expirado');
+        throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
       }
 
       return this.generateTokens(user);
     } catch (error) {
-      throw new UnauthorizedException('Refresh token inválido ou expirado');
+      throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
     }
   }
 
@@ -69,7 +70,7 @@ export class AuthService {
   async validateUser(email: string, pass: string, type: UserType | undefined): Promise<User | null> {
     const user = await this.usersService.findByEmail(email, true);
 
-    if (user) {
+    if (user && user.isActive) {
       const isPasswordValid = compareSync(pass, user.password);
       if (isPasswordValid && user.type === type) {
         const { password, ...result } = user;

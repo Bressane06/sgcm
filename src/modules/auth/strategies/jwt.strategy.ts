@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { UserPayload } from '../models/user-payload.model';
 import { UsersService } from '../../users/services/users.service';
+import { UnauthorizedException } from '../../../common/exceptions';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -19,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     try {
       return await this.usersService.findOne(payload.sub);
     } catch (e) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException('Sessão de autenticação inválida.');
     }
   }
 }
