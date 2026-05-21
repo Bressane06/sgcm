@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggingMiddleware } from './common/middlewares/logging.middleware';
+import { StringValue } from 'ms';
 
 @Module({
   imports: [
@@ -25,7 +26,8 @@ import { LoggingMiddleware } from './common/middlewares/logging.middleware';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: '1d',
+          expiresIn:
+            configService.get<StringValue>('JWT_ACCESS_TOKEN_EXPIRES_IN') ?? '1d',
         },
       }),
       global: true,
