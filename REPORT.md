@@ -570,6 +570,47 @@ Na prática, isso significa que o fluxo esperado é:
 
 Essa separação mantém a semântica correta entre autenticação e autorização e deixa a arquitetura preparada para a Etapa 3 sem exigir reestruturação dos módulos já existentes.
 
+#### 3.23.1 Verificação de usuário ativo a cada requisição
+
+Decisão adotada no SGCM: consultar o banco em cada requisição autenticada para validar se o usuário ainda existe e está ativo.
+
+Justificativa do trade-off:
+
+- ganho de consistência e segurança: se o usuário for inativado depois da emissão do token, a sessão deixa de ser aceita imediatamente;
+- custo de performance: cada requisição protegida adiciona uma leitura no banco.
+
+Trecho atual da estratégia JWT:
+
+Arquivo: `src/modules/auth/strategies/jwt.strategy.ts`
+
+```ts
+async validate(payload: UserPayload): Promise<Awaited<ReturnType<UsersService['findOne']>>> {
+  try {
+    return await this.usersService.findOne(payload.sub);
+  } catch (e) {
+    throw new UnauthorizedException('Sessão de autenticação inválida.');
+  }
+}
+```
+
+Validação de ativo no serviço de usuários:
+
+Arquivo: `src/modules/users/services/users.service.ts`
+
+```ts
+async findOne(id: number): Promise<User> {
+  const user = await this.userRepository.findOne({
+    where: { id, isActive: true },
+  });
+  if (!user) throw new NotFoundException('Usuário', id);
+  return user;
+}
+```
+
+Limitação reconhecida:
+
+- essa decisão aumenta custo por requisição autenticada, mas foi priorizada nesta etapa para evitar janela de acesso indevido por token ainda válido de usuário inativado.
+
 ### 3.24 Ordem de execução no NestJS e impacto no sistema
 
 O fluxo garantido é:
@@ -666,7 +707,7 @@ Observação arquitetural: atualmente, o campo `name` permanece no payload por u
 
 Não existe um valor universal. A decisão deve equilibrar segurança e usabilidade no contexto clínico.
 
-Valores adotados na implementação atual:
+Valores padrão adotados na implementação atual:
 
 - Access token: `1d`.
 - Refresh token: `7d`.
@@ -681,7 +722,8 @@ JwtModule.registerAsync({
   useFactory: (configService: ConfigService) => ({
     secret: configService.get<string>('JWT_SECRET'),
     signOptions: {
-      expiresIn: '1d',
+      expiresIn:
+        configService.get<StringValue>('JWT_ACCESS_TOKEN_EXPIRES_IN') ?? '1d',
     },
   }),
   global: true,
@@ -691,7 +733,17 @@ JwtModule.registerAsync({
 Arquivo: `src/modules/auth/auth.service.ts`
 
 ```ts
-const refresh_token = this.jwtService.sign(payload, { expiresIn: '7d' });
+const refresh_token = this.jwtService.sign(payload, {
+  expiresIn:
+    this.configService.get<StringValue>('JWT_REFRESH_TOKEN_EXPIRES_IN') ?? '7d',
+});
+```
+
+Arquivo: `.env.example`
+
+```dotenv
+JWT_ACCESS_TOKEN_EXPIRES_IN=1d
+JWT_REFRESH_TOKEN_EXPIRES_IN=7d
 ```
 
 Justificativa:
@@ -699,9 +751,9 @@ Justificativa:
 - Access token mais curto reduz a janela de abuso em caso de interceptação.
 - Refresh token mais longo reduz atrito de login para uso contínuo.
 
-Recomendação para evolução da Etapa 2:
+Implementação aplicada na Etapa 2:
 
-- parametrizar os valores por variáveis de ambiente (`JWT_ACCESS_TOKEN_EXPIRES_IN` e `JWT_REFRESH_TOKEN_EXPIRES_IN`) para ajuste por ambiente sem alteração de código.
+- os valores foram parametrizados por variáveis de ambiente (`JWT_ACCESS_TOKEN_EXPIRES_IN` e `JWT_REFRESH_TOKEN_EXPIRES_IN`), permitindo ajuste por ambiente sem alteração de código.
 
 ### 3.28 Como armazenar o refresh token
 
@@ -728,6 +780,69 @@ Implicações de segurança:
 Trade-off de implementação:
 
 - com hash, o endpoint `/auth/refresh` precisa comparar token recebido x hash (não igualdade direta), centralizando a verificação no `AuthService`.
+
+#### 3.28.1 Reuso de refresh token já utilizado (token replay)
+
+Decisão adotada no SGCM: quando um refresh token já utilizado (ou inválido) é apresentado novamente, a API retorna erro genérico de autenticação (`401`) e não força revogação global imediata de todas as sessões do usuário.
+
+Trecho atual:
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+if (!user.refreshToken || !this.validateRefreshToken(refreshToken, user.refreshToken)) {
+  throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
+}
+```
+
+Justificativa do trade-off:
+
+- segurança: evita aceitar reutilização de token antigo e mantém mensagem sem detalhes excessivos;
+- tolerância operacional: não derruba automaticamente todas as sessões ativas do usuário em cenários ambíguos (por exemplo, falha de rede após rotação);
+- simplicidade da etapa atual: comportamento direto e consistente com a política de erro `401` do módulo de autenticação.
+
+Limitações reconhecidas:
+
+- o sistema não diferencia com precisão, neste ponto, se houve ataque com token roubado ou apenas reenvio legítimo por instabilidade de rede;
+- por não aplicar revogação global automática, a resposta prioriza continuidade de sessão em outros dispositivos em vez da postura mais agressiva de contenção.
+
+Evolução possível:
+
+- implementar detecção de replay com política de revogação ampliada (ex.: limpar refresh token e exigir novo login em todos os dispositivos) quando o projeto priorizar segurança máxima para esse cenário.
+
+#### 3.28.2 Segurança do logout e janela de risco residual
+
+Decisão adotada no SGCM: o logout invalida o refresh token armazenado no banco, mas não revoga imediatamente o access token já emitido.
+
+Trecho atual:
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+async logout(userId: number): Promise<void> {
+  await this.usersService.clearRefreshToken(userId);
+}
+```
+
+Janela de risco real:
+
+- após o logout, um access token já comprometido pode continuar aceito até expirar;
+- com a configuração padrão atual (`JWT_ACCESS_TOKEN_EXPIRES_IN=1d`), essa janela pode chegar a até 24 horas no pior caso.
+
+Avaliação para o contexto clínico:
+
+- para a Etapa 2, a decisão foi considerada aceitável por simplicidade arquitetural e por estar alinhada ao escopo do projeto;
+- para um ambiente clínico em produção, essa janela é sensível e pode ser problemática em cenários como perda/roubo de celular de profissional de saúde com sessão ativa.
+
+Limitações reconhecidas:
+
+- logout não garante encerramento imediato de sessão em todos os dispositivos quando ainda há access token válido;
+- a contenção do risco depende diretamente de expiração curta do access token e de controles operacionais complementares.
+
+Evolução possível:
+
+- reduzir ainda mais o TTL do access token em produção;
+- adotar mecanismo de revogação de access token (denylist por `jti`/versão de sessão) para permitir invalidação imediata após logout ou incidente.
 
 ---
 

@@ -7,12 +7,15 @@ import { UserPayload } from './models/user-payload.model';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { UserType } from '../users/enum/user-type.enum';
 import { UnauthorizedException } from '../../common/exceptions';
+import { ConfigService } from '@nestjs/config';
+import { StringValue } from 'ms';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   private async generateTokens(user: User): Promise<AuthResponseDto> {
@@ -24,7 +27,10 @@ export class AuthService {
     };
 
     const access_token = this.jwtService.sign(payload);
-    const refresh_token = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const refresh_token = this.jwtService.sign(payload, {
+      expiresIn:
+        this.configService.get<StringValue>('JWT_REFRESH_TOKEN_EXPIRES_IN') ?? '7d',
+    });
 
     user.refreshToken = hashSync(refresh_token, 10);
     await this.usersService.saveRefreshToken(user.id, user.refreshToken);
