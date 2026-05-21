@@ -14,12 +14,14 @@ import { UsersService } from '../services/users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { FindUsersQueryDto } from '../dto/find-users-query.dto';
+import { IsPublic } from '../../../common/decorators/is-public.decorator';
 
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @IsPublic()
   @Post()
   @ApiOperation({ summary: 'Criar usuário' })
   async create(@Body() dto: CreateUserDto) {

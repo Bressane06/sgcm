@@ -24,12 +24,21 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('SGCM — Sistema de Gestão de Clínica Médica')
     .setDescription('API para gerenciamento de usuários, especialidades e agendamentos.')
-    .setVersion('1.0')
+    .setVersion('2.0')
     .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+
+  // Ordenando as tags para melhor organização na interface do Swagger UI
+  SwaggerModule.setup('api', app, document, {
+    swaggerOptions: {
+      tagsSorter: (a, b) => {
+        const order = ['Auth', 'Users', 'Doctors', 'Patients', 'Schedules', 'Specialties'];
+        return order.indexOf(a) - order.indexOf(b);
+      },
+    },
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }
