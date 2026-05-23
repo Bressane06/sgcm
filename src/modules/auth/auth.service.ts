@@ -73,17 +73,19 @@ export class AuthService {
     return compareSync(token, hash);
   }
 
-  async validateUser(email: string, pass: string, type: UserType | undefined): Promise<User | null> {
+  async validateUser(email: string, pass: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email, true);
 
-    if (user && user.isActive) {
-      const isPasswordValid = compareSync(pass, user.password);
-      if (isPasswordValid && user.type === type) {
-        const { password, ...result } = user;
-        return result as User;
-      }
+    if (!user || !user.isActive) {
+      return null;
     }
 
-    return null;
+    const isPasswordValid = compareSync(pass, user.password);
+
+    if (!isPasswordValid) {
+      return null;
+    }
+
+    return user;
   }
 }
