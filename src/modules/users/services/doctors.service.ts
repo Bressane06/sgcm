@@ -12,6 +12,9 @@ import { ValidationException } from '../../../common/exceptions/validation.excep
 import { UpdateSpecialtyDto } from '../../specialties/dto/update-specialty.dto';
 import { SchedulesService } from '../../schedules/services/schedules.service';
 import { FindSchedulesQueryDto } from '../../schedules/dto/find-schedules-query.dto';
+import type { UserPayload } from '../../auth/models/user-payload.model';
+import { ForbiddenException } from '../../../common/exceptions';
+import { UserType } from '../enum/user-type.enum';
 
 @Injectable()
 export class DoctorsService {
@@ -184,7 +187,17 @@ export class DoctorsService {
     return;
   }
 
-  findSchedules(id: number, query: FindSchedulesQueryDto) {
+  async findSchedules(
+    id: number,
+    query: FindSchedulesQueryDto,
+    currentUser: UserPayload,
+  ) {
+    if (currentUser.type === UserType.DOCTOR && currentUser.sub !== id) {
+      throw new ForbiddenException(
+        'Você não tem permissão para acessar agendamentos de outro médico.',
+      );
+    }
+
     return this.schedulesService.findByDoctor(id, query);
   }
 }
