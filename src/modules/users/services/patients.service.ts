@@ -77,6 +77,16 @@ export class PatientsService {
     currentUser: UserPayload,
   ) {
     this.assertCanAccessPatient(id, currentUser);
+
+    const patient = await this.patientRepository.findOne({
+      where: { user: { id, isActive: true } },
+      relations: { user: true },
+    });
+
+    if (!patient) {
+      throw new NotFoundException('Paciente', id);
+    }
+
     return this.schedulesService.findByPatient(id, query);
   }
 

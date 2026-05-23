@@ -198,6 +198,15 @@ export class DoctorsService {
       );
     }
 
+    const doctor = await this.doctorRepository.findOne({
+      where: { user: { id, isActive: true } },
+      relations: { user: true },
+    });
+
+    if (!doctor) {
+      throw new NotFoundException('Médico', id);
+    }
+
     return this.schedulesService.findByDoctor(id, query);
   }
 }
