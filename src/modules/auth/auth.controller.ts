@@ -17,12 +17,13 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
-import { LocalAuthGuard } from './guards/local-auth.guard';
+import { LocalAuthGuard } from '../../common/guards/local-auth.guard';
 import { AuthService } from './auth.service';
-import { IsPublic } from '../../common/decorators/is-public.decorator';
+import { Public } from '../../common/decorators/is-public.decorator';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
+import { UserPayload } from './models/user-payload.model';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -32,7 +33,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @UseGuards(LocalAuthGuard)
-  @IsPublic()
+  @Public()
   @ApiOperation({
     summary: 'Autenticar usuário com e-mail e senha',
     description: 'Retorna token de acesso e refresh token',
@@ -52,7 +53,7 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @IsPublic()
+  @Public()
   @ApiOperation({
     summary: 'Renovar token de acesso com refresh token',
     description: 'Invalida o refresh token usado e emite um novo',
@@ -65,7 +66,7 @@ export class AuthController {
     description: 'Refresh token inválido ou expirado',
   })
   refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refresh(dto.refresh_token);
+    return this.authService.refresh(dto.refreshToken);
   }
 
   @Get('me')
@@ -81,7 +82,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: 'Token JWT ausente, inválido ou expirado',
   })
-  me(@CurrentUser() user: User) {
+  me(@CurrentUser() user: UserPayload) {
     return this.authService.me(user);
   }
 
@@ -98,7 +99,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: 'Token JWT ausente, inválido ou expirado',
   })
-  logout(@CurrentUser() user: User) {
-    return this.authService.logout(user.id);
+  logout(@CurrentUser() user: UserPayload) {
+    return this.authService.logout(user.sub);
   }
 }
