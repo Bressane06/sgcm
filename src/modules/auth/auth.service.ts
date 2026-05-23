@@ -5,7 +5,6 @@ import { UsersService } from '../users/services/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserPayload } from './models/user-payload.model';
 import { AuthResponseDto } from './dto/auth-response.dto';
-import { UserType } from '../users/enum/user-type.enum';
 import { UnauthorizedException } from '../../common/exceptions';
 import { ConfigService } from '@nestjs/config';
 import { StringValue } from 'ms';
@@ -22,7 +21,6 @@ export class AuthService {
     const payload: UserPayload = {
       sub: user.id,
       email: user.email,
-      name: user.name,
       type: user.type,
     };
 
