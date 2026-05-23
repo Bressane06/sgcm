@@ -2,11 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Patient } from '../entities/patient.entity';
 import { Repository, Like } from 'typeorm';
-import { NotFoundException } from '../../../common/exceptions';
+import { ForbiddenException, NotFoundException } from '../../../common/exceptions';
 import { PaginatedResponse } from '../../../common/interfaces/paginated-response.interface';
 import { FindPatientsQueryDto } from '../dto/find-patients-query.dto';
 import { SchedulesService } from '../../schedules/services/schedules.service';
-import { FindSchedulesQueryDto } from '../../schedules/dto/find-schedules-query.dto';
+import type { UserPayload } from '../../auth/models/user-payload.model';
+import { UserType } from '../enum/user-type.enum';
+import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
 
 @Injectable()
 export class PatientsService {
@@ -69,7 +71,33 @@ export class PatientsService {
     };
   }
 
-  async findSchedules(id: number, query: FindSchedulesQueryDto) {
-    return await this.schedulesService.findByPatient(id, query);
+  async findSchedules(
+    id: number,
+    query: FindRelatedSchedulesQueryDto,
+    currentUser: UserPayload,
+  ) {
+    this.assertCanAccessPatient(id, currentUser);
+    return this.schedulesService.findByPatient(id, query);
+  }
+
+  // Controle de Acesso
+
+  private assertCanAccessPatient(patientUserId: number, currentUser: UserPayload): void {
+    if (currentUser.type === UserType.ADMIN) {
+      return;
+    }
+
+    if (currentUser.type === UserType.PATIENT && currentUser.sub === patientUserId) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      'Você não tem permissão para acessar dados de outro paciente.',
+    );
+  }
+
+  async findOneWithAccess(id: number, currentUser: UserPayload) {
+    this.assertCanAccessPatient(id, currentUser);
+    return this.findOne(id);
   }
 }
