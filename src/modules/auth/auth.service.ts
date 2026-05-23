@@ -24,19 +24,19 @@ export class AuthService {
       type: user.type,
     };
 
-    const access_token = this.jwtService.sign(payload);
-    const refresh_token = this.jwtService.sign(payload, {
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, {
       expiresIn:
         this.configService.get<StringValue>('JWT_REFRESH_TOKEN_EXPIRES_IN') ?? '7d',
     });
 
-    user.refreshToken = hashSync(refresh_token, 10);
+    user.refreshToken = hashSync(refreshToken, 10);
     await this.usersService.saveRefreshToken(user.id, user.refreshToken);
 
     return {
-      access_token,
-      refresh_token,
-      token_type: 'Bearer',
+      accessToken,
+      refreshToken,
+      tokenType: 'Bearer',
     };
   }
 

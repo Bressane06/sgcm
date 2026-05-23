@@ -65,7 +65,7 @@ export class AuthController {
     description: 'Refresh token inválido ou expirado',
   })
   refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refresh(dto.refresh_token);
+    return this.authService.refresh(dto.refreshToken);
   }
 
   @Get('me')
