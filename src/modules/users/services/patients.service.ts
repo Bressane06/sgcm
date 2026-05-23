@@ -52,18 +52,25 @@ export class PatientsService {
     };
   }
 
-  async findOne(id: number) {
+  private async findEntityByIdOrFail(id: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
-      where: { user: { id, isActive: true } },
+      where: { id },
       relations: { user: true },
     });
 
-    if (!patient) {
+    if (!patient || !patient.user.isActive) {
       throw new NotFoundException('Paciente', id);
     }
 
+    return patient;
+  }
+
+  async findOne(id: number) {
+    const patient = await this.findEntityByIdOrFail(id);
+
     return {
-      id: patient.user.id,
+      id: patient.id,
+      userId: patient.user.id,
       name: patient.user.name,
       email: patient.user.email,
       cpf: patient.cpf,
@@ -76,28 +83,23 @@ export class PatientsService {
     query: FindRelatedSchedulesQueryDto,
     currentUser: UserPayload,
   ) {
-    this.assertCanAccessPatient(id, currentUser);
+    const patient = await this.findEntityByIdOrFail(id);
+    this.assertCanAccessPatient(patient, currentUser);
 
-    const patient = await this.patientRepository.findOne({
-      where: { user: { id, isActive: true } },
-      relations: { user: true },
-    });
-
-    if (!patient) {
-      throw new NotFoundException('Paciente', id);
-    }
-
-    return this.schedulesService.findByPatient(id, query);
+    return this.schedulesService.findByPatient(patient.id, query);
   }
 
   // Controle de Acesso
 
-  private assertCanAccessPatient(patientUserId: number, currentUser: UserPayload): void {
+  private assertCanAccessPatient(patient: Patient, currentUser: UserPayload): void {
     if (currentUser.type === UserType.ADMIN) {
       return;
     }
 
-    if (currentUser.type === UserType.PATIENT && currentUser.sub === patientUserId) {
+    if (
+      currentUser.type === UserType.PATIENT &&
+      patient.user.id === currentUser.sub
+    ) {
       return;
     }
 
@@ -107,7 +109,16 @@ export class PatientsService {
   }
 
   async findOneWithAccess(id: number, currentUser: UserPayload) {
-    this.assertCanAccessPatient(id, currentUser);
-    return this.findOne(id);
+    const patient = await this.findEntityByIdOrFail(id);
+    this.assertCanAccessPatient(patient, currentUser);
+
+    return {
+      id: patient.id,
+      userId: patient.user.id,
+      name: patient.user.name,
+      email: patient.user.email,
+      cpf: patient.cpf,
+      birthDate: patient.birthDate,
+    };
   }
 }
