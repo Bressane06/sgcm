@@ -23,7 +23,7 @@ import { Public } from '../../common/decorators/is-public.decorator';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
-import { UserPayload } from './models/user-payload.model';
+import type { UserPayload } from './models/user-payload.model';
 
 @ApiTags('Auth')
 @Controller('auth')
