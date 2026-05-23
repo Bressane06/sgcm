@@ -8,7 +8,7 @@ import { UsersModule } from './modules/users/users.module';
 import { SpecialtiesModule } from './modules/specialties/specialties.module';
 import { SchedulesModule } from './modules/schedules/schedules.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggingMiddleware } from './common/middlewares/logging.middleware';
 import { StringValue } from 'ms';
@@ -27,7 +27,7 @@ import { StringValue } from 'ms';
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
           expiresIn:
-            configService.get<StringValue>('JWT_ACCESS_TOKEN_EXPIRES_IN') ?? '1d',
+            configService.get<StringValue>('JWT_EXPIRES_IN') ?? '1d',
         },
       }),
       global: true,

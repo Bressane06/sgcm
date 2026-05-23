@@ -24,10 +24,12 @@ export class AuthService {
       type: user.type,
     };
 
-    const accessToken = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get<StringValue>('JWT_EXPIRES_IN') ?? '15m',
+    });
     const refreshToken = this.jwtService.sign(payload, {
       expiresIn:
-        this.configService.get<StringValue>('JWT_REFRESH_TOKEN_EXPIRES_IN') ?? '7d',
+        this.configService.get<StringValue>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
     });
 
     user.refreshToken = hashSync(refreshToken, 10);
@@ -59,8 +61,8 @@ export class AuthService {
     }
   }
 
-  async me(user: User): Promise<User> {
-    return user;
+  async me(user: UserPayload): Promise<User> {
+    return this.usersService.findOne(user.sub);
   }
 
   async logout(userId: number): Promise<void> {

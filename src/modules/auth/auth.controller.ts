@@ -17,12 +17,13 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
-import { LocalAuthGuard } from './guards/local-auth.guard';
+import { LocalAuthGuard } from '../../common/guards/local-auth.guard';
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/is-public.decorator';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
+import { UserPayload } from './models/user-payload.model';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -81,7 +82,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: 'Token JWT ausente, inválido ou expirado',
   })
-  me(@CurrentUser() user: User) {
+  me(@CurrentUser() user: UserPayload) {
     return this.authService.me(user);
   }
 
@@ -98,7 +99,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: 'Token JWT ausente, inválido ou expirado',
   })
-  logout(@CurrentUser() user: User) {
-    return this.authService.logout(user.id);
+  logout(@CurrentUser() user: UserPayload) {
+    return this.authService.logout(user.sub);
   }
 }
