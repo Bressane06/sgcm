@@ -19,7 +19,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthService } from './auth.service';
-import { IsPublic } from '../../common/decorators/is-public.decorator';
+import { Public } from '../../common/decorators/is-public.decorator';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
@@ -32,7 +32,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @UseGuards(LocalAuthGuard)
-  @IsPublic()
+  @Public()
   @ApiOperation({
     summary: 'Autenticar usuário com e-mail e senha',
     description: 'Retorna token de acesso e refresh token',
@@ -52,7 +52,7 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @IsPublic()
+  @Public()
   @ApiOperation({
     summary: 'Renovar token de acesso com refresh token',
     description: 'Invalida o refresh token usado e emite um novo',
