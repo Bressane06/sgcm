@@ -24,6 +24,8 @@
 
 ## 3 - DECISÕES TÉCNICAS
 
+## ETAPA 1
+
 ### 3.1 Estratégia de Herança: Por que escolhemos JTI
 
 O modelo de usuários possui três subtipos — `Admin`, `Doctor` e `Patient` — cada um com atributos comuns (nome, e-mail, senha, tipo) e atributos específicos (`accessLevel`, `crm`, `cpf`/`birthDate`). Era necessário escolher uma estratégia de herança que equilibrasse normalização do schema e performance.
@@ -177,6 +179,33 @@ Campos padrão retornados em todas as respostas de erro:
 - `traceId`
 
 Com isso, o cliente da API recebe sempre um contrato consistente de erro, independentemente do ponto da aplicação onde a exceção foi lançada.
+
+#### 3.4.2 Revisão crítica do filtro da Etapa 1
+
+Ao revisar o filtro existente, foi confirmado que ele já interceptava os principais cenários da aplicação por meio de um `HttpExceptionFilter` global:
+
+- erros de validação do `ValidationPipe`, convertidos para `400` em formato RFC 7807;
+- `NotFoundException` e demais `HttpException` do Nest;
+- conflitos do TypeORM convertidos em `409`;
+- erros inesperados, convertidos em `500` com mensagem segura.
+
+Os pontos ajustados nesta etapa foram:
+
+- expansão explícita do tratamento de `UnauthorizedException` e `ForbiddenException` no contrato da aplicação;
+- padronização dos títulos de erro para `401` e `403`;
+- preenchimento consistente do campo `instance` com o caminho da requisição;
+- diferenciação entre ambiente de desenvolvimento e produção para erros inesperados, exibindo mais detalhe em desenvolvimento e mensagem genérica em produção.
+
+#### 3.4.3 Política de mensagens para autenticação e autorização
+
+Foi adotada uma política híbrida:
+
+- `401` de token ausente, expirado, inválido ou refresh token rejeitado recebem mensagens específicas, porque ajudam o cliente legítimo a corrigir a ação necessária sem expor dados sensíveis adicionais;
+- falhas de login por e-mail/senha usam mensagem genérica (`E-mail ou senha incorretos.`), para evitar enumeração de usuários;
+- acesso a recurso de outro usuário deve ser tratado com `403 Acesso negado`, com mensagem genérica de permissão;
+- se um usuário for inativado depois da emissão do token, a sessão passa a ser tratada como inválida e retorna `401`, em vez de expor detalhes sobre a conta.
+
+Essa decisão mantém o fluxo usável para quem está autenticado corretamente e reduz o risco de revelar informações úteis para ataques de enumeração ou análise de permissões.
 
 ### 3.5 Feature Doctors
 A feature **Doctors** tem relação íntima com **Users**: um doctor é, na prática, um user. Por isso, seus arquivos relacionados ficam dentro de `users`.
@@ -431,7 +460,15 @@ Justificativa:
 - Evita crescimento de complexidade no service principal de usuários.
 - Facilita manutenção do fluxo de criação por perfil em um único ponto.
 
+## ETAPA 2
 
+### 3.20 Uso de interfaces e utils para paginação
+
+Nessa etapa, a separação em `interfaces` e `utils` foi adotada para tornar o contrato de paginação mais explícito, reutilizável e desacoplado da lógica do interceptor.
+
+As `interfaces` concentram exclusivamente a definição estrutural dos dados, em [paginated-response.interface.ts](src/common/interfaces/paginated-response.interface.ts) e [pagination-meta.interface.ts](src/common/interfaces/pagination-meta.interface.ts), mantendo a tipagem centralizada e reutilizável entre diferentes módulos da aplicação. Já a pasta `utils` reúne a função [is-paginated-response.util.ts](src/common/utils/is-paginated-response.util.ts), responsável por validar se o payload recebido corresponde a uma resposta paginada antes do processamento realizado pelo [TransformInterceptor](src/common/interceptors/transform.interceptor.ts).
+
+Essa abordagem reduz acoplamento, melhora a legibilidade do código e facilita manutenção futura, além de manter o interceptor focado apenas na orquestração e padronização das respostas HTTP.
 
 ---
 

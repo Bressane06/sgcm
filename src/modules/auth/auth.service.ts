@@ -1,17 +1,21 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
 import { compareSync, hashSync } from 'bcrypt';
 import { UsersService } from '../users/services/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { UserToken } from './models/user-token.model';
 import { UserPayload } from './models/user-payload.model';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { UserType } from '../users/enum/user-type.enum';
+import { UnauthorizedException } from '../../common/exceptions';
+import { ConfigService } from '@nestjs/config';
+import { StringValue } from 'ms';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   private async generateTokens(user: User): Promise<AuthResponseDto> {
@@ -23,7 +27,10 @@ export class AuthService {
     };
 
     const access_token = this.jwtService.sign(payload);
-    const refresh_token = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const refresh_token = this.jwtService.sign(payload, {
+      expiresIn:
+        this.configService.get<StringValue>('JWT_REFRESH_TOKEN_EXPIRES_IN') ?? '7d',
+    });
 
     user.refreshToken = hashSync(refresh_token, 10);
     await this.usersService.saveRefreshToken(user.id, user.refreshToken);
@@ -45,12 +52,12 @@ export class AuthService {
       const user = await this.usersService.findOne(payload.sub);
 
       if (!user.refreshToken || !this.validateRefreshToken(refreshToken, user.refreshToken)) {
-        throw new UnauthorizedException('Refresh token inválido ou expirado');
+        throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
       }
 
       return this.generateTokens(user);
     } catch (error) {
-      throw new UnauthorizedException('Refresh token inválido ou expirado');
+      throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
     }
   }
 
@@ -66,12 +73,12 @@ export class AuthService {
     return compareSync(token, hash);
   }
 
-  async validateUser(email: string, pass: string): Promise<User | null> {
+  async validateUser(email: string, pass: string, type: UserType | undefined): Promise<User | null> {
     const user = await this.usersService.findByEmail(email, true);
 
-    if (user) {
+    if (user && user.isActive) {
       const isPasswordValid = compareSync(pass, user.password);
-      if (isPasswordValid) {
+      if (isPasswordValid && user.type === type) {
         const { password, ...result } = user;
         return result as User;
       }

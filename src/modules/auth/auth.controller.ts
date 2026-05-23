@@ -46,6 +46,7 @@ export class AuthController {
     description: 'E-mail ou senha inválidos',
   })
   login(@Body() _dto: LoginDto, @CurrentUser() user: User) {
+    // note que o _dto serve para o swagger documentar os campos de entrada, mas o usuário autenticado já é injetado pelo LocalAuthGuard
     return this.authService.login(user);
   }
 

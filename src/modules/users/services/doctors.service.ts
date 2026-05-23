@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Doctor } from './../entities/doctor.entity';
 import { Brackets, Like, Repository } from 'typeorm';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
-import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
+import { PaginatedResponse } from '../../../common/interfaces/paginated-response.interface';
 import { NotFoundException } from '../../../common';
 import { Specialty } from '../../specialties/entities/specialty.entity';
 import { DoctorSpecialty } from '../../specialties/entities/doctor-specialty.entity';
@@ -27,7 +27,7 @@ export class DoctorsService {
 
   async findAll(
     query: FindDoctorsQueryDto,
-  ): Promise<PaginatedResponseDto<Doctor>> {
+  ): Promise<PaginatedResponse<Doctor>> {
     const { page, limit, sort, search } = query;
 
     const skip = (page - 1) * limit;
@@ -78,7 +78,7 @@ export class DoctorsService {
     };
   }
 
-  async findSpecialties( query: FindDoctorsQueryDto, id: number): Promise<PaginatedResponseDto<Specialty>> {
+  async findSpecialties( query: FindDoctorsQueryDto, id: number): Promise<PaginatedResponse<Specialty>> {
     const { page, limit, sort, search } = query;
 
     const skip = (page - 1) * limit;

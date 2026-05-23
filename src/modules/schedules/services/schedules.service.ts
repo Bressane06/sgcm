@@ -18,7 +18,7 @@ import { OnlineSchedule } from '../entities/online-schedule.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { ScheduleStatus } from '../enum/schedule-status.enum';
 import { ScheduleType } from '../enum/schedule-type.enum';
-import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
+import { PaginatedResponse } from '../../../common/interfaces/paginated-response.interface';
 import { ScheduleResponseDto } from '../dto/schedule-response.dto';
 
 
@@ -133,7 +133,7 @@ export class SchedulesService {
 
   async findAll(
     query: FindSchedulesQueryDto,
-  ): Promise<PaginatedResponseDto<ScheduleResponseDto>> {
+  ): Promise<PaginatedResponse<ScheduleResponseDto>> {
     const { page, limit, sort, doctorId, patientId, status, type, startDate, endDate } = query;
 
     const skip = (page - 1) * limit;
@@ -284,7 +284,7 @@ export class SchedulesService {
   async findByDoctor(
     doctorId: number,
     query: FindSchedulesQueryDto,
-  ): Promise<PaginatedResponseDto<ScheduleResponseDto>> {
+  ): Promise<PaginatedResponse<ScheduleResponseDto>> {
     await this.findDoctorOrFail(doctorId);
     return this.findAll({ ...query, doctorId });
   }
@@ -292,7 +292,7 @@ export class SchedulesService {
   async findByPatient(
     patientId: number,
     query: FindSchedulesQueryDto,
-  ): Promise<PaginatedResponseDto<ScheduleResponseDto>> {
+  ): Promise<PaginatedResponse<ScheduleResponseDto>> {
     await this.findPatientOrFail(patientId);
     return this.findAll({ ...query, patientId });
   }

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Patient } from '../entities/patient.entity';
 import { Repository, Like } from 'typeorm';
 import { NotFoundException } from '../../../common/exceptions';
-import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
+import { PaginatedResponse } from '../../../common/interfaces/paginated-response.interface';
 import { FindPatientsQueryDto } from '../dto/find-patients-query.dto';
 import { SchedulesService } from '../../schedules/services/schedules.service';
 import { FindSchedulesQueryDto } from '../../schedules/dto/find-schedules-query.dto';
@@ -18,7 +18,7 @@ export class PatientsService {
 
   async findAll(
     query: FindPatientsQueryDto,
-  ): Promise<PaginatedResponseDto<Patient>> {
+  ): Promise<PaginatedResponse<Patient>> {
     const { page, limit, sort, search } = query;
 
     const skip = (page - 1) * limit;

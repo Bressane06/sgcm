@@ -1,18 +1,22 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-local';
 
 import { AuthService } from '../auth.service';
 import { User } from '../../users/entities/user.entity';
+import { UserType } from '../../users/enum/user-type.enum';
+import { UnauthorizedException } from '../../../common/exceptions';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
-    super({ usernameField: 'email' });
+    super({ usernameField: 'email', passReqToCallback: true });
   }
 
-  async validate(email: string, password: string): Promise<User> {
-    const user = await this.authService.validateUser(email, password);
+  // quando passReqToCallback é true, o método validate recebe (req, username, password)
+  async validate(req: any, email: string, password: string): Promise<User> {
+    const type: UserType | undefined = req?.body?.type;
+    const user = await this.authService.validateUser(email, password, type);
     if (!user) {
       throw new UnauthorizedException('Email ou senha incorretos.');
     }
