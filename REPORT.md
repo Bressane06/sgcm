@@ -861,7 +861,7 @@ const refreshToken = this.jwtService.sign(payload, {
 Arquivo: `.env.example`
 
 ```dotenv
-JWT_EXPIRES_IN=1d
+JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 ```
 
@@ -903,6 +903,12 @@ Trade-off de implementação:
 #### 3.28.1 Reuso de refresh token já utilizado (token replay)
 
 Decisão adotada no SGCM: quando um refresh token já utilizado (ou inválido) é apresentado novamente, a API retorna erro genérico de autenticação (`401`) e não força revogação global imediata de todas as sessões do usuário.
+
+Na prática, o comportamento adotado é:
+
+- o token reapresentado é recusado;
+- nenhuma sessão adicional é derrubada automaticamente;
+- o cliente deve iniciar novo fluxo de autenticação para obter um refresh token válido.
 
 Trecho atual:
 
@@ -946,7 +952,7 @@ async logout(userId: number): Promise<void> {
 Janela de risco real:
 
 - após o logout, um access token já comprometido pode continuar aceito até expirar;
-- com a configuração padrão atual (`JWT_EXPIRES_IN=1d`), essa janela pode chegar a até 24 horas no pior caso.
+- com a configuração padrão atual (`JWT_EXPIRES_IN=15m`), essa janela é curta (ex.: ~15 minutos) e reduz a janela de risco; o refresh token cobre renovação de sessão.
 
 Avaliação para o contexto clínico:
 
@@ -1129,44 +1135,116 @@ Em resumo: o Swagger não deve mostrar apenas o payload cru do handler; ele deve
 
 ### 3.34 Controle de acesso por perfil
 
-Os endpoints foram protegidos utilizando `@Roles()`.
+A tabela abaixo apresenta, por endpoint, se o perfil `Patient`, `Doctor` ou `Admin` tem acesso (`Sim`) ou não (`Não`). Quando o acesso é permitido apenas ao próprio recurso (por exemplo, o paciente acessando apenas seus agendamentos), isso é indicado com `Sim*` (veja nota).
 
-Mapa completo adotado nesta etapa:
+| Endpoint | Patient | Doctor | Admin |
+|---|:---:|:---:|:---:|
+| POST /auth/login | Sim | Sim | Sim |
+| POST /auth/refresh | Sim | Sim | Sim |
+| GET /auth/me | Sim* | Sim* | Sim* |
+| POST /auth/logout | Sim* | Sim* | Sim* |
+| POST /users | Não | Não | Sim |
+| GET /users | Não | Não | Sim |
+| GET /users/{id} | Sim* | Sim | Sim |
+| PUT /users/{id} | Sim* | Sim | Sim |
+| DELETE /users/{id} | Não | Não | Sim |
+| GET /doctors | Sim | Sim | Sim |
+| GET /doctors/{id} | Sim | Sim | Sim |
+| GET /doctors/{id}/specialties | Sim | Sim | Sim |
+| POST /doctors/{id}/specialties | Não | Não | Sim |
+| DELETE /doctors/{id}/specialties/{specialtyId} | Não | Não | Sim |
+| GET /doctors/{id}/schedules | Não | Sim* | Sim |
+| GET /patients | Não | Não | Sim |
+| GET /patients/{id} | Sim* | Não | Sim |
+| GET /patients/{id}/schedules | Sim* | Não | Sim |
+| POST /specialties | Não | Não | Sim |
+| GET /specialties | Sim | Sim | Sim |
+| GET /specialties/{id} | Sim | Sim | Sim |
+| PUT /specialties/{id} | Não | Não | Sim |
+| DELETE /specialties/{id} | Não | Não | Sim |
+| GET /specialties/{id}/doctors | Sim | Sim | Sim |
+| POST /schedules | Sim* | Não | Sim |
+| GET /schedules | Não | Não | Sim |
+| GET /schedules/{id} | Sim* | Sim* | Sim |
+| PUT /schedules/{id} | Não | Não | Sim |
+| PATCH /schedules/{id}/status | Sim* | Não | Sim |
+| DELETE /schedules/{id} | Não | Não | Sim |
 
-| Endpoint | Perfis autorizados |
-|---|---|
-| POST /auth/login | Público |
-| POST /auth/refresh | Público |
-| GET /auth/me | Qualquer usuário autenticado |
-| POST /auth/logout | Qualquer usuário autenticado |
-| POST /users | ADMIN |
-| GET /users | ADMIN |
-| GET /users/:id | ADMIN, DOCTOR, PATIENT |
-| PUT /users/:id | ADMIN, DOCTOR, PATIENT |
-| DELETE /users/:id | ADMIN |
-| GET /doctors | ADMIN, DOCTOR, PATIENT |
-| GET /doctors/:id | ADMIN, DOCTOR, PATIENT |
-| GET /doctors/:id/specialties | ADMIN, DOCTOR, PATIENT |
-| POST /doctors/:id/specialties | ADMIN |
-| DELETE /doctors/:id/specialties/:specialtyId | ADMIN |
-| GET /doctors/:id/schedules | ADMIN, DOCTOR |
-| GET /patients | ADMIN |
-| GET /patients/:id | ADMIN, PATIENT |
-| GET /patients/:id/schedules | ADMIN, PATIENT |
-| POST /schedules | ADMIN, PATIENT |
-| GET /schedules | ADMIN |
-| GET /schedules/:id | ADMIN, DOCTOR, PATIENT |
-| PUT /schedules/:id | ADMIN |
-| PATCH /schedules/:id/status | ADMIN, PATIENT |
-| DELETE /schedules/:id | ADMIN |
-| POST /specialties | ADMIN |
-| GET /specialties | ADMIN, DOCTOR, PATIENT |
-| GET /specialties/:id | ADMIN, DOCTOR, PATIENT |
-| PUT /specialties/:id | ADMIN |
-| DELETE /specialties/:id | ADMIN |
-| GET /specialties/:id/doctors | ADMIN, DOCTOR, PATIENT |
+Nota: `Sim*` indica que o acesso está restrito ao recurso próprio (por exemplo, `GET /users/{id}` com o parâmetro `id` igual ao `sub` do token, ou `GET /doctors/{id}/schedules` quando o `Doctor` acessa sua própria agenda). O controle por recurso é implementado nos services (comparando `currentUser.sub` com o proprietário do recurso).
 
-### 3.35 Esquema nomeado de Bearer Auth e guia rápido de uso
+### 3.35 Comportamento padrão do `RolesGuard` quando `@Roles()` não está presente
+
+Decisão adotada: quando um endpoint não possui `@Roles()`, o `RolesGuard` permite a requisição desde que ela já tenha passado pelo `JwtAuthGuard` global. Ou seja, a ausência de `@Roles()` não bloqueia o acesso por perfil; ela significa apenas que qualquer usuário autenticado pode acessar a rota.
+
+Essa escolha foi mantida de forma consistente porque o SGCM já adota o padrão `opt-out` para autenticação: tudo é protegido por padrão e apenas rotas explícitas com `@Public()` ficam abertas. Nesse contexto, usar um `RolesGuard` que bloqueasse por padrão quando `@Roles()` estivesse ausente criaria uma segunda camada de bloqueio implícita e aumentaria o risco de quebrar rotas válidas que dependem apenas de autenticação.
+
+Justificativa prática:
+
+- reduz atrito para endpoints que precisam apenas de usuário autenticado, sem impor um papel específico;
+- evita exigir `@Roles()` em rotas públicas autenticadas, como `GET /auth/me` e `POST /auth/logout`;
+- mantém o comportamento previsível para a Etapa 3, porque o padrão continua sendo: rotas protegidas por autenticação global e, quando necessário, refinadas por perfil com `@Roles()`.
+
+### 3.36 `@CurrentUser()` retorna o payload do JWT
+
+Decisão adotada: o decorator `@CurrentUser()` retorna diretamente o payload do JWT disponível em `request.user`, e não o `User` completo carregado do banco.
+
+Trecho atual:
+
+Arquivo: [src/common/decorators/current-user.decorator.ts](src/common/decorators/current-user.decorator.ts)
+
+```ts
+export const CurrentUser = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): UserPayload => {
+    const request = ctx.switchToHttp().getRequest();
+    return request.user as UserPayload;
+  },
+);
+```
+
+Justificativa:
+
+- o payload já contém `sub` e `type`, que são suficientes para a maior parte das verificações de autorização;
+- evita consulta extra ao banco em cada requisição apenas para extrair dados que já estão no token;
+- mantém `@CurrentUser()` leve e previsível para controllers e services.
+
+Quando o `User` completo é necessário, o código busca o usuário no banco explicitamente, por exemplo em `AuthService.me()` ou nos services que precisam validar estado atual (`isActive`) e relacionamento com o recurso.
+
+Limitação reconhecida:
+
+- `@CurrentUser()` não deve ser usado para decisões que dependem de estado dinâmico do banco, como `isActive`; nesses casos, o service precisa consultar o repositório.
+
+### 3.37 Controle por recurso
+
+O controle por recurso é aplicado apenas quando um usuário autenticado poderia tentar acessar dados de outro usuário do mesmo perfil. Nessas rotas, o service verifica o dono do recurso comparando o identificador do usuário autenticado (`currentUser.sub`) com o proprietário real do recurso no banco.
+
+Regra de negócio adotada para `Admin`:
+
+- `Admin` ignora o controle por recurso e acessa o recurso independentemente de propriedade.
+
+Lista completa de endpoints com controle por recurso:
+
+| Endpoint | Dono do recurso | Regra implementada |
+|---|---|---|
+| GET /users/{id} | Usuário do parâmetro `{id}` | `Admin` acessa tudo; `Doctor` e `Patient` só acessam se `currentUser.sub === id`. |
+| PUT /users/{id} | Usuário do parâmetro `{id}` | `Admin` acessa tudo; `Doctor` e `Patient` só atualizam se `currentUser.sub === id`. |
+| GET /doctors/{id}/schedules | Médico do parâmetro `{id}` | `Admin` acessa tudo; `Doctor` só acessa se o `doctor.user.id` for o próprio `sub`. `Patient` não tem acesso. |
+| GET /patients/{id} | Paciente do parâmetro `{id}` | `Admin` acessa tudo; `Patient` só acessa se `patient.user.id === currentUser.sub`. `Doctor` não tem acesso por recurso. |
+| GET /patients/{id}/schedules | Paciente do parâmetro `{id}` | `Admin` acessa tudo; `Patient` só acessa se `patient.user.id === currentUser.sub`. `Doctor` não tem acesso por recurso. |
+| POST /schedules | Paciente indicado no payload (`patientId`) | `Admin` pode criar para qualquer paciente; `Patient` só pode criar para si mesmo (`patientId === currentUser.sub`). |
+| GET /schedules/{id} | Agendamento `{id}` | `Admin` acessa tudo; `Doctor` só acessa se `schedule.doctor.user.id === currentUser.sub`; `Patient` só acessa se `schedule.patient.user.id === currentUser.sub`. |
+| PATCH /schedules/{id}/status | Agendamento `{id}` | `Admin` pode alterar qualquer agendamento; `Patient` só pode cancelar o próprio agendamento (`schedule.patient.user.id === currentUser.sub`) e apenas para `CANCELLED`. |
+
+Implementação nos services:
+
+- `UsersService.assertCanAccessUser()` e `UsersService.assertCanUpdateUser()` comparam `currentUser.sub` com o `id` alvo e liberam `Admin`.
+- `PatientsService.assertCanAccessPatient()` libera `Admin` e permite `Patient` apenas quando o `user.id` do paciente é o próprio `sub`.
+- `DoctorsService.findSchedules()` libera `Admin` e permite `Doctor` apenas quando o `doctor.user.id` é o próprio `sub`.
+- `SchedulesService.assertCanAccessSchedule()` libera `Admin` e valida `doctor.user.id` ou `patient.user.id` conforme o perfil.
+- `SchedulesService.updateStatus()` restringe o cancelamento pelo paciente ao próprio agendamento.
+
+Essa separação mantém o controle por perfil no controller e o controle por recurso no service, evitando duplicação de regra e reduzindo o risco de exposição acidental de dados de outro usuário.
+
+### 3.38 Esquema nomeado de Bearer Auth e guia rápido de uso
 
 Decisão adotada: o Swagger passou a registrar o esquema de autenticação com nome explícito, `access-token`, para garantir que o botão `Authorize` e os decorators dos controllers apontem para o mesmo esquema.
 
@@ -1220,7 +1298,7 @@ Decisão de usabilidade:
 - o usuário entende onde fazer login, onde colar o token e quais rotas são públicas;
 - a referência ao esquema nomeado evita falhas silenciosas em que o token é inserido no Swagger, mas não chega aos endpoints protegidos.
 
-### 3.36 Decorators reutilizáveis para envelope e erros de autenticação
+### 3.39 Decorators reutilizáveis para envelope e erros de autenticação
 
 Decisão adotada: para reduzir repetição e manter a documentação consistente, o projeto passou a usar decorators compostos para duas necessidades recorrentes:
 
@@ -1312,7 +1390,7 @@ Critério adotado:
 - o helper `ApiAuthResponses` é usado nos endpoints protegidos para evitar repetição dos mesmos exemplos de `401` e `403`;
 - a documentação fica consistente sem obrigar cada controller a reescrever manualmente o mesmo schema.
 
-### 3.34 Granularidade dos erros documentados
+### 3.40 Granularidade dos erros documentados
 
 Decisão adotada: a documentação Swagger deve ser **por endpoint**, e não apenas por status code genérico, sempre que o significado do erro mudar conforme a rota.
 
@@ -1346,6 +1424,8 @@ Com isso, o desenvolvedor que integra com a API consegue entender o que corrigir
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
+### Dificuldades encontradas etapa 1
+
 - Dificuldades:
   - Implementar manualmente a estratégia JTI no TypeORM devido à falta de suporte nativo.
   - Definir validações condicionais dos DTOs sem criar múltiplos contratos redundantes.
@@ -1358,6 +1438,17 @@ Com isso, o desenvolvedor que integra com a API consegue entender o que corrigir
   - Importância de contratos de API bem documentados (Swagger) e exemplos claros para consumidores.
   - Vantagem de diagramas (PlantUML) para alinhar modelagem de domínio com a equipe.
 
+### Dificuldades encontradas etapa 2
+
+As principais dificuldades da etapa foram:
+
+- padronização entre `User.id`, `Doctor.id` e `Patient.id`;
+- separação entre autorização por perfil e autorização por recurso;
+- distinção correta entre erros 401 e 403;
+- adaptação dos endpoints existentes da Etapa 1 para o novo modelo de autenticação;
+- atualização consistente do Swagger após introdução do Transform Interceptor.
+
+A principal solução adotada foi centralizar validações de acesso dentro dos services e manter os controllers responsáveis apenas pela orquestração das requisições.
 ## Conclusão
 
 Nesta primeira etapa, o objetivo é construir a base funcional do SGCM — modelando o domínio de uma clínica médica, implementando as operações essenciais e organizando o código de forma que o projeto possa evoluir com consistência nas etapas seguintes.
@@ -1430,6 +1521,12 @@ Decisões adotadas:
 - `email` foi incluído para facilitar rastreabilidade e debugging;
 - `type` foi incluído para permitir autorização sem necessidade de consultas adicionais ao banco;
 - informações sensíveis como senha, refresh token e dados específicos de perfis não foram incluídas.
+
+Justificativa crítica sobre `email` no payload:
+
+- Risco: o payload do JWT é codificado, não criptografado — qualquer pessoa com o token pode decodificá-lo e ler o `email`. Isso torna o `email` um dado de identificação (PII) exposto no cliente e em logs de transporte quando o token é visível.
+- Benefício: ter `email` no token facilita debugging e algumas rotinas de auditoria sem ler o banco de dados. No entanto, quase todas as autorizações e verificações internas do sistema podem ser feitas usando apenas `sub` (identificador) e `type` (perfil).
+- Recomendação do grupo: evitar incluir `email` no payload salvo necessidade operacional clara e justificada (ex.: integração externa que só dispõe do token e precisa do email). Por padrão, manter apenas `sub` e `type` no token; quando for necessário o email, buscar no backend via `sub`.
 
 A estratégia adotada privilegia segurança e redução do tamanho do token.
 
@@ -1747,14 +1844,3 @@ Para autenticar:
 
 ---
 
-# Dificuldades encontradas
-
-As principais dificuldades da etapa foram:
-
-- padronização entre `User.id`, `Doctor.id` e `Patient.id`;
-- separação entre autorização por perfil e autorização por recurso;
-- distinção correta entre erros 401 e 403;
-- adaptação dos endpoints existentes da Etapa 1 para o novo modelo de autenticação;
-- atualização consistente do Swagger após introdução do Transform Interceptor.
-
-A principal solução adotada foi centralizar validações de acesso dentro dos services e manter os controllers responsáveis apenas pela orquestração das requisições.
