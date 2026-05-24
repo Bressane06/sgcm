@@ -1,16 +1,20 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { PatientsService } from '../services/patients.service';
 import { FindPatientsQueryDto } from '../dto/find-patients-query.dto';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import type { UserPayload } from '../../auth/models/user-payload.model';
 import { UserType } from '../enum/user-type.enum';
+import { ApiAuthResponses } from '../../../common/swagger';
 
 @ApiTags('Patients')
 @Controller('patients')
-@ApiBearerAuth()
+@ApiAuthResponses({
+  instance: '/patients',
+  unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+})
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 

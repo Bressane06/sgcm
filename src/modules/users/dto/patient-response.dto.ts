@@ -9,6 +9,10 @@ export class PatientResponseDto {
 
   @Expose()
   @ApiProperty()
+  userId!: number;
+
+  @Expose()
+  @ApiProperty()
   name!: string;
 
   @Expose()

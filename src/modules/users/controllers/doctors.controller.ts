@@ -9,7 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { DoctorsService } from '../services/doctors.service';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
 import { UpdateSpecialtyDto } from '../../specialties/dto/update-specialty.dto';
 import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
@@ -17,10 +17,14 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import type { UserPayload } from '../../auth/models/user-payload.model';
 import { UserType } from '../enum/user-type.enum';
+import { ApiAuthResponses } from '../../../common/swagger';
 
 @ApiTags('Doctors')
 @Controller('doctors')
-@ApiBearerAuth()
+@ApiAuthResponses({
+  instance: '/doctors',
+  unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+})
 export class DoctorsController {
   constructor(private readonly doctorsService: DoctorsService) {}
 

@@ -10,7 +10,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { FindSchedulesQueryDto } from './dto/find-schedules-query.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
@@ -20,10 +20,14 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { UserPayload } from '../auth/models/user-payload.model';
 import { UserType } from '../users/enum/user-type.enum';
+import { ApiAuthResponses } from '../../common/swagger';
 
 @ApiTags('Schedules')
 @Controller('schedules')
-@ApiBearerAuth()
+@ApiAuthResponses({
+  instance: '/schedules',
+  unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+})
 export class SchedulesController {
   constructor(private readonly schedulesService: SchedulesService) {}
 

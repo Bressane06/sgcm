@@ -9,7 +9,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UsersService } from '../services/users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -18,10 +18,14 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserType } from '../enum/user-type.enum';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { UserPayload } from '../../auth/models/user-payload.model';
+import { ApiAuthResponses } from '../../../common/swagger';
 
 @ApiTags('Users')
 @Controller('users')
-@ApiBearerAuth()
+@ApiAuthResponses({
+  instance: '/users',
+  unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+})
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
