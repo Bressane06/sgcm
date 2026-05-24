@@ -12,13 +12,17 @@ import {
 import { SpecialtiesService } from './specialties.service';
 import { CreateSpecialtyDto } from './dto/create-specialty.dto';
 import { UpdateSpecialtyDto } from './dto/update-specialty.dto';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FindSpecialtiesQueryDto } from './dto/find-specialties-query.dto';
 import { FindDoctorsQueryDto } from '../users/dto/find-doctors-query.dto';
+import { ApiAuthResponses } from '../../common/swagger';
 
 @ApiTags('Specialties')
 @Controller('specialties')
-@ApiBearerAuth()
+@ApiAuthResponses({
+  instance: '/specialties',
+  unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+})
 export class SpecialtiesController {
   constructor(private readonly specialtiesService: SpecialtiesService) {}
 

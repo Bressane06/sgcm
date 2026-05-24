@@ -34,7 +34,7 @@
       <td>1</td>
     </tr>
     <tr>
-      <td>• Módulo de autenticação.</td>
+      <td>• Módulo de autenticação.<br>• Guardas e controle de acesso</td>
       <td>2</td>
     </tr>
     <tr>
@@ -662,7 +662,6 @@ flowchart LR
   AuthModule --> AuthService
 
   JwtAuthGuard --> PassportAuthGuard
-  JwtStrategy --> UsersService
   LocalStrategy --> AuthService
   AuthService --> UsersService
   UsersService --> TypeORM
@@ -688,46 +687,51 @@ Na prática, isso significa que o fluxo esperado é:
 
 Essa separação mantém a semântica correta entre autenticação e autorização e deixa a arquitetura preparada para a Etapa 3 sem exigir reestruturação dos módulos já existentes.
 
-#### 3.23.1 Verificação de usuário ativo a cada requisição
+#### 3.23.1 Verificação de usuário ativo no login
 
-Decisão adotada no SGCM: consultar o banco em cada requisição autenticada para validar se o usuário ainda existe e está ativo.
+Decisão adotada no SGCM: validar se o usuário está ativo no momento da autenticação, e não em toda requisição autenticada.
 
 Justificativa do trade-off:
 
-- ganho de consistência e segurança: se o usuário for inativado depois da emissão do token, a sessão deixa de ser aceita imediatamente;
-- custo de performance: cada requisição protegida adiciona uma leitura no banco.
+- o login falha imediatamente para usuários inativos;
+- a estratégia JWT continua leve, porque apenas confere e repassa o payload;
+- a validação de atividade fica concentrada no fluxo de autenticação e em serviços que precisam dessa regra.
+
+Trecho atual da autenticação:
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+async validateUser(email: string, pass: string): Promise<User | null> {
+  const user = await this.usersService.findByEmail(email, true);
+
+  if (!user || !user.isActive) {
+    return null;
+  }
+
+  const isPasswordValid = compareSync(pass, user.password);
+
+  if (!isPasswordValid) {
+    return null;
+  }
+
+  return user;
+}
+```
 
 Trecho atual da estratégia JWT:
 
 Arquivo: `src/modules/auth/strategies/jwt.strategy.ts`
 
 ```ts
-async validate(payload: UserPayload): Promise<Awaited<ReturnType<UsersService['findOne']>>> {
-  try {
-    return await this.usersService.findOne(payload.sub);
-  } catch (e) {
-    throw new UnauthorizedException('Sessão de autenticação inválida.');
-  }
-}
-```
-
-Validação de ativo no serviço de usuários:
-
-Arquivo: `src/modules/users/services/users.service.ts`
-
-```ts
-async findOne(id: number): Promise<User> {
-  const user = await this.userRepository.findOne({
-    where: { id, isActive: true },
-  });
-  if (!user) throw new NotFoundException('Usuário', id);
-  return user;
+validate(payload: UserPayload): UserPayload {
+  return payload;
 }
 ```
 
 Limitação reconhecida:
 
-- essa decisão aumenta custo por requisição autenticada, mas foi priorizada nesta etapa para evitar janela de acesso indevido por token ainda válido de usuário inativado.
+- um usuário inativado depois do login pode continuar com acesso até o access token expirar; essa limitação é tratada na seção de riscos residuais e foi aceita para manter a solução simples nesta etapa.
 
 ### 3.24 Ordem de execução no NestJS e impacto no sistema
 
@@ -777,17 +781,17 @@ Com isso, o SGCM cobre as superfícies de ataque mais relevantes da aplicação 
 
 ### 3.26 O que colocar no payload do token de acesso
 
-Decisão adotada: manter o payload no menor formato útil para autenticação e autorização. No SGCM, os campos utilizados são `sub`, `email`, `type` e `name`.
+Decisão adotada: manter o payload no menor formato útil para autenticação e autorização. No estado atual do SGCM, os campos utilizados são apenas `sub`, `email` e `type`.
 
 - `sub`: identificador estável do usuário, usado como referência principal no backend.
 - `email`: útil para contexto da sessão e rastreabilidade básica.
 - `type`: necessário para autorização por perfil (ex.: `RolesGuard`).
-- `name`: útil para UX.
 
 
 Campos deliberadamente excluídos:
 
 - `password` e `refreshToken`: dados críticos, nunca devem ir no payload.
+- `name`: o nome completo não é carregado no token; quando necessário, o backend consulta o usuário no serviço de usuários.
 - `isActive`: estado dinâmico, deve ser validado no backend.
 - dados clínicos ou pessoais sensíveis: ampliam risco de exposição.
 
@@ -799,7 +803,6 @@ Arquivo: `src/modules/auth/auth.service.ts`
 const payload: UserPayload = {
   sub: user.id,
   email: user.email,
-  name: user.name,
   type: user.type,
 };
 ```
@@ -812,14 +815,13 @@ Arquivo: `src/modules/auth/models/user-payload.model.ts`
 export interface UserPayload {
   sub: number;
   email: string;
-  name: string;
   type: UserType;
   iat?: number;
   exp?: number;
 }
 ```
 
-Observação arquitetural: atualmente, o campo `name` permanece no payload por utilidade de UX em alguns fluxos. Como evolução, caso o projeto adote política mais restritiva de minimização, ele pode ser removido e resolvido por consulta ao perfil após autenticação.
+Observação arquitetural: a decisão atual privilegia minimização do token e evita carregar dados desnecessários no JWT. Quando o sistema precisa do nome completo do usuário autenticado, ele faz a consulta ao backend a partir do identificador `sub`, por exemplo no fluxo de `GET /auth/me`.
 
 ### 3.27 Tempo de expiração dos tokens
 
@@ -840,8 +842,7 @@ JwtModule.registerAsync({
   useFactory: (configService: ConfigService) => ({
     secret: configService.get<string>('JWT_SECRET'),
     signOptions: {
-      expiresIn:
-        configService.get<StringValue>('JWT_ACCESS_TOKEN_EXPIRES_IN') ?? '1d',
+      expiresIn: configService.get<StringValue>('JWT_EXPIRES_IN') ?? '1d',
     },
   }),
   global: true,
@@ -851,17 +852,17 @@ JwtModule.registerAsync({
 Arquivo: `src/modules/auth/auth.service.ts`
 
 ```ts
-const refresh_token = this.jwtService.sign(payload, {
+const refreshToken = this.jwtService.sign(payload, {
   expiresIn:
-    this.configService.get<StringValue>('JWT_REFRESH_TOKEN_EXPIRES_IN') ?? '7d',
+    this.configService.get<StringValue>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
 });
 ```
 
 Arquivo: `.env.example`
 
 ```dotenv
-JWT_ACCESS_TOKEN_EXPIRES_IN=1d
-JWT_REFRESH_TOKEN_EXPIRES_IN=7d
+JWT_EXPIRES_IN=1d
+JWT_REFRESH_EXPIRES_IN=7d
 ```
 
 Justificativa:
@@ -871,7 +872,7 @@ Justificativa:
 
 Implementação aplicada na Etapa 2:
 
-- os valores foram parametrizados por variáveis de ambiente (`JWT_ACCESS_TOKEN_EXPIRES_IN` e `JWT_REFRESH_TOKEN_EXPIRES_IN`), permitindo ajuste por ambiente sem alteração de código.
+- os valores foram parametrizados por variáveis de ambiente (`JWT_EXPIRES_IN` e `JWT_REFRESH_EXPIRES_IN`), permitindo ajuste por ambiente sem alteração de código.
 
 ### 3.28 Como armazenar o refresh token
 
@@ -882,7 +883,7 @@ Trecho de código:
 Arquivo: `src/modules/auth/auth.service.ts`
 
 ```ts
-user.refreshToken = hashSync(refresh_token, 10);
+user.refreshToken = hashSync(refreshToken, 10);
 await this.usersService.saveRefreshToken(user.id, user.refreshToken);
 
 private validateRefreshToken(token: string, hash: string): boolean {
@@ -945,7 +946,7 @@ async logout(userId: number): Promise<void> {
 Janela de risco real:
 
 - após o logout, um access token já comprometido pode continuar aceito até expirar;
-- com a configuração padrão atual (`JWT_ACCESS_TOKEN_EXPIRES_IN=1d`), essa janela pode chegar a até 24 horas no pior caso.
+- com a configuração padrão atual (`JWT_EXPIRES_IN=1d`), essa janela pode chegar a até 24 horas no pior caso.
 
 Avaliação para o contexto clínico:
 
@@ -961,6 +962,346 @@ Evolução possível:
 
 - reduzir ainda mais o TTL do access token em produção;
 - adotar mecanismo de revogação de access token (denylist por `jti`/versão de sessão) para permitir invalidação imediata após logout ou incidente.
+
+### 3.29 Swagger
+
+A documentação Swagger foi atualizada para a versão 2.1 do sistema, com suporte completo a Bearer Authentication.
+
+O botão `Authorize` está funcional e passa a ser o ponto central para testar os endpoints protegidos com o access token emitido em `POST /auth/login`.
+
+Diretrizes aplicadas na documentação:
+
+- endpoints protegidos utilizam `@ApiBearerAuth('access-token')`;
+- endpoints públicos não exibem `@ApiBearerAuth()`;
+- endpoints de autenticação possuem exemplos completos e realistas;
+- respostas `401` e `403` foram documentadas nos endpoints que podem retornar esses erros;
+- os exemplos de resposta refletem o envelope produzido pelo `TransformInterceptor`.
+
+### 3.30 Credenciais de teste
+
+Os seguintes usuários foram documentados como base de teste para os endpoints protegidos:
+
+| Perfil | E-mail | Senha |
+|---|---|---|
+| Admin | admin@sgcm.com | Admin@123 |
+| Doctor | rafael.mendes@sgcm.com | Doctor@123 |
+| Patient | ana.silva@sgcm.com | Patient@123 |
+
+Fluxo de uso no Swagger:
+
+1. utilizar `POST /auth/login` com uma das credenciais acima;
+2. copiar o `accessToken` retornado;
+3. clicar em `Authorize` no Swagger;
+4. informar o token JWT para testar os endpoints protegidos.
+
+### 3.31 Dificuldades e aprendizados da Etapa 2
+
+As principais dificuldades desta etapa foram:
+
+- padronizar autenticação e autorização sem quebrar os endpoints da Etapa 1;
+- separar controle por perfil e controle por recurso sem duplicar regra;
+- manter o `JwtAuthGuard` global sem perder a clareza dos endpoints públicos;
+- atualizar Swagger, envelope de resposta e documentação de erros para refletir o novo fluxo autenticado;
+- alinhar a leitura do token com a validação de usuários ativos e a rotação do refresh token.
+
+Os principais aprendizados foram:
+
+- o controle de acesso fica mais consistente quando autenticação e autorização são separadas;
+- guardar o mínimo necessário no JWT reduz superfície de exposição;
+- o uso de `@Public()`, `@Roles()` e `@CurrentUser()` deixa o contrato de acesso visível no próprio controller;
+- mover as regras de acesso para services preserva a simplicidade dos controllers.
+
+### 3.32 Política de atualização da documentação Swagger
+
+Para evitar divergência entre código e documentação, o SGCM adota a política de que qualquer alteração de contrato HTTP deve vir acompanhada da atualização correspondente no Swagger no mesmo pull request.
+
+Essa regra vale para mudanças como:
+
+- inclusão, remoção ou renomeação de campos em DTOs;
+- alteração de exemplos de request e response;
+- mudança de status code ou mensagem documentada;
+- inclusão de novos endpoints ou alteração de comportamento de rotas existentes;
+- revisão de `@ApiBody()`, `@ApiOkResponse()`, `@ApiUnauthorizedResponse()`, `@ApiBearerAuth()` e descrições relacionadas.
+
+Implementação da política:
+
+- o autor da mudança deve atualizar a documentação no mesmo commit funcional que altera o endpoint ou DTO;
+- o revisor do pull request deve validar se o código e os decorators do Swagger estão coerentes com o comportamento real;
+- alterações sem atualização de Swagger não são aprovadas até que a documentação seja corrigida;
+- mudanças que afetam rotas protegidas devem também verificar se `@ApiBearerAuth()` está presente ou ausente conforme o tipo de endpoint.
+
+Verificação adotada no fluxo de revisão:
+
+- conferência do diff do endpoint e do DTO para garantir que exemplos, descrições e respostas refletem a implementação atual;
+- abertura do Swagger UI após a mudança para confirmar que o contrato renderizado corresponde ao código;
+- teste rápido do endpoint com credenciais válidas quando a mudança envolver autenticação ou autorização;
+- checagem final de que os exemplos de resposta continuam representando o envelope produzido pelo `TransformInterceptor`.
+
+Critério prático de aprovação:
+
+- um pull request só é considerado pronto quando a implementação e a documentação do Swagger forem revisadas juntas, evitando que a API entregue um comportamento diferente do que está documentado.
+
+Para que a revisão do relatório fique objetiva, toda justificativa sobre Swagger deve mostrar também o trecho de código correspondente e o arquivo de origem. Exemplo:
+
+Arquivo: [src/modules/auth/auth.controller.ts](src/modules/auth/auth.controller.ts)
+
+```ts
+@Post('login')
+@HttpCode(HttpStatus.OK)
+@UseGuards(LocalAuthGuard)
+@Public()
+@ApiWrappedResponse({
+  description: 'Autenticação bem-sucedida.',
+  model: AuthResponseDto,
+  status: HttpStatus.OK,
+})
+```
+
+Esse padrão também vale para os endpoints protegidos do módulo de usuários.
+
+Arquivo: [src/modules/users/controllers/users.controller.ts](src/modules/users/controllers/users.controller.ts)
+
+```ts
+@ApiTags('Users')
+@Controller('users')
+@ApiAuthResponses({
+  instance: '/users',
+  unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+})
+export class UsersController {
+  @Get(':id')
+  @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
+  @ApiOperation({ summary: 'Buscar usuário por ID' })
+  async findOne(
+    @Param('id') id: number,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.usersService.findOneWithAccess(Number(id), user);
+  }
+}
+```
+
+### 3.33 Swagger e envelope do Transform Interceptor
+
+Decisão adotada: o Swagger deve refletir o envelope real entregue pela API, incluindo `{ data, meta }`, porque é esse formato que o cliente recebe após a execução do `TransformInterceptor`.
+
+Essa escolha prioriza precisão contratual: o Swagger passa a documentar a resposta efetiva da aplicação, e não apenas o valor cru retornado pelo handler. O custo é maior manutenção, mas ele foi aceito porque a política da etapa já exige atualizar a documentação junto com o código.
+
+Arquivo: [src/common/interceptors/transform.interceptor.ts](src/common/interceptors/transform.interceptor.ts)
+
+```ts
+if (isPaginatedResponse(data)) {
+  return {
+    data: data.data,
+    meta: {
+      ...data.meta,
+      timestamp,
+      path,
+    },
+  };
+}
+
+return {
+  data,
+  meta: {
+    timestamp,
+    path,
+  },
+};
+```
+
+Arquivo: [src/main.ts](src/main.ts)
+
+```ts
+app.useGlobalInterceptors(
+  new TransformInterceptor(),
+  new ClassSerializerInterceptor(app.get(Reflector)),
+);
+```
+
+Consequência prática na documentação:
+
+- exemplos de `@ApiOkResponse()` devem mostrar o envelope `{ data, meta }`;
+- exemplos de listagem paginada devem mostrar `data` e `meta` com `timestamp` e `path`;
+- respostas sem corpo, como `204 No Content`, continuam sem envelope, porque o interceptor não transforma esses casos.
+
+Em resumo: o Swagger não deve mostrar apenas o payload cru do handler; ele deve representar o contrato real da resposta observada pelo consumidor da API.
+
+### 3.35 Esquema nomeado de Bearer Auth e guia rápido de uso
+
+Decisão adotada: o Swagger passou a registrar o esquema de autenticação com nome explícito, `access-token`, para garantir que o botão `Authorize` e os decorators dos controllers apontem para o mesmo esquema.
+
+Trecho atual da configuração global:
+
+Arquivo: [src/main.ts](src/main.ts)
+
+```ts
+const config = new DocumentBuilder()
+  .setTitle('SGCM — Sistema de Gestão de Clínica Médica')
+  .setDescription(`API para gerenciamento de usuários, especialidades e agendamentos.
+
+Como testar a API no Swagger:
+
+1. Faça login em POST /auth/login.
+2. Copie o accessToken retornado.
+3. Clique em Authorize no topo da página.
+4. Cole o token no esquema access-token.
+5. Use os endpoints protegidos normalmente; o Swagger enviará o cabeçalho Authorization: Bearer {token} automaticamente nas rotas marcadas com @ApiBearerAuth('access-token').
+`)
+  .setVersion('2.1')
+  .addBearerAuth(
+    {
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      description: 'Insira o token JWT obtido em POST /auth/login',
+    },
+    ACCESS_TOKEN_BEARER_SCHEME,
+  )
+  .build();
+```
+
+Trecho atual do controller autenticado:
+
+Arquivo: [src/modules/schedules/schedules.controller.ts](src/modules/schedules/schedules.controller.ts)
+
+```ts
+@ApiTags('Schedules')
+@Controller('schedules')
+@ApiAuthResponses({
+  instance: '/schedules',
+  unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+})
+export class SchedulesController {
+```
+
+Decisão de usabilidade:
+
+- a descrição do Swagger agora funciona como guia rápido para o desenvolvedor;
+- o usuário entende onde fazer login, onde colar o token e quais rotas são públicas;
+- a referência ao esquema nomeado evita falhas silenciosas em que o token é inserido no Swagger, mas não chega aos endpoints protegidos.
+
+### 3.36 Decorators reutilizáveis para envelope e erros de autenticação
+
+Decisão adotada: para reduzir repetição e manter a documentação consistente, o projeto passou a usar decorators compostos para duas necessidades recorrentes:
+
+- documentar o envelope `{ data, meta }` nas respostas de sucesso;
+- documentar `401` e `403` nos endpoints protegidos.
+
+Trecho do utilitário de Swagger:
+
+Arquivo: [src/common/swagger/swagger.decorators.ts](src/common/swagger/swagger.decorators.ts)
+
+```ts
+export const ACCESS_TOKEN_BEARER_SCHEME = 'access-token';
+
+export function ApiWrappedResponse(options: ApiWrappedResponseOptions) {
+  return applyDecorators(
+    ApiResponse({
+      status: options.status ?? HttpStatus.OK,
+      description: options.description,
+      schema: {
+        type: 'object',
+        properties: {
+          data: dataSchema,
+          meta: {
+            type: 'object',
+            properties: metaProperties,
+            example: metaExample,
+          },
+        },
+      },
+    }),
+  );
+}
+
+export function ApiAuthResponses(options: ApiAuthResponsesOptions) {
+  return applyDecorators(
+    ApiBearerAuth(ACCESS_TOKEN_BEARER_SCHEME),
+    ApiUnauthorizedResponse({
+      description: options.unauthorizedDescription ?? 'Token ausente, inválido ou expirado.',
+      schema: {
+        example: {
+          type: 'https://sgcm.example.com/problems/unauthorized',
+          title: 'Não autenticado',
+          status: 401,
+          detail: options.unauthorizedDetail,
+          instance: options.instance,
+        },
+      },
+    }),
+  );
+}
+```
+
+Trecho de uso no endpoint de autenticação:
+
+Arquivo: [src/modules/auth/auth.controller.ts](src/modules/auth/auth.controller.ts)
+
+```ts
+@Post('login')
+@HttpCode(HttpStatus.OK)
+@UseGuards(LocalAuthGuard)
+@Public()
+@ApiWrappedResponse({
+  description: 'Autenticação bem-sucedida.',
+  model: AuthResponseDto,
+  status: HttpStatus.OK,
+  metaExample: {
+    timestamp: '2026-05-24T09:00:00.000Z',
+    path: '/auth/login',
+  },
+})
+@ApiUnauthorizedResponse({
+  description: 'Credenciais incorretas ou usuário inativo.',
+  schema: {
+    example: {
+      type: 'https://sgcm.example.com/problems/unauthorized',
+      title: 'Não autenticado',
+      status: 401,
+      detail: 'E-mail ou senha incorretos.',
+      instance: '/auth/login',
+    },
+  },
+})
+login(@Body() _dto: LoginDto, @CurrentUser() user: User) {
+```
+
+Critério adotado:
+
+- o helper `ApiWrappedResponse` é usado sempre que o retorno segue o envelope padrão;
+- o helper `ApiAuthResponses` é usado nos endpoints protegidos para evitar repetição dos mesmos exemplos de `401` e `403`;
+- a documentação fica consistente sem obrigar cada controller a reescrever manualmente o mesmo schema.
+
+### 3.34 Granularidade dos erros documentados
+
+Decisão adotada: a documentação Swagger deve ser **por endpoint**, e não apenas por status code genérico, sempre que o significado do erro mudar conforme a rota.
+
+Isso é necessário porque o mesmo `401` pode representar situações diferentes na API:
+
+- em `POST /auth/login`, `401` significa `credenciais incorretas`;
+- em `GET /schedules`, `401` significa `token ausente, inválido ou expirado`.
+
+Para quem integra com a API, essa distinção muda a ação esperada:
+
+- no login, o cliente precisa revisar e reenviar usuário e senha;
+- em uma rota protegida, o cliente precisa autenticar a sessão antes de repetir a chamada.
+
+Por isso, uma descrição genérica como apenas `401 Unauthorized` não é suficiente quando o comportamento de correção é diferente entre endpoints. O Swagger deve mostrar o `detail` esperado para cada rota crítica, usando exemplos coerentes com o fluxo real da aplicação.
+
+Critério adotado pelo grupo:
+
+- o código de status permanece padronizado (`401`, `403`, `404`, etc.);
+- a descrição e o exemplo de erro no Swagger devem ser específicos por endpoint quando a causa ou a correção esperada forem diferentes;
+- se dois endpoints usam o mesmo status por motivos distintos, a documentação deve deixar essa diferença explícita.
+
+Exemplos de aplicação:
+
+- `POST /auth/login` deve documentar `401` com descrição próxima de `E-mail ou senha incorretos.`;
+- `GET /schedules` deve documentar `401` com descrição próxima de `Token JWT ausente, inválido ou expirado.`;
+- quando houver `403`, o Swagger deve indicar que o usuário está autenticado, mas não tem permissão para o recurso específico.
+
+Com isso, o desenvolvedor que integra com a API consegue entender o que corrigir apenas lendo a documentação, sem depender de inferência pelo nome genérico do status HTTP.
 
 ---
 
@@ -997,3 +1338,363 @@ Durante a execução, foram alcançados os seguintes marcos:
 **Documentação com Swagger** — todos os endpoints foram documentados de forma acessível, com exemplos de requisição, resposta e tratamento de erros padronizado.
 
 **Preparação para evolução** — as decisões tomadas nesta etapa (separação de controllers por domínio, factory pattern para criação de usuários, inativação lógica em vez de deleção física, conceito de `traceId` no filtro de erros) facilitam a introdução futura de autenticação JWT (Etapa 2), controle de acesso por perfil (Etapa 2) e entidades clínicas complexas como atendimentos, procedimentos, prontuários e laudos (Etapa 3).
+
+# Seções para adicionar/atualizar no report.md — Etapa 2
+
+## Estratégia de autenticação e autorização
+
+A autenticação da aplicação foi implementada utilizando JWT (JSON Web Token) com Passport.js e a estratégia `passport-jwt` integrada ao NestJS.
+
+Foi adotada a estratégia de guards globais utilizando `APP_GUARD`, reduzindo o risco de endpoints ficarem desprotegidos por esquecimento humano. Dessa forma, todos os endpoints da aplicação exigem autenticação por padrão.
+
+Para os endpoints que devem permanecer públicos, foi criado o decorator `@Public()`, utilizado apenas em:
+
+- `POST /auth/login`
+- `POST /auth/refresh`
+
+O `JwtAuthGuard` verifica esse metadata antes de exigir autenticação.
+
+Além da autenticação, foi implementado controle de autorização baseado em perfis utilizando:
+
+- decorator `@Roles()`
+- `RolesGuard`
+- enum `UserType`
+
+Os perfis atualmente suportados são:
+
+- `ADMIN`
+- `DOCTOR`
+- `PATIENT`
+
+Essa separação permitiu diferenciar claramente:
+
+- autenticação → verificar quem é o usuário;
+- autorização → verificar o que o usuário pode acessar.
+
+---
+
+# Payload JWT
+
+O payload JWT contém apenas informações essenciais para identificação e autorização do usuário:
+
+```ts
+{
+  sub: number,
+  email: string,
+  type: UserType
+}
+```
+
+Decisões adotadas:
+
+- `sub` foi utilizado como identificador principal do usuário autenticado;
+- `email` foi incluído para facilitar rastreabilidade e debugging;
+- `type` foi incluído para permitir autorização sem necessidade de consultas adicionais ao banco;
+- informações sensíveis como senha, refresh token e dados específicos de perfis não foram incluídas.
+
+A estratégia adotada privilegia segurança e redução do tamanho do token.
+
+---
+
+# Estratégia de refresh token
+
+Foi adotada a estratégia de armazenamento do refresh token com hash utilizando bcrypt.
+
+O refresh token nunca é salvo em texto puro no banco de dados. Antes da persistência, ele é transformado em hash:
+
+```ts
+hashSync(refreshToken, 10)
+```
+
+Na renovação do token, o token recebido é comparado com o hash armazenado utilizando `compareSync`.
+
+Essa abordagem reduz significativamente o impacto de um eventual vazamento do banco de dados, impedindo reutilização direta dos refresh tokens.
+
+Também foi implementado o conceito de refresh token rotation:
+
+- cada refresh token só pode ser utilizado uma única vez;
+- ao renovar a sessão, um novo refresh token é emitido;
+- o refresh token anterior torna-se inválido.
+
+---
+
+# Expiração dos tokens
+
+As expirações foram configuradas por variáveis de ambiente:
+
+```env
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+```
+
+Decisão adotada:
+
+- access token curto → reduz impacto em caso de vazamento;
+- refresh token mais longo → melhora usabilidade sem exigir login frequente.
+
+Essa combinação foi considerada adequada para o contexto clínico do SGCM.
+
+---
+
+# Controle de acesso por perfil
+
+Os endpoints foram protegidos utilizando `@Roles()`.
+
+Exemplos:
+
+| Endpoint | Perfis autorizados |
+|---|---|
+| GET /users | ADMIN |
+| POST /users | ADMIN |
+| GET /patients | ADMIN |
+| GET /doctors | ADMIN, DOCTOR, PATIENT |
+| GET /doctors/:id/schedules | ADMIN, DOCTOR |
+| GET /patients/:id/schedules | ADMIN, PATIENT |
+
+O controle de perfil foi implementado nos controllers utilizando decorators.
+
+---
+
+# Controle de acesso por recurso
+
+Além do controle por perfil, também foi implementado controle por recurso nos services.
+
+Exemplos:
+
+- um paciente autenticado só pode acessar seus próprios agendamentos;
+- um médico autenticado só pode acessar sua própria agenda;
+- administradores possuem acesso irrestrito.
+
+O controle foi implementado comparando:
+
+- o usuário autenticado (`currentUser.sub`);
+- o proprietário do recurso no banco.
+
+Exemplo:
+
+```ts
+if (
+  currentUser.type === UserType.PATIENT &&
+  patient.user.id === currentUser.sub
+)
+```
+
+Essa separação entre:
+
+- autorização por perfil;
+- autorização por propriedade do recurso;
+
+melhora legibilidade e manutenção do código.
+
+---
+
+# Política de erros 401 e 403
+
+Foi adotada a seguinte política:
+
+- `401 Unauthorized`
+  - token ausente;
+  - token inválido;
+  - token expirado;
+  - refresh token inválido;
+  - credenciais incorretas.
+
+- `403 Forbidden`
+  - usuário autenticado sem permissão para acessar determinado recurso.
+
+Exemplo:
+
+- paciente tentando acessar agendamentos de outro paciente → `403`.
+
+Essa distinção foi aplicada para manter semântica HTTP correta.
+
+---
+
+# Tratamento de erros JWT
+
+Os erros específicos do JWT foram tratados diretamente no `JwtAuthGuard`, sobrescrevendo `handleRequest()`.
+
+Isso permitiu converter erros do Passport/JWT em exceções padronizadas do NestJS:
+
+- `TokenExpiredError`
+- `JsonWebTokenError`
+- ausência de token
+
+A decisão de tratar no guard foi adotada para manter o Exception Filter mais genérico e reutilizável.
+
+---
+
+# Exception Filter
+
+O `HttpExceptionFilter` foi expandido para suportar:
+
+- `UnauthorizedException`;
+- `ForbiddenException`;
+- erros de validação;
+- erros inesperados.
+
+Todas as respostas seguem o padrão RFC 7807:
+
+```json
+{
+  "type": "https://sgcm.example.com/problems/forbidden",
+  "title": "Acesso negado",
+  "status": 403,
+  "detail": "Você não tem permissão para acessar este recurso.",
+  "instance": "/patients/1/schedules"
+}
+```
+
+O filtro também diferencia ambiente de desenvolvimento e produção para exposição de detalhes técnicos.
+
+---
+
+# Transform Interceptor
+
+Foi implementado um interceptor global responsável por padronizar respostas de sucesso.
+
+Formato adotado:
+
+```json
+{
+  "data": {},
+  "meta": {
+    "timestamp": "2026-05-23T23:00:00.000Z",
+    "path": "/patients"
+  }
+}
+```
+
+O interceptor respeita respostas sem corpo:
+
+- `204 No Content`;
+- `null`;
+- `undefined`.
+
+Nesses casos, nenhuma transformação é aplicada.
+
+---
+
+# Middleware de logging
+
+Foi implementado middleware global de logging registrando:
+
+- método HTTP;
+- rota;
+- status;
+- tempo de execução.
+
+O middleware utiliza `response.on('finish')` para garantir captura correta mesmo quando exceções são lançadas.
+
+Os logs são realizados de forma assíncrona no console.
+
+---
+
+# AuthModule e UsersModule
+
+O `AuthModule` depende do `UsersModule` para validação de credenciais e recuperação de usuários.
+
+A dependência foi mantida unidirecional:
+
+- `AuthModule` → `UsersModule`
+
+O `UsersModule` não depende do `AuthModule`, evitando dependência circular.
+
+---
+
+# Segurança
+
+As seguintes medidas de segurança foram adotadas:
+
+- segredo JWT armazenado exclusivamente em variável de ambiente;
+- refresh token armazenado com hash;
+- tokens com expiração configurável;
+- bloqueio de autenticação para usuários inativos;
+- separação correta entre 401 e 403;
+- proteção global dos endpoints;
+- remoção de informações sensíveis das respostas.
+
+---
+
+# Limitações conhecidas
+
+As seguintes limitações foram identificadas:
+
+## Access token continua válido após logout
+
+O logout invalida apenas o refresh token armazenado no banco.
+
+O access token permanece válido até sua expiração natural.
+
+Mitigação em produção:
+
+- blacklist de tokens;
+- versionamento de sessão;
+- revogação centralizada.
+
+## Apenas uma sessão simultânea por usuário
+
+O modelo atual utiliza apenas um refresh token por usuário.
+
+Quando um novo login é realizado, o refresh token anterior é sobrescrito.
+
+Consequência:
+
+- múltiplos dispositivos simultâneos não são suportados.
+
+## Usuário inativado após login
+
+Caso um usuário seja inativado após autenticação, ele poderá continuar utilizando o access token até sua expiração.
+
+Mitigação possível:
+
+- consulta ao banco em toda requisição autenticada.
+
+A decisão de não consultar o banco em todas as requisições foi tomada por questões de performance.
+
+---
+
+# Swagger
+
+A documentação Swagger foi atualizada para a versão 2.0.
+
+Foi configurado suporte completo a Bearer Authentication:
+
+- botão `Authorize` funcional;
+- envio automático do header Authorization;
+- documentação dos endpoints protegidos;
+- exemplos de respostas 401 e 403;
+- exemplos de tokens JWT.
+
+Também foi adicionada orientação de uso na descrição principal da API.
+
+---
+
+# Credenciais de teste
+
+| Perfil | E-mail | Senha |
+|---|---|---|
+| Admin | admin@sgcm.com | Admin@123 |
+| Doctor | estela.doctor@gmail.com | Doctor@123 |
+| Patient | estela.patient@gmail.com | Patient@123 |
+
+Para autenticar:
+
+1. utilizar `POST /auth/login`;
+2. copiar o `accessToken` retornado;
+3. clicar em `Authorize` no Swagger;
+4. informar o token JWT.
+
+---
+
+# Dificuldades encontradas
+
+As principais dificuldades da etapa foram:
+
+- padronização entre `User.id`, `Doctor.id` e `Patient.id`;
+- separação entre autorização por perfil e autorização por recurso;
+- distinção correta entre erros 401 e 403;
+- adaptação dos endpoints existentes da Etapa 1 para o novo modelo de autenticação;
+- atualização consistente do Swagger após introdução do Transform Interceptor.
+
+A principal solução adotada foi centralizar validações de acesso dentro dos services e manter os controllers responsáveis apenas pela orquestração das requisições.

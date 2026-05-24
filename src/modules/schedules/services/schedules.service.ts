@@ -1,13 +1,12 @@
 import {
   BadRequestException,
   Injectable,
-  ConflictException as NestConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Doctor } from '../../users/entities/doctor.entity';
 import { Patient } from '../../users/entities/patient.entity';
-import { NotFoundException, ConflictException } from '../../../common/exceptions';
+import { NotFoundException, ConflictException, ForbiddenException } from '../../../common/exceptions';
 import { CreateScheduleDto } from '../dto/create-schedule.dto';
 import { FindSchedulesQueryDto } from '../dto/find-schedules-query.dto';
 import { UpdateScheduleDto } from '../dto/update-schedule.dto';
@@ -20,6 +19,9 @@ import { ScheduleStatus } from '../enum/schedule-status.enum';
 import { ScheduleType } from '../enum/schedule-type.enum';
 import { PaginatedResponse } from '../../../common/interfaces/paginated-response.interface';
 import { ScheduleResponseDto } from '../dto/schedule-response.dto';
+import type { UserPayload } from '../../auth/models/user-payload.model';
+import { UserType } from '../../users/enum/user-type.enum';
+import { FindRelatedSchedulesQueryDto } from '../dto/find-related-schedules-query.dto';
 
 
 @Injectable()
@@ -70,12 +72,24 @@ export class SchedulesService {
     }
   }
 
-  async create(dto: CreateScheduleDto): Promise<ScheduleResponseDto> {
+  async create(
+    dto: CreateScheduleDto,
+    currentUser: UserPayload
+  ): Promise<ScheduleResponseDto> {
     this.assertAllowedFieldsForType(dto);
     this.assertFutureDate(dto.scheduledAt);
 
+    const patientId =
+      currentUser.type === UserType.PATIENT ? currentUser.sub : dto.patientId;
+
+    if (currentUser.type === UserType.PATIENT && dto.patientId && dto.patientId !== currentUser.sub) {
+      throw new ForbiddenException(
+        'Paciente só pode criar agendamentos para si mesmo.',
+      );
+    }
+
     const doctor = await this.findDoctorOrFail(dto.doctorId);
-    const patient = await this.findPatientOrFail(dto.patientId);
+    const patient = await this.findPatientOrFail(patientId);
 
     await this.assertNoConfirmedConflict(dto.doctorId, new Date(dto.scheduledAt));
 
@@ -86,7 +100,7 @@ export class SchedulesService {
       doctor,
       doctorId: dto.doctorId,
       patient,
-      patientId: dto.patientId,
+      patientId,
     };
 
     switch (dto.type) {
@@ -228,8 +242,23 @@ export class SchedulesService {
   async updateStatus(
     id: number,
     dto: UpdateScheduleStatusDto,
+    currentUser: UserPayload,
   ): Promise<ScheduleResponseDto> {
     const schedule = await this.findEntityOrFail(id);
+
+    if (currentUser.type === UserType.PATIENT) {
+      if (schedule.patient?.user?.id !== currentUser.sub) {
+        throw new ForbiddenException(
+          'Paciente só pode cancelar seus próprios agendamentos.',
+        );
+      }
+
+      if (dto.status !== ScheduleStatus.CANCELLED) {
+        throw new ForbiddenException(
+          'Paciente só pode alterar o status do agendamento para CANCELLED.',
+        );
+      }
+    }
 
     if (
       dto.status !== ScheduleStatus.CANCELLED &&
@@ -261,7 +290,7 @@ export class SchedulesService {
     if (dto.status === ScheduleStatus.CANCELLED) {
       schedule.cancelledAt = new Date();
       schedule.cancellationReason = dto.cancellationReason;
-      schedule.cancelledBy = dto.cancelledBy ?? 'SYSTEM';
+      schedule.cancelledBy = String(currentUser.sub);
     }
 
     const saved = await this.scheduleRepository.save(schedule);
@@ -283,7 +312,7 @@ export class SchedulesService {
 
   async findByDoctor(
     doctorId: number,
-    query: FindSchedulesQueryDto,
+    query: FindRelatedSchedulesQueryDto,
   ): Promise<PaginatedResponse<ScheduleResponseDto>> {
     await this.findDoctorOrFail(doctorId);
     return this.findAll({ ...query, doctorId });
@@ -291,7 +320,7 @@ export class SchedulesService {
 
   async findByPatient(
     patientId: number,
-    query: FindSchedulesQueryDto,
+    query: FindRelatedSchedulesQueryDto,
   ): Promise<PaginatedResponse<ScheduleResponseDto>> {
     await this.findPatientOrFail(patientId);
     return this.findAll({ ...query, patientId });
@@ -420,5 +449,35 @@ export class SchedulesService {
     }
 
     return response;
+  }
+
+  private assertCanAccessSchedule(
+    schedule: Schedule,
+    currentUser: UserPayload,
+  ): void {
+    if (currentUser.type === UserType.ADMIN) {
+      return;
+    }
+
+    if (currentUser.type === UserType.DOCTOR && schedule.doctor?.user?.id === currentUser.sub) {
+      return;
+    }
+
+    if (currentUser.type === UserType.PATIENT && schedule.patient?.user?.id === currentUser.sub) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      'Você não tem permissão para acessar este agendamento.',
+    );
+  }
+
+  async findOneWithAccess(
+    id: number,
+    currentUser: UserPayload,
+  ): Promise<ScheduleResponseDto> {
+    const schedule = await this.findEntityOrFail(id);
+    this.assertCanAccessSchedule(schedule, currentUser);
+    return this.toResponse(schedule);
   }
 }

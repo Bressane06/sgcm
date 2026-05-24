@@ -60,12 +60,20 @@ PORT=3000
 
 # Caminho para o arquivo SQLite usado pelo TypeORM
 DATABASE_PATH=./db/database.db
+
+# JWT Token
+JWT_SECRET=cole_aqui_um_segredo_com_32_ou_mais_caracteres
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
 ```
 
 | Variável        | Descrição                                | Padrão             |
 |-----------------|------------------------------------------|--------------------|
 | `PORT`          | Porta HTTP onde o servidor irá escutar   | `3000`             |
 | `DATABASE_PATH` | Caminho para o arquivo SQLite do TypeORM | `./db/database.db` |
+| `JWT_SECRET` | Segredo usado para assinar tokens JWT | obrigatório |
+| `JWT_EXPIRES_IN` | Expiração do access token | `15m` |
+| `JWT_REFRESH_EXPIRES_IN` | Expiração do refresh token | `7d` |
 
 
 ---
@@ -210,5 +218,14 @@ sgcm/
     └── jest-e2e.json
 ```
 
+## Credenciais de Teste
+
+| Perfil | E-mail | Senha |
+|---|---|---|
+| Admin | estela.admin@gmail.com | Admin@123 |
+| Doctor | estela.doctor@gmail.com | Doctor@123 |
+| Patient | estela.patient@gmail.com | Patient@123 |
+
+Para autenticar, use `POST /auth/login`. Copie o `accessToken` retornado e clique em **Authorize** no Swagger.
 
 Para detalhes de implementação e decisões técnicas, consulte o [`REPORT.md`](./REPORT.md).
