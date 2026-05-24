@@ -67,6 +67,11 @@ DATABASE_PATH=./db/database.db
 JWT_SECRET=cole_aqui_um_segredo_com_32_ou_mais_caracteres
 JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
+
+# JWT Token
+JWT_SECRET=cole_aqui_um_segredo_com_32_ou_mais_caracteres
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
 ```
 
 | Variável        | Descrição                                | Padrão             |
