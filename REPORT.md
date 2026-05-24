@@ -1127,6 +1127,45 @@ Consequência prática na documentação:
 
 Em resumo: o Swagger não deve mostrar apenas o payload cru do handler; ele deve representar o contrato real da resposta observada pelo consumidor da API.
 
+### 3.34 Controle de acesso por perfil
+
+Os endpoints foram protegidos utilizando `@Roles()`.
+
+Mapa completo adotado nesta etapa:
+
+| Endpoint | Perfis autorizados |
+|---|---|
+| POST /auth/login | Público |
+| POST /auth/refresh | Público |
+| GET /auth/me | Qualquer usuário autenticado |
+| POST /auth/logout | Qualquer usuário autenticado |
+| POST /users | ADMIN |
+| GET /users | ADMIN |
+| GET /users/:id | ADMIN, DOCTOR, PATIENT |
+| PUT /users/:id | ADMIN, DOCTOR, PATIENT |
+| DELETE /users/:id | ADMIN |
+| GET /doctors | ADMIN, DOCTOR, PATIENT |
+| GET /doctors/:id | ADMIN, DOCTOR, PATIENT |
+| GET /doctors/:id/specialties | ADMIN, DOCTOR, PATIENT |
+| POST /doctors/:id/specialties | ADMIN |
+| DELETE /doctors/:id/specialties/:specialtyId | ADMIN |
+| GET /doctors/:id/schedules | ADMIN, DOCTOR |
+| GET /patients | ADMIN |
+| GET /patients/:id | ADMIN, PATIENT |
+| GET /patients/:id/schedules | ADMIN, PATIENT |
+| POST /schedules | ADMIN, PATIENT |
+| GET /schedules | ADMIN |
+| GET /schedules/:id | ADMIN, DOCTOR, PATIENT |
+| PUT /schedules/:id | ADMIN |
+| PATCH /schedules/:id/status | ADMIN, PATIENT |
+| DELETE /schedules/:id | ADMIN |
+| POST /specialties | ADMIN |
+| GET /specialties | ADMIN, DOCTOR, PATIENT |
+| GET /specialties/:id | ADMIN, DOCTOR, PATIENT |
+| PUT /specialties/:id | ADMIN |
+| DELETE /specialties/:id | ADMIN |
+| GET /specialties/:id/doctors | ADMIN, DOCTOR, PATIENT |
+
 ### 3.35 Esquema nomeado de Bearer Auth e guia rápido de uso
 
 Decisão adotada: o Swagger passou a registrar o esquema de autenticação com nome explícito, `access-token`, para garantir que o botão `Authorize` e os decorators dos controllers apontem para o mesmo esquema.
@@ -1440,19 +1479,40 @@ Essa combinação foi considerada adequada para o contexto clínico do SGCM.
 
 Os endpoints foram protegidos utilizando `@Roles()`.
 
-Exemplos:
+Mapa completo adotado nesta etapa:
 
 | Endpoint | Perfis autorizados |
 |---|---|
-| GET /users | ADMIN |
+| POST /auth/login | Público |
+| POST /auth/refresh | Público |
+| GET /auth/me | Qualquer usuário autenticado |
+| POST /auth/logout | Qualquer usuário autenticado |
 | POST /users | ADMIN |
-| GET /patients | ADMIN |
+| GET /users | ADMIN |
+| GET /users/:id | ADMIN, DOCTOR, PATIENT |
+| PUT /users/:id | ADMIN, DOCTOR, PATIENT |
+| DELETE /users/:id | ADMIN |
 | GET /doctors | ADMIN, DOCTOR, PATIENT |
+| GET /doctors/:id | ADMIN, DOCTOR, PATIENT |
+| GET /doctors/:id/specialties | ADMIN, DOCTOR, PATIENT |
+| POST /doctors/:id/specialties | ADMIN |
+| DELETE /doctors/:id/specialties/:specialtyId | ADMIN |
 | GET /doctors/:id/schedules | ADMIN, DOCTOR |
+| GET /patients | ADMIN |
+| GET /patients/:id | ADMIN, PATIENT |
 | GET /patients/:id/schedules | ADMIN, PATIENT |
-
-O controle de perfil foi implementado nos controllers utilizando decorators.
-
+| POST /schedules | ADMIN, PATIENT |
+| GET /schedules | ADMIN |
+| GET /schedules/:id | ADMIN, DOCTOR, PATIENT |
+| PUT /schedules/:id | ADMIN |
+| PATCH /schedules/:id/status | ADMIN, PATIENT |
+| DELETE /schedules/:id | ADMIN |
+| POST /specialties | ADMIN |
+| GET /specialties | ADMIN, DOCTOR, PATIENT |
+| GET /specialties/:id | ADMIN, DOCTOR, PATIENT |
+| PUT /specialties/:id | ADMIN |
+| DELETE /specialties/:id | ADMIN |
+| GET /specialties/:id/doctors | ADMIN, DOCTOR, PATIENT |
 ---
 
 # Controle de acesso por recurso

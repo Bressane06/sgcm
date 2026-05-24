@@ -9,6 +9,7 @@ import { ACCESS_TOKEN_BEARER_SCHEME } from './common/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
 
   // Global exception filter (RFC 7807 - Problem Details for HTTP APIs)
   app.useGlobalFilters(new HttpExceptionFilter());
