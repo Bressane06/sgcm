@@ -505,3 +505,363 @@ Durante a execução, foram alcançados os seguintes marcos:
 **Documentação com Swagger** — todos os endpoints foram documentados de forma acessível, com exemplos de requisição, resposta e tratamento de erros padronizado.
 
 **Preparação para evolução** — as decisões tomadas nesta etapa (separação de controllers por domínio, factory pattern para criação de usuários, inativação lógica em vez de deleção física, conceito de `traceId` no filtro de erros) facilitam a introdução futura de autenticação JWT (Etapa 2), controle de acesso por perfil (Etapa 2) e entidades clínicas complexas como atendimentos, procedimentos, prontuários e laudos (Etapa 3).
+
+# Seções para adicionar/atualizar no report.md — Etapa 2
+
+## Estratégia de autenticação e autorização
+
+A autenticação da aplicação foi implementada utilizando JWT (JSON Web Token) com Passport.js e a estratégia `passport-jwt` integrada ao NestJS.
+
+Foi adotada a estratégia de guards globais utilizando `APP_GUARD`, reduzindo o risco de endpoints ficarem desprotegidos por esquecimento humano. Dessa forma, todos os endpoints da aplicação exigem autenticação por padrão.
+
+Para os endpoints que devem permanecer públicos, foi criado o decorator `@Public()`, utilizado apenas em:
+
+- `POST /auth/login`
+- `POST /auth/refresh`
+
+O `JwtAuthGuard` verifica esse metadata antes de exigir autenticação.
+
+Além da autenticação, foi implementado controle de autorização baseado em perfis utilizando:
+
+- decorator `@Roles()`
+- `RolesGuard`
+- enum `UserType`
+
+Os perfis atualmente suportados são:
+
+- `ADMIN`
+- `DOCTOR`
+- `PATIENT`
+
+Essa separação permitiu diferenciar claramente:
+
+- autenticação → verificar quem é o usuário;
+- autorização → verificar o que o usuário pode acessar.
+
+---
+
+# Payload JWT
+
+O payload JWT contém apenas informações essenciais para identificação e autorização do usuário:
+
+```ts
+{
+  sub: number,
+  email: string,
+  type: UserType
+}
+```
+
+Decisões adotadas:
+
+- `sub` foi utilizado como identificador principal do usuário autenticado;
+- `email` foi incluído para facilitar rastreabilidade e debugging;
+- `type` foi incluído para permitir autorização sem necessidade de consultas adicionais ao banco;
+- informações sensíveis como senha, refresh token e dados específicos de perfis não foram incluídas.
+
+A estratégia adotada privilegia segurança e redução do tamanho do token.
+
+---
+
+# Estratégia de refresh token
+
+Foi adotada a estratégia de armazenamento do refresh token com hash utilizando bcrypt.
+
+O refresh token nunca é salvo em texto puro no banco de dados. Antes da persistência, ele é transformado em hash:
+
+```ts
+hashSync(refreshToken, 10)
+```
+
+Na renovação do token, o token recebido é comparado com o hash armazenado utilizando `compareSync`.
+
+Essa abordagem reduz significativamente o impacto de um eventual vazamento do banco de dados, impedindo reutilização direta dos refresh tokens.
+
+Também foi implementado o conceito de refresh token rotation:
+
+- cada refresh token só pode ser utilizado uma única vez;
+- ao renovar a sessão, um novo refresh token é emitido;
+- o refresh token anterior torna-se inválido.
+
+---
+
+# Expiração dos tokens
+
+As expirações foram configuradas por variáveis de ambiente:
+
+```env
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+```
+
+Decisão adotada:
+
+- access token curto → reduz impacto em caso de vazamento;
+- refresh token mais longo → melhora usabilidade sem exigir login frequente.
+
+Essa combinação foi considerada adequada para o contexto clínico do SGCM.
+
+---
+
+# Controle de acesso por perfil
+
+Os endpoints foram protegidos utilizando `@Roles()`.
+
+Exemplos:
+
+| Endpoint | Perfis autorizados |
+|---|---|
+| GET /users | ADMIN |
+| POST /users | ADMIN |
+| GET /patients | ADMIN |
+| GET /doctors | ADMIN, DOCTOR, PATIENT |
+| GET /doctors/:id/schedules | ADMIN, DOCTOR |
+| GET /patients/:id/schedules | ADMIN, PATIENT |
+
+O controle de perfil foi implementado nos controllers utilizando decorators.
+
+---
+
+# Controle de acesso por recurso
+
+Além do controle por perfil, também foi implementado controle por recurso nos services.
+
+Exemplos:
+
+- um paciente autenticado só pode acessar seus próprios agendamentos;
+- um médico autenticado só pode acessar sua própria agenda;
+- administradores possuem acesso irrestrito.
+
+O controle foi implementado comparando:
+
+- o usuário autenticado (`currentUser.sub`);
+- o proprietário do recurso no banco.
+
+Exemplo:
+
+```ts
+if (
+  currentUser.type === UserType.PATIENT &&
+  patient.user.id === currentUser.sub
+)
+```
+
+Essa separação entre:
+
+- autorização por perfil;
+- autorização por propriedade do recurso;
+
+melhora legibilidade e manutenção do código.
+
+---
+
+# Política de erros 401 e 403
+
+Foi adotada a seguinte política:
+
+- `401 Unauthorized`
+  - token ausente;
+  - token inválido;
+  - token expirado;
+  - refresh token inválido;
+  - credenciais incorretas.
+
+- `403 Forbidden`
+  - usuário autenticado sem permissão para acessar determinado recurso.
+
+Exemplo:
+
+- paciente tentando acessar agendamentos de outro paciente → `403`.
+
+Essa distinção foi aplicada para manter semântica HTTP correta.
+
+---
+
+# Tratamento de erros JWT
+
+Os erros específicos do JWT foram tratados diretamente no `JwtAuthGuard`, sobrescrevendo `handleRequest()`.
+
+Isso permitiu converter erros do Passport/JWT em exceções padronizadas do NestJS:
+
+- `TokenExpiredError`
+- `JsonWebTokenError`
+- ausência de token
+
+A decisão de tratar no guard foi adotada para manter o Exception Filter mais genérico e reutilizável.
+
+---
+
+# Exception Filter
+
+O `HttpExceptionFilter` foi expandido para suportar:
+
+- `UnauthorizedException`;
+- `ForbiddenException`;
+- erros de validação;
+- erros inesperados.
+
+Todas as respostas seguem o padrão RFC 7807:
+
+```json
+{
+  "type": "https://sgcm.example.com/problems/forbidden",
+  "title": "Acesso negado",
+  "status": 403,
+  "detail": "Você não tem permissão para acessar este recurso.",
+  "instance": "/patients/1/schedules"
+}
+```
+
+O filtro também diferencia ambiente de desenvolvimento e produção para exposição de detalhes técnicos.
+
+---
+
+# Transform Interceptor
+
+Foi implementado um interceptor global responsável por padronizar respostas de sucesso.
+
+Formato adotado:
+
+```json
+{
+  "data": {},
+  "meta": {
+    "timestamp": "2026-05-23T23:00:00.000Z",
+    "path": "/patients"
+  }
+}
+```
+
+O interceptor respeita respostas sem corpo:
+
+- `204 No Content`;
+- `null`;
+- `undefined`.
+
+Nesses casos, nenhuma transformação é aplicada.
+
+---
+
+# Middleware de logging
+
+Foi implementado middleware global de logging registrando:
+
+- método HTTP;
+- rota;
+- status;
+- tempo de execução.
+
+O middleware utiliza `response.on('finish')` para garantir captura correta mesmo quando exceções são lançadas.
+
+Os logs são realizados de forma assíncrona no console.
+
+---
+
+# AuthModule e UsersModule
+
+O `AuthModule` depende do `UsersModule` para validação de credenciais e recuperação de usuários.
+
+A dependência foi mantida unidirecional:
+
+- `AuthModule` → `UsersModule`
+
+O `UsersModule` não depende do `AuthModule`, evitando dependência circular.
+
+---
+
+# Segurança
+
+As seguintes medidas de segurança foram adotadas:
+
+- segredo JWT armazenado exclusivamente em variável de ambiente;
+- refresh token armazenado com hash;
+- tokens com expiração configurável;
+- bloqueio de autenticação para usuários inativos;
+- separação correta entre 401 e 403;
+- proteção global dos endpoints;
+- remoção de informações sensíveis das respostas.
+
+---
+
+# Limitações conhecidas
+
+As seguintes limitações foram identificadas:
+
+## Access token continua válido após logout
+
+O logout invalida apenas o refresh token armazenado no banco.
+
+O access token permanece válido até sua expiração natural.
+
+Mitigação em produção:
+
+- blacklist de tokens;
+- versionamento de sessão;
+- revogação centralizada.
+
+## Apenas uma sessão simultânea por usuário
+
+O modelo atual utiliza apenas um refresh token por usuário.
+
+Quando um novo login é realizado, o refresh token anterior é sobrescrito.
+
+Consequência:
+
+- múltiplos dispositivos simultâneos não são suportados.
+
+## Usuário inativado após login
+
+Caso um usuário seja inativado após autenticação, ele poderá continuar utilizando o access token até sua expiração.
+
+Mitigação possível:
+
+- consulta ao banco em toda requisição autenticada.
+
+A decisão de não consultar o banco em todas as requisições foi tomada por questões de performance.
+
+---
+
+# Swagger
+
+A documentação Swagger foi atualizada para a versão 2.0.
+
+Foi configurado suporte completo a Bearer Authentication:
+
+- botão `Authorize` funcional;
+- envio automático do header Authorization;
+- documentação dos endpoints protegidos;
+- exemplos de respostas 401 e 403;
+- exemplos de tokens JWT.
+
+Também foi adicionada orientação de uso na descrição principal da API.
+
+---
+
+# Credenciais de teste
+
+| Perfil | E-mail | Senha |
+|---|---|---|
+| Admin | admin@sgcm.com | Admin@123 |
+| Doctor | estela.doctor@gmail.com | Doctor@123 |
+| Patient | estela.patient@gmail.com | Patient@123 |
+
+Para autenticar:
+
+1. utilizar `POST /auth/login`;
+2. copiar o `accessToken` retornado;
+3. clicar em `Authorize` no Swagger;
+4. informar o token JWT.
+
+---
+
+# Dificuldades encontradas
+
+As principais dificuldades da etapa foram:
+
+- padronização entre `User.id`, `Doctor.id` e `Patient.id`;
+- separação entre autorização por perfil e autorização por recurso;
+- distinção correta entre erros 401 e 403;
+- adaptação dos endpoints existentes da Etapa 1 para o novo modelo de autenticação;
+- atualização consistente do Swagger após introdução do Transform Interceptor.
+
+A principal solução adotada foi centralizar validações de acesso dentro dos services e manter os controllers responsáveis apenas pela orquestração das requisições.

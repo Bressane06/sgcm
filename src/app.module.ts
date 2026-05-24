@@ -12,6 +12,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggingMiddleware } from './common/middlewares/logging.middleware';
 import { StringValue } from 'ms';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -44,7 +45,11 @@ import { StringValue } from 'ms';
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard }
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

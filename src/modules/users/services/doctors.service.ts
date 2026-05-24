@@ -11,7 +11,10 @@ import { ConflictException } from '../../../common/exceptions/conflict.exception
 import { ValidationException } from '../../../common/exceptions/validation.exception';
 import { UpdateSpecialtyDto } from '../../specialties/dto/update-specialty.dto';
 import { SchedulesService } from '../../schedules/services/schedules.service';
-import { FindSchedulesQueryDto } from '../../schedules/dto/find-schedules-query.dto';
+import type { UserPayload } from '../../auth/models/user-payload.model';
+import { ForbiddenException } from '../../../common/exceptions';
+import { UserType } from '../enum/user-type.enum';
+import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
 
 @Injectable()
 export class DoctorsService {
@@ -24,6 +27,19 @@ export class DoctorsService {
     @InjectRepository(DoctorSpecialty)
     private readonly doctorSpecialtyRepository: Repository<DoctorSpecialty>,
   ) {}
+
+  private async findEntityByIdOrFail(id: number): Promise<Doctor> {
+    const doctor = await this.doctorRepository.findOne({
+      where: { id },
+      relations: { user: true },
+    });
+
+    if (!doctor || !doctor.user.isActive) {
+      throw new NotFoundException('Médico', id);
+    }
+
+    return doctor;
+  }
 
   async findAll(
     query: FindDoctorsQueryDto,
@@ -60,18 +76,12 @@ export class DoctorsService {
 
   async findOne(
     id: number,
-  ): Promise<{ id: number; name: string; email: string; crm: string }> {
-    const doctor = await this.doctorRepository.findOne({
-      where: { user: { id, isActive: true } },
-      relations: { user: true },
-    });
-
-    if (!doctor) {
-      throw new NotFoundException('Médico', id);
-    }
+  ): Promise<{ id: number; userId: number; name: string; email: string; crm: string }> {
+    const doctor = await this.findEntityByIdOrFail(id);
 
     return {
-      id: doctor.user.id,
+      id: doctor.id,
+      userId: doctor.user.id,
       name: doctor.user.name,
       email: doctor.user.email,
       crm: doctor.crm,
@@ -84,14 +94,7 @@ export class DoctorsService {
     const skip = (page - 1) * limit;
     const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
 
-    const doctor = await this.doctorRepository.findOne({
-      where: { user: { id, isActive: true } },
-      relations: { user: true },
-    });
-
-    if (!doctor) {
-      throw new NotFoundException('Médico', id);
-    }
+    const doctor = await this.findEntityByIdOrFail(id);
 
     const doctorSpecialties = await this.doctorSpecialtyRepository
       .createQueryBuilder('ds')
@@ -130,20 +133,16 @@ export class DoctorsService {
     }
 
     const specialty = await this.specialtyRepository.findOne({ where: { name: specialtyDto.name } })
+
     if (!specialty ) {
       throw new NotFoundException('Especialidade', specialtyDto.name, true);
     }
 
-    const doctor = await this.doctorRepository.findOne({
-      where: { user: { id: idDoctor, isActive: true } },
-      relations: { user: true }
-    });
-    if (!doctor) {
-      throw new NotFoundException('Médico', idDoctor);
-    }
+    const doctor = await this.findEntityByIdOrFail(idDoctor);
 
     const doctorSpecialtyExists = await this.doctorSpecialtyRepository.findOne({
       where: { specialtyId: specialty.id, doctorId: doctor.id } });
+
     if (doctorSpecialtyExists) {
       throw ConflictException.businessRule(
         `O médico ${doctor.user.name} já possui a especialidade ${specialty.name} associada.  `);
@@ -160,14 +159,10 @@ export class DoctorsService {
   }
 
   async dessociateSpecialty(id: number, specialtyId: number) {
-    const doctor = await this.doctorRepository.findOne({
-      where: { user: { id, isActive: true } },
-    });
-    if (!doctor) {
-      throw new NotFoundException('Médico', id);
-    }
+    const doctor = await this.findEntityByIdOrFail(id);
 
     const doctorSpecialty = await this.doctorSpecialtyRepository.findOne({ where: { specialtyId, doctorId: doctor.id } });
+
     if (!doctorSpecialty) {
       throw new NotFoundException('Associação entre médico e especialidade', `Médico ID: ${id}, Especialidade ID: ${specialtyId}`);
     }
@@ -184,7 +179,22 @@ export class DoctorsService {
     return;
   }
 
-  findSchedules(id: number, query: FindSchedulesQueryDto) {
-    return this.schedulesService.findByDoctor(id, query);
+  async findSchedules(
+    id: number,
+    query: FindRelatedSchedulesQueryDto,
+    currentUser: UserPayload,
+  ) {
+    const doctor = await this.findEntityByIdOrFail(id);
+
+    if (
+      currentUser.type === UserType.DOCTOR &&
+      doctor.user.id !== currentUser.sub
+    ) {
+      throw new ForbiddenException(
+        'Você não tem permissão para acessar agendamentos de outro médico.',
+      );
+    }
+
+    return this.schedulesService.findByDoctor(doctor.id, query);
   }
 }
