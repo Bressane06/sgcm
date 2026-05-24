@@ -10,11 +10,44 @@
 
 ## 1 - INTEGRANTES E CONTRIBUIÇÕES
 
-| Integrante | Contribuições nesta etapa |
-|---|---|
-| Arthur Coutinho | • Desenvolvimento da feature Doctors; <br> • Desenvolvimento da feature Specialties; <br> • Elaboração e organização da documentação Swagger; <br> • Criação e manutenção do diagrama PlantUML. |
-| Estela Medeiros | • Desenvolvimento da feature Patients; <br> • Desenvolvimento da feature Schedules; <br> • Apoio técnico e revisão nas demais branches do projeto. |
-| Gabriel Bressane | • Desenvolvimento do módulo Users; <br> • Implementação dos exception filters e tratamento global de erros; <br> • Elaboração da documentação técnica; <br> • Administração do repositório no GitHub, incluindo definição de regras e organização do fluxo de branches. |
+<table>
+  <thead>
+    <tr>
+      <th>Integrante</th>
+      <th>Contribuições</th>
+      <th>Etapa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="2"><b>Arthur Coutinho</b></td>
+      <td>• Desenvolvimento da feature Doctors;<br>• Desenvolvimento da feature Specialties;<br>• Elaboração e organização da documentação Swagger. <br>• Criação e manutenção do diagrama PlantUML.</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>• Módulo de autenticação.</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <td rowspan="2"><b>Estela Medeiros</b></td>
+      <td>• Desenvolvimento da feature Patients;<br>• Desenvolvimento da feature Schedules.<br>• Apoio técnico e revisão nas demais branches do projeto.</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>• Módulo de autenticação.<br>• Guardas e controle de acesso</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <td rowspan="2"><b>Gabriel Bressane</b></td>
+      <td>• Desenvolvimento do módulo Users;<br>• Implementação dos exception filters e tratamento global de erros.<br>• Elaboração da documentação técnica;<br>• Administração do repositório no GitHub.</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>• Expansão do exception filter;<br>• Implementação do transform interceptor;<br>• Implementação do logging middleware;<br>• Atualização e organização da documentação técnica.</td>
+      <td>2</td>
+    </tr>
+  </tbody>
+</table>
 
 > Todos os membros participaram das Pull Requests e colaboraram entre si sempre que necessário, realizando revisões de código, suporte técnico e auxílio na integração das funcionalidades.
 
@@ -23,6 +56,8 @@
 <img src="UML/UML-SGCM.png" alt="UML-SGCM" width="800"/>
 
 ## 3 - DECISÕES TÉCNICAS
+
+## ETAPA 1
 
 ### 3.1 Estratégia de Herança: Por que escolhemos JTI
 
@@ -177,6 +212,33 @@ Campos padrão retornados em todas as respostas de erro:
 - `traceId`
 
 Com isso, o cliente da API recebe sempre um contrato consistente de erro, independentemente do ponto da aplicação onde a exceção foi lançada.
+
+#### 3.4.2 Revisão crítica do filtro da Etapa 1
+
+Ao revisar o filtro existente, foi confirmado que ele já interceptava os principais cenários da aplicação por meio de um `HttpExceptionFilter` global:
+
+- erros de validação do `ValidationPipe`, convertidos para `400` em formato RFC 7807;
+- `NotFoundException` e demais `HttpException` do Nest;
+- conflitos do TypeORM convertidos em `409`;
+- erros inesperados, convertidos em `500` com mensagem segura.
+
+Os pontos ajustados nesta etapa foram:
+
+- expansão explícita do tratamento de `UnauthorizedException` e `ForbiddenException` no contrato da aplicação;
+- padronização dos títulos de erro para `401` e `403`;
+- preenchimento consistente do campo `instance` com o caminho da requisição;
+- diferenciação entre ambiente de desenvolvimento e produção para erros inesperados, exibindo mais detalhe em desenvolvimento e mensagem genérica em produção.
+
+#### 3.4.3 Política de mensagens para autenticação e autorização
+
+Foi adotada uma política híbrida:
+
+- `401` de token ausente, expirado, inválido ou refresh token rejeitado recebem mensagens específicas, porque ajudam o cliente legítimo a corrigir a ação necessária sem expor dados sensíveis adicionais;
+- falhas de login por e-mail/senha usam mensagem genérica (`E-mail ou senha incorretos.`), para evitar enumeração de usuários;
+- acesso a recurso de outro usuário deve ser tratado com `403 Acesso negado`, com mensagem genérica de permissão;
+- se um usuário for inativado depois da emissão do token, a sessão passa a ser tratada como inválida e retorna `401`, em vez de expor detalhes sobre a conta.
+
+Essa decisão mantém o fluxo usável para quem está autenticado corretamente e reduz o risco de revelar informações úteis para ataques de enumeração ou análise de permissões.
 
 ### 3.5 Feature Doctors
 A feature **Doctors** tem relação íntima com **Users**: um doctor é, na prática, um user. Por isso, seus arquivos relacionados ficam dentro de `users`.
@@ -431,11 +493,938 @@ Justificativa:
 - Evita crescimento de complexidade no service principal de usuários.
 - Facilita manutenção do fluxo de criação por perfil em um único ponto.
 
+## ETAPA 2
 
+### 3.20 Uso de interfaces e utils para paginação
+
+Nessa etapa, a separação em `interfaces` e `utils` foi adotada para tornar o contrato de paginação mais explícito, reutilizável e desacoplado da lógica do interceptor.
+
+As `interfaces` concentram exclusivamente a definição estrutural dos dados, em [paginated-response.interface.ts](src/common/interfaces/paginated-response.interface.ts) e [pagination-meta.interface.ts](src/common/interfaces/pagination-meta.interface.ts), mantendo a tipagem centralizada e reutilizável entre diferentes módulos da aplicação. Já a pasta `utils` reúne a função [is-paginated-response.util.ts](src/common/utils/is-paginated-response.util.ts), responsável por validar se o payload recebido corresponde a uma resposta paginada antes do processamento realizado pelo [TransformInterceptor](src/common/interceptors/transform.interceptor.ts).
+
+Essa abordagem reduz acoplamento, melhora a legibilidade do código e facilita manutenção futura, além de manter o interceptor focado apenas na orquestração e padronização das respostas HTTP.
+
+### 3.21 Campos extras no logging middleware
+
+No logging middleware da Etapa 2, foram adicionados dois campos extras ao log: `event` e `completed`. Eles foram incluídos para diferenciar o fechamento normal da resposta (`finish`) do encerramento da conexão (`close`) e para deixar explícito, no registro, se a requisição foi concluída com sucesso ou interrompida antes do término completo.
+
+O campo `event` informa qual evento disparou o log, permitindo identificar o ciclo de vida da requisição com mais clareza. Já o campo `completed` funciona como um resumo semântico desse estado: quando está `true`, a resposta terminou normalmente; quando está `false`, a conexão foi encerrada antes da finalização total. Isso melhora a rastreabilidade e ajuda na investigação de requisições abortadas, falhas de rede ou cancelamentos feitos pelo cliente.
+
+```json
+{
+  "timestamp": "2026-05-21T19:25:19.308Z",
+  "method": "GET",
+  "url": "/patients",
+  "ip": "::1",
+  "statusCode": 401,
+  "durationMs": 9,
+  // Novos campos adicionados
+  "event": "finish",
+  "completed": true
+}
+```
+
+#### 3.21.1 Captura de tempo e status no middleware
+
+Decisão adotada no SGCM: capturar o tempo total de processamento e o status HTTP no próprio middleware, usando os eventos `finish` e `close` do objeto `Response`.
+
+Como funciona:
+
+- o middleware registra o instante inicial com `Date.now()` antes de chamar `next()`;
+- depois, ele escuta `response.on('finish')` para saber quando a resposta foi enviada com sucesso;
+- também escuta `response.on('close')` para registrar encerramentos prematuros da conexão;
+- no callback, calcula `durationMs` como a diferença entre o tempo atual e o instante inicial;
+- o `statusCode` é lido do próprio `response` no momento do evento, sem bloquear o pipeline.
+
+Trecho atual:
+
+Arquivo: [src/common/middlewares/logging.middleware.ts](src/common/middlewares/logging.middleware.ts)
+
+```ts
+const startedAt = Date.now();
+
+const writeLog = (event: 'finish' | 'close'): void => {
+  if (logWritten) {
+    return;
+  }
+
+  logWritten = true;
+
+  const durationMs = Date.now() - startedAt;
+  const statusCode = response.statusCode;
+
+  const logEntry = {
+    timestamp,
+    method,
+    url,
+    ip,
+    statusCode,
+    durationMs,
+    event,
+    completed: event === 'finish',
+  };
+
+  this.logger.log(JSON.stringify(logEntry, null, 2));
+};
+
+response.on('finish', () => writeLog('finish'));
+response.on('close', () => writeLog('close'));
+```
+
+Justificativa da abordagem:
+
+- o middleware observa a requisição desde o início e consegue medir o tempo total real, incluindo o processamento do handler;
+- o uso de `finish` e `close` cobre tanto respostas concluídas quanto conexões interrompidas, o que seria incompleto se o log dependesse apenas do pós-handler;
+- a coleta é assíncrona e não bloqueia o fluxo da requisição.
+
+Alternativa considerada:
+
+- usar um interceptor para registrar o pós-handler e complementar com middleware para os metadados iniciais da requisição.
+
+Decisão do grupo:
+
+- manter o middleware como fonte principal do logging temporal e de status, porque ele oferece a visão mais fiel do ciclo de vida da resposta;
+- deixar o interceptor para responsabilidades de transformação de resposta, não para logging principal.
+
+Limitação reconhecida:
+
+- o status HTTP fica disponível de forma confiável apenas no momento em que a resposta é finalizada; por isso, a captura no middleware depende dos eventos do `Response`, e não apenas do instante inicial da requisição.
+
+#### 3.21.2 Formato e destino dos logs
+
+Decisão adotada no SGCM: registrar os logs em formato JSON estruturado e escrevê-los apenas no console nesta etapa.
+
+Trecho atual:
+
+Arquivo: `src/common/middlewares/logging.middleware.ts`
+
+```ts
+this.logger.log(JSON.stringify(logEntry, null, 2));
+```
+
+Justificativa do formato:
+
+- JSON é mais consistente para produção, porque ferramentas externas conseguem parsear, filtrar e correlacionar os eventos com facilidade;
+- o mesmo formato continua legível durante o desenvolvimento, já que a estrutura do log fica explícita e padronizada;
+- manter um formato único evita variações entre ambiente local e produção.
+
+Justificativa do destino:
+
+- nesta etapa, o console atende ao objetivo do projeto sem exigir infraestrutura adicional de armazenamento;
+- evitar arquivo local reduz complexidade operacional e impede crescimento indefinido de logs dentro do repositório ou da máquina de execução;
+- em ambiente real, a escrita em arquivo só faria sentido se acompanhada de rotação e retenção controlada.
+
+Limitação reconhecida:
+
+- como não há persistência em arquivo nesta etapa, os logs dependem do coletor do ambiente (console, container ou plataforma de execução) para serem armazenados e analisados posteriormente.
+
+Evolução possível:
+
+- se o projeto exigir arquivo de log no futuro, a abordagem deve incluir rotação por tamanho ou por data, além de política de retenção para evitar crescimento ilimitado.
+
+#### 3.21.3 Middleware versus interceptor para logging
+
+Decisão arquitetural do SGCM: manter o middleware como mecanismo principal de logging.
+
+Motivo da escolha:
+
+- o SGCM considera mais importante registrar todas as tentativas de acesso, inclusive requisições rejeitadas por `401`/`403` e conexões encerradas antes do fim;
+- o middleware observa a requisição desde a entrada e registra `finish` e `close`, cobrindo tanto respostas completas quanto interrupções;
+- um interceptor é útil para enriquecer o contexto pós-handler, mas não cobre requisições bloqueadas pelos guards, portanto seria incompleto como logger principal.
+
+Papel do interceptor no projeto:
+
+- o `TransformInterceptor` permanece dedicado à padronização das respostas bem-sucedidas;
+- se houver necessidade futura de enriquecimento adicional do log com dados obtidos após o handler, um interceptor complementar poderá ser considerado, mas não como fonte principal de auditoria.
+
+Critério adotado para o SGCM:
+
+- priorizar cobertura e consistência da trilha de auditoria sobre enriquecimento de contexto do handler;
+- em um sistema clínico, registrar tentativas rejeitadas e acessos interrompidos é mais relevante do que capturar somente requisições que chegaram ao final do fluxo.
+
+### 3.22 Mapa de dependências do módulo de autenticação
+
+A direção das dependências do módulo de autenticação foi definida para manter o sistema simples e evitar ciclos entre módulos. O `AuthModule` concentra o que é específico de autenticação: `AuthService`, `LocalStrategy` e `JwtStrategy`. O `JwtService` não precisa ser exportado pelo `AuthModule`, porque ele já é disponibilizado globalmente pelo `JwtModule` configurado na aplicação. Da mesma forma, a estratégia JWT não deve ser exportada como contrato público de outros módulos; ela funciona como detalhe interno do pipeline do Passport.
+
+Os guards também não precisam depender diretamente do `AuthModule` como consumidor externo. O `JwtAuthGuard` pode ficar no próprio contexto de autenticação, ou em `common` quando for reutilizado globalmente, mas sempre depender apenas do contrato do Passport e das exceções tipadas da aplicação. Isso evita que outros módulos passem a depender do `AuthModule` para conseguir autenticar rotas e reduz o risco de dependências cíclicas.
+
+Em termos práticos, a arquitetura adotada fica assim:
+
+```mermaid
+flowchart LR
+  AppModule --> AuthModule
+  AppModule --> UsersModule
+  AppModule --> SchedulesModule
+  AppModule --> SpecialtiesModule
+
+  AuthModule --> UsersModule
+  AuthModule --> LocalStrategy
+  AuthModule --> JwtStrategy
+  AuthModule --> AuthService
+
+  JwtAuthGuard --> PassportAuthGuard
+  LocalStrategy --> AuthService
+  AuthService --> UsersService
+  UsersService --> TypeORM
+  JwtStrategy --> JwtModule
+```
+
+Com isso, o fluxo fica direcionado da seguinte forma: o `AppModule` agrega os módulos principais; o `AuthModule` depende de `UsersModule` para validar credenciais e carregar usuários; as estratégias ficam encapsuladas dentro da autenticação; e os guards apenas consomem o Passport, sem forçar módulos externos a conhecerem detalhes de implementação do `AuthModule`.
+
+### 3.23 Guards globais versus guards por módulo
+
+Para a Etapa 2, a estratégia mais segura e escalável é manter o `JwtAuthGuard` como guard global. Isso reduz o risco de deixar algum endpoint desprotegido por esquecimento e simplifica a expansão do projeto na Etapa 3, quando novos módulos e rotas serão adicionados com frequência. Nessa abordagem, as rotas públicas precisam ser declaradas explicitamente com um decorator como `@Public()`, o que torna a exceção visível no próprio endpoint e evita ambiguidade.
+
+A alternativa de registrar guards por módulo ou por controller oferece controle mais granular, mas depende de disciplina manual em cada novo ponto de entrada. Em um projeto que continua crescendo, isso aumenta a chance de inconsistência de segurança. Por isso, para o SGCM, o guard global é a escolha mais consistente com o objetivo de proteger toda a API por padrão.
+
+Em relação ao `RolesGuard`, ele deve ser executado depois do `JwtAuthGuard`. A ordem importa porque o `RolesGuard` depende do usuário autenticado já colocado no request pelo JWT guard. Se o `RolesGuard` rodar antes, ele não terá o contexto necessário para verificar perfis e permissões e pode gerar comportamento incorreto, normalmente tratando um problema de autenticação como se fosse autorização. A regra correta é: primeiro autenticar, depois autorizar.
+
+Na prática, isso significa que o fluxo esperado é:
+
+- `JwtAuthGuard` valida o token e popula o usuário autenticado.
+- `RolesGuard` verifica se o usuário autenticado possui o perfil necessário para a rota.
+- Se não houver token válido, a resposta deve ser `401`.
+- Se o token for válido, mas o perfil não tiver permissão, a resposta deve ser `403`.
+
+Essa separação mantém a semântica correta entre autenticação e autorização e deixa a arquitetura preparada para a Etapa 3 sem exigir reestruturação dos módulos já existentes.
+
+#### 3.23.1 Verificação de usuário ativo no login
+
+Decisão adotada no SGCM: validar se o usuário está ativo no momento da autenticação, e não em toda requisição autenticada.
+
+Justificativa do trade-off:
+
+- o login falha imediatamente para usuários inativos;
+- a estratégia JWT continua leve, porque apenas confere e repassa o payload;
+- a validação de atividade fica concentrada no fluxo de autenticação e em serviços que precisam dessa regra.
+
+Trecho atual da autenticação:
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+async validateUser(email: string, pass: string): Promise<User | null> {
+  const user = await this.usersService.findByEmail(email, true);
+
+  if (!user || !user.isActive) {
+    return null;
+  }
+
+  const isPasswordValid = compareSync(pass, user.password);
+
+  if (!isPasswordValid) {
+    return null;
+  }
+
+  return user;
+}
+```
+
+Trecho atual da estratégia JWT:
+
+Arquivo: `src/modules/auth/strategies/jwt.strategy.ts`
+
+```ts
+validate(payload: UserPayload): UserPayload {
+  return payload;
+}
+```
+
+Limitação reconhecida:
+
+- um usuário inativado depois do login pode continuar com acesso até o access token expirar; essa limitação é tratada na seção de riscos residuais e foi aceita para manter a solução simples nesta etapa.
+
+### 3.24 Ordem de execução no NestJS e impacto no sistema
+
+O fluxo garantido é:
+
+- `middlewares` primeiro;
+- `guards` em seguida;
+- `interceptors` antes e depois do handler;
+- `pipes` no momento de transformação dos dados de entrada;
+- `exception filters` ao final, quando uma exceção é lançada.
+
+Na prática, isso significa que o `TransformInterceptor` nunca executa antes do `JwtAuthGuard`, porque interceptors só entram em ação depois que os guards já liberaram a requisição. Portanto, a hipótese de “transformar a resposta antes de autenticar” não se aplica ao NestJS como está configurado no projeto. A autenticação sempre acontece primeiro, e só depois a resposta bem-sucedida pode ser transformada pelo interceptor.
+
+O mesmo vale para o `RolesGuard`: ele deve vir depois do `JwtAuthGuard` na cadeia de autorização. Se a ordem fosse invertida, o `RolesGuard` tentaria validar permissões sem `req.user` disponível, o que comprometeria a decisão correta entre `401` e `403`. Nesse cenário, uma rota poderia ser negada por falta de contexto, mesmo quando o problema real fosse apenas a ausência ou invalidez do token. Por isso, a sequência correta é primeiro autenticar, depois verificar perfil/permissão.
+
+Como resultado, o fluxo observado no SGCM está alinhado com o comportamento do NestJS e com a arquitetura definida no relatório: middlewares cuidam da entrada e do logging, guards protegem o acesso, interceptors padronizam respostas de sucesso e filters tratam exceções.
+
+### 3.25 Principais superfícies de ataque do SGCM
+
+Nesta etapa, as principais superfícies de ataque do SGCM estão concentradas nos pontos que recebem entrada externa ou expõem informações sensíveis do sistema. As áreas mais críticas são:
+
+- `POST /auth/login`: alvo natural de força bruta, enumeração de usuários e tentativa de credenciais reutilizadas.
+- `POST /auth/refresh`: ponto sensível porque manipula tokens de renovação, que podem ser reutilizados indevidamente se não forem invalidados corretamente.
+- `Authorization: Bearer <token>`: o JWT pode ser interceptado em trânsito se a comunicação não estiver protegida por HTTPS.
+- Endpoints protegidos por guarda: acesso indevido a recursos de outro usuário, tentativa de burlar autorização e exploração de perfis sem permissão.
+- Endpoints com query params e filtros: risco de abuso por entradas inválidas, tentativas de injeção lógica e exploração de validações incompletas.
+- Logs da aplicação: embora úteis para auditoria, podem se tornar superfície de vazamento se armazenarem dados sensíveis demais.
+
+As principais medidas de mitigação implementadas são:
+
+- `JwtAuthGuard` global, com exceção explícita apenas para rotas públicas, reduzindo o risco de endpoints esquecidos sem proteção.
+- `RolesGuard` executado depois da autenticação, garantindo que a autorização só ocorra com `req.user` já validado.
+- Mensagens genéricas para falhas de login, evitando enumeração de usuários por diferença de resposta.
+- Expiração e rotação de refresh token, reduzindo a janela de reutilização indevida.
+- `HttpExceptionFilter` em RFC 7807, padronizando respostas e evitando vazamento de detalhes internos em erros inesperados.
+- `ValidationPipe` com `whitelist` e `forbidNonWhitelisted`, bloqueando campos extras e reduzindo entrada malformada.
+- Logging middleware com método, URL, IP, status e duração, mas sem registrar corpo da requisição, senha ou dados clínicos sensíveis.
+
+Alguns riscos permanecem fora do escopo deste trabalho ou dependem de infraestrutura externa:
+
+- Proteção contra força bruta em nível de rede ou de infraestrutura, como rate limiting avançado, WAF ou bloqueio progressivo por IP.
+- Garantia de HTTPS/TLS, que depende da configuração do ambiente de deploy e não apenas do código da aplicação.
+- Monitoramento e correlação centralizada de logs em produção, que exigem stack de observabilidade externa.
+- Proteção física e administrativa do banco de dados e das chaves secretas de ambiente, que não podem ser resolvidas só no código da API.
+
+Com isso, o SGCM cobre as superfícies de ataque mais relevantes da aplicação nesta etapa, reduzindo riscos mais prováveis no fluxo de autenticação, autorização, validação e auditoria, sem assumir responsabilidades que pertencem à camada de infraestrutura.
+
+### 3.26 O que colocar no payload do token de acesso
+
+Decisão adotada: manter o payload no menor formato útil para autenticação e autorização. No estado atual do SGCM, os campos utilizados são apenas `sub`, `email` e `type`.
+
+- `sub`: identificador estável do usuário, usado como referência principal no backend.
+- `email`: útil para contexto da sessão e rastreabilidade básica.
+- `type`: necessário para autorização por perfil (ex.: `RolesGuard`).
+
+
+Campos deliberadamente excluídos:
+
+- `password` e `refreshToken`: dados críticos, nunca devem ir no payload.
+- `name`: o nome completo não é carregado no token; quando necessário, o backend consulta o usuário no serviço de usuários.
+- `isActive`: estado dinâmico, deve ser validado no backend.
+- dados clínicos ou pessoais sensíveis: ampliam risco de exposição.
+
+Trecho atual de geração do payload:
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+const payload: UserPayload = {
+  sub: user.id,
+  email: user.email,
+  type: user.type,
+};
+```
+
+Modelo de payload:
+
+Arquivo: `src/modules/auth/models/user-payload.model.ts`
+
+```ts
+export interface UserPayload {
+  sub: number;
+  email: string;
+  type: UserType;
+  iat?: number;
+  exp?: number;
+}
+```
+
+Observação arquitetural: a decisão atual privilegia minimização do token e evita carregar dados desnecessários no JWT. Quando o sistema precisa do nome completo do usuário autenticado, ele faz a consulta ao backend a partir do identificador `sub`, por exemplo no fluxo de `GET /auth/me`.
+
+### 3.27 Tempo de expiração dos tokens
+
+Não existe um valor universal. A decisão deve equilibrar segurança e usabilidade no contexto clínico.
+
+Valores padrão adotados na implementação atual:
+
+- Access token: `1d`.
+- Refresh token: `7d`.
+
+Trechos de código:
+
+Arquivo: `src/app.module.ts`
+
+```ts
+JwtModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    secret: configService.get<string>('JWT_SECRET'),
+    signOptions: {
+      expiresIn: configService.get<StringValue>('JWT_EXPIRES_IN') ?? '1d',
+    },
+  }),
+  global: true,
+}),
+```
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+const refreshToken = this.jwtService.sign(payload, {
+  expiresIn:
+    this.configService.get<StringValue>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
+});
+```
+
+Arquivo: `.env.example`
+
+```dotenv
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+```
+
+Justificativa:
+
+- Access token mais curto reduz a janela de abuso em caso de interceptação.
+- Refresh token mais longo reduz atrito de login para uso contínuo.
+
+Implementação aplicada na Etapa 2:
+
+- os valores foram parametrizados por variáveis de ambiente (`JWT_EXPIRES_IN` e `JWT_REFRESH_EXPIRES_IN`), permitindo ajuste por ambiente sem alteração de código.
+
+### 3.28 Como armazenar o refresh token
+
+Decisão adotada: armazenar refresh token em hash no banco, nunca em texto puro.
+
+Trecho de código:
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+user.refreshToken = hashSync(refreshToken, 10);
+await this.usersService.saveRefreshToken(user.id, user.refreshToken);
+
+private validateRefreshToken(token: string, hash: string): boolean {
+  return compareSync(token, hash);
+}
+```
+
+Implicações de segurança:
+
+- Se armazenado em texto puro: comprometimento do banco permite reutilização imediata do refresh token.
+- Com hash: o valor armazenado não é reutilizável diretamente, reduzindo impacto de vazamento.
+
+Trade-off de implementação:
+
+- com hash, o endpoint `/auth/refresh` precisa comparar token recebido x hash (não igualdade direta), centralizando a verificação no `AuthService`.
+
+#### 3.28.1 Reuso de refresh token já utilizado (token replay)
+
+Decisão adotada no SGCM: quando um refresh token já utilizado (ou inválido) é apresentado novamente, a API retorna erro genérico de autenticação (`401`) e não força revogação global imediata de todas as sessões do usuário.
+
+Na prática, o comportamento adotado é:
+
+- o token reapresentado é recusado;
+- nenhuma sessão adicional é derrubada automaticamente;
+- o cliente deve iniciar novo fluxo de autenticação para obter um refresh token válido.
+
+Trecho atual:
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+if (!user.refreshToken || !this.validateRefreshToken(refreshToken, user.refreshToken)) {
+  throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
+}
+```
+
+Justificativa do trade-off:
+
+- segurança: evita aceitar reutilização de token antigo e mantém mensagem sem detalhes excessivos;
+- tolerância operacional: não derruba automaticamente todas as sessões ativas do usuário em cenários ambíguos (por exemplo, falha de rede após rotação);
+- simplicidade da etapa atual: comportamento direto e consistente com a política de erro `401` do módulo de autenticação.
+
+Limitações reconhecidas:
+
+- o sistema não diferencia com precisão, neste ponto, se houve ataque com token roubado ou apenas reenvio legítimo por instabilidade de rede;
+- por não aplicar revogação global automática, a resposta prioriza continuidade de sessão em outros dispositivos em vez da postura mais agressiva de contenção.
+
+Evolução possível:
+
+- implementar detecção de replay com política de revogação ampliada (ex.: limpar refresh token e exigir novo login em todos os dispositivos) quando o projeto priorizar segurança máxima para esse cenário.
+
+#### 3.28.2 Segurança do logout e janela de risco residual
+
+Decisão adotada no SGCM: o logout invalida o refresh token armazenado no banco, mas não revoga imediatamente o access token já emitido.
+
+Trecho atual:
+
+Arquivo: `src/modules/auth/auth.service.ts`
+
+```ts
+async logout(userId: number): Promise<void> {
+  await this.usersService.clearRefreshToken(userId);
+}
+```
+
+Janela de risco real:
+
+- após o logout, um access token já comprometido pode continuar aceito até expirar;
+- com a configuração padrão atual (`JWT_EXPIRES_IN=15m`), essa janela é curta (ex.: ~15 minutos) e reduz a janela de risco; o refresh token cobre renovação de sessão.
+
+Avaliação para o contexto clínico:
+
+- para a Etapa 2, a decisão foi considerada aceitável por simplicidade arquitetural e por estar alinhada ao escopo do projeto;
+- para um ambiente clínico em produção, essa janela é sensível e pode ser problemática em cenários como perda/roubo de celular de profissional de saúde com sessão ativa.
+
+Limitações reconhecidas:
+
+- logout não garante encerramento imediato de sessão em todos os dispositivos quando ainda há access token válido;
+- a contenção do risco depende diretamente de expiração curta do access token e de controles operacionais complementares.
+
+Evolução possível:
+
+- reduzir ainda mais o TTL do access token em produção;
+- adotar mecanismo de revogação de access token (denylist por `jti`/versão de sessão) para permitir invalidação imediata após logout ou incidente.
+
+### 3.29 Swagger
+
+A documentação Swagger foi atualizada para a versão 2.1 do sistema, com suporte completo a Bearer Authentication.
+
+O botão `Authorize` está funcional e passa a ser o ponto central para testar os endpoints protegidos com o access token emitido em `POST /auth/login`.
+
+Diretrizes aplicadas na documentação:
+
+- endpoints protegidos utilizam `@ApiBearerAuth('access-token')`;
+- endpoints públicos não exibem `@ApiBearerAuth()`;
+- endpoints de autenticação possuem exemplos completos e realistas;
+- respostas `401` e `403` foram documentadas nos endpoints que podem retornar esses erros;
+- os exemplos de resposta refletem o envelope produzido pelo `TransformInterceptor`.
+
+### 3.30 Credenciais de teste
+
+Os seguintes usuários foram documentados como base de teste para os endpoints protegidos:
+
+| Perfil | E-mail | Senha |
+|---|---|---|
+| Admin | admin@sgcm.com | Admin@123 |
+| Doctor | rafael.mendes@sgcm.com | Doctor@123 |
+| Patient | ana.silva@sgcm.com | Patient@123 |
+
+Fluxo de uso no Swagger:
+
+1. utilizar `POST /auth/login` com uma das credenciais acima;
+2. copiar o `accessToken` retornado;
+3. clicar em `Authorize` no Swagger;
+4. informar o token JWT para testar os endpoints protegidos.
+
+### 3.31 Dificuldades e aprendizados da Etapa 2
+
+As principais dificuldades desta etapa foram:
+
+- padronizar autenticação e autorização sem quebrar os endpoints da Etapa 1;
+- separar controle por perfil e controle por recurso sem duplicar regra;
+- manter o `JwtAuthGuard` global sem perder a clareza dos endpoints públicos;
+- atualizar Swagger, envelope de resposta e documentação de erros para refletir o novo fluxo autenticado;
+- alinhar a leitura do token com a validação de usuários ativos e a rotação do refresh token.
+
+Os principais aprendizados foram:
+
+- o controle de acesso fica mais consistente quando autenticação e autorização são separadas;
+- guardar o mínimo necessário no JWT reduz superfície de exposição;
+- o uso de `@Public()`, `@Roles()` e `@CurrentUser()` deixa o contrato de acesso visível no próprio controller;
+- mover as regras de acesso para services preserva a simplicidade dos controllers.
+
+### 3.32 Política de atualização da documentação Swagger
+
+Para evitar divergência entre código e documentação, o SGCM adota a política de que qualquer alteração de contrato HTTP deve vir acompanhada da atualização correspondente no Swagger no mesmo pull request.
+
+Essa regra vale para mudanças como:
+
+- inclusão, remoção ou renomeação de campos em DTOs;
+- alteração de exemplos de request e response;
+- mudança de status code ou mensagem documentada;
+- inclusão de novos endpoints ou alteração de comportamento de rotas existentes;
+- revisão de `@ApiBody()`, `@ApiOkResponse()`, `@ApiUnauthorizedResponse()`, `@ApiBearerAuth()` e descrições relacionadas.
+
+Implementação da política:
+
+- o autor da mudança deve atualizar a documentação no mesmo commit funcional que altera o endpoint ou DTO;
+- o revisor do pull request deve validar se o código e os decorators do Swagger estão coerentes com o comportamento real;
+- alterações sem atualização de Swagger não são aprovadas até que a documentação seja corrigida;
+- mudanças que afetam rotas protegidas devem também verificar se `@ApiBearerAuth()` está presente ou ausente conforme o tipo de endpoint.
+
+Verificação adotada no fluxo de revisão:
+
+- conferência do diff do endpoint e do DTO para garantir que exemplos, descrições e respostas refletem a implementação atual;
+- abertura do Swagger UI após a mudança para confirmar que o contrato renderizado corresponde ao código;
+- teste rápido do endpoint com credenciais válidas quando a mudança envolver autenticação ou autorização;
+- checagem final de que os exemplos de resposta continuam representando o envelope produzido pelo `TransformInterceptor`.
+
+Critério prático de aprovação:
+
+- um pull request só é considerado pronto quando a implementação e a documentação do Swagger forem revisadas juntas, evitando que a API entregue um comportamento diferente do que está documentado.
+
+Para que a revisão do relatório fique objetiva, toda justificativa sobre Swagger deve mostrar também o trecho de código correspondente e o arquivo de origem. Exemplo:
+
+Arquivo: [src/modules/auth/auth.controller.ts](src/modules/auth/auth.controller.ts)
+
+```ts
+@Post('login')
+@HttpCode(HttpStatus.OK)
+@UseGuards(LocalAuthGuard)
+@Public()
+@ApiWrappedResponse({
+  description: 'Autenticação bem-sucedida.',
+  model: AuthResponseDto,
+  status: HttpStatus.OK,
+})
+```
+
+Esse padrão também vale para os endpoints protegidos do módulo de usuários.
+
+Arquivo: [src/modules/users/controllers/users.controller.ts](src/modules/users/controllers/users.controller.ts)
+
+```ts
+@ApiTags('Users')
+@Controller('users')
+@ApiAuthResponses({
+  instance: '/users',
+  unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+})
+export class UsersController {
+  @Get(':id')
+  @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
+  @ApiOperation({ summary: 'Buscar usuário por ID' })
+  async findOne(
+    @Param('id') id: number,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.usersService.findOneWithAccess(Number(id), user);
+  }
+}
+```
+
+### 3.33 Swagger e envelope do Transform Interceptor
+
+Decisão adotada: o Swagger deve refletir o envelope real entregue pela API, incluindo `{ data, meta }`, porque é esse formato que o cliente recebe após a execução do `TransformInterceptor`.
+
+Essa escolha prioriza precisão contratual: o Swagger passa a documentar a resposta efetiva da aplicação, e não apenas o valor cru retornado pelo handler. O custo é maior manutenção, mas ele foi aceito porque a política da etapa já exige atualizar a documentação junto com o código.
+
+Arquivo: [src/common/interceptors/transform.interceptor.ts](src/common/interceptors/transform.interceptor.ts)
+
+```ts
+if (isPaginatedResponse(data)) {
+  return {
+    data: data.data,
+    meta: {
+      ...data.meta,
+      timestamp,
+      path,
+    },
+  };
+}
+
+return {
+  data,
+  meta: {
+    timestamp,
+    path,
+  },
+};
+```
+
+Arquivo: [src/main.ts](src/main.ts)
+
+```ts
+app.useGlobalInterceptors(
+  new TransformInterceptor(),
+  new ClassSerializerInterceptor(app.get(Reflector)),
+);
+```
+
+Consequência prática na documentação:
+
+- exemplos de `@ApiOkResponse()` devem mostrar o envelope `{ data, meta }`;
+- exemplos de listagem paginada devem mostrar `data` e `meta` com `timestamp` e `path`;
+- respostas sem corpo, como `204 No Content`, continuam sem envelope, porque o interceptor não transforma esses casos.
+
+Em resumo: o Swagger não deve mostrar apenas o payload cru do handler; ele deve representar o contrato real da resposta observada pelo consumidor da API.
+
+### 3.34 Controle de acesso por perfil
+
+A tabela abaixo apresenta, por endpoint, se o perfil `Patient`, `Doctor` ou `Admin` tem acesso (`Sim`) ou não (`Não`). Quando o acesso é permitido apenas ao próprio recurso (por exemplo, o paciente acessando apenas seus agendamentos), isso é indicado com `Sim*` (veja nota).
+
+| Endpoint | Patient | Doctor | Admin |
+|---|:---:|:---:|:---:|
+| POST /auth/login | Sim | Sim | Sim |
+| POST /auth/refresh | Sim | Sim | Sim |
+| GET /auth/me | Sim* | Sim* | Sim* |
+| POST /auth/logout | Sim* | Sim* | Sim* |
+| POST /users | Não | Não | Sim |
+| GET /users | Não | Não | Sim |
+| GET /users/{id} | Sim* | Sim | Sim |
+| PUT /users/{id} | Sim* | Sim | Sim |
+| DELETE /users/{id} | Não | Não | Sim |
+| GET /doctors | Sim | Sim | Sim |
+| GET /doctors/{id} | Sim | Sim | Sim |
+| GET /doctors/{id}/specialties | Sim | Sim | Sim |
+| POST /doctors/{id}/specialties | Não | Não | Sim |
+| DELETE /doctors/{id}/specialties/{specialtyId} | Não | Não | Sim |
+| GET /doctors/{id}/schedules | Não | Sim* | Sim |
+| GET /patients | Não | Não | Sim |
+| GET /patients/{id} | Sim* | Não | Sim |
+| GET /patients/{id}/schedules | Sim* | Não | Sim |
+| POST /specialties | Não | Não | Sim |
+| GET /specialties | Sim | Sim | Sim |
+| GET /specialties/{id} | Sim | Sim | Sim |
+| PUT /specialties/{id} | Não | Não | Sim |
+| DELETE /specialties/{id} | Não | Não | Sim |
+| GET /specialties/{id}/doctors | Sim | Sim | Sim |
+| POST /schedules | Sim* | Não | Sim |
+| GET /schedules | Não | Não | Sim |
+| GET /schedules/{id} | Sim* | Sim* | Sim |
+| PUT /schedules/{id} | Não | Não | Sim |
+| PATCH /schedules/{id}/status | Sim* | Não | Sim |
+| DELETE /schedules/{id} | Não | Não | Sim |
+
+Nota: `Sim*` indica que o acesso está restrito ao recurso próprio (por exemplo, `GET /users/{id}` com o parâmetro `id` igual ao `sub` do token, ou `GET /doctors/{id}/schedules` quando o `Doctor` acessa sua própria agenda). O controle por recurso é implementado nos services (comparando `currentUser.sub` com o proprietário do recurso).
+
+### 3.35 Comportamento padrão do `RolesGuard` quando `@Roles()` não está presente
+
+Decisão adotada: quando um endpoint não possui `@Roles()`, o `RolesGuard` permite a requisição desde que ela já tenha passado pelo `JwtAuthGuard` global. Ou seja, a ausência de `@Roles()` não bloqueia o acesso por perfil; ela significa apenas que qualquer usuário autenticado pode acessar a rota.
+
+Essa escolha foi mantida de forma consistente porque o SGCM já adota o padrão `opt-out` para autenticação: tudo é protegido por padrão e apenas rotas explícitas com `@Public()` ficam abertas. Nesse contexto, usar um `RolesGuard` que bloqueasse por padrão quando `@Roles()` estivesse ausente criaria uma segunda camada de bloqueio implícita e aumentaria o risco de quebrar rotas válidas que dependem apenas de autenticação.
+
+Justificativa prática:
+
+- reduz atrito para endpoints que precisam apenas de usuário autenticado, sem impor um papel específico;
+- evita exigir `@Roles()` em rotas públicas autenticadas, como `GET /auth/me` e `POST /auth/logout`;
+- mantém o comportamento previsível para a Etapa 3, porque o padrão continua sendo: rotas protegidas por autenticação global e, quando necessário, refinadas por perfil com `@Roles()`.
+
+### 3.36 `@CurrentUser()` retorna o payload do JWT
+
+Decisão adotada: o decorator `@CurrentUser()` retorna diretamente o payload do JWT disponível em `request.user`, e não o `User` completo carregado do banco.
+
+Trecho atual:
+
+Arquivo: [src/common/decorators/current-user.decorator.ts](src/common/decorators/current-user.decorator.ts)
+
+```ts
+export const CurrentUser = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): UserPayload => {
+    const request = ctx.switchToHttp().getRequest();
+    return request.user as UserPayload;
+  },
+);
+```
+
+Justificativa:
+
+- o payload já contém `sub` e `type`, que são suficientes para a maior parte das verificações de autorização;
+- evita consulta extra ao banco em cada requisição apenas para extrair dados que já estão no token;
+- mantém `@CurrentUser()` leve e previsível para controllers e services.
+
+Quando o `User` completo é necessário, o código busca o usuário no banco explicitamente, por exemplo em `AuthService.me()` ou nos services que precisam validar estado atual (`isActive`) e relacionamento com o recurso.
+
+Limitação reconhecida:
+
+- `@CurrentUser()` não deve ser usado para decisões que dependem de estado dinâmico do banco, como `isActive`; nesses casos, o service precisa consultar o repositório.
+
+### 3.37 Controle por recurso
+
+O controle por recurso é aplicado apenas quando um usuário autenticado poderia tentar acessar dados de outro usuário do mesmo perfil. Nessas rotas, o service verifica o dono do recurso comparando o identificador do usuário autenticado (`currentUser.sub`) com o proprietário real do recurso no banco.
+
+Regra de negócio adotada para `Admin`:
+
+- `Admin` ignora o controle por recurso e acessa o recurso independentemente de propriedade.
+
+Lista completa de endpoints com controle por recurso:
+
+| Endpoint | Dono do recurso | Regra implementada |
+|---|---|---|
+| GET /users/{id} | Usuário do parâmetro `{id}` | `Admin` acessa tudo; `Doctor` e `Patient` só acessam se `currentUser.sub === id`. |
+| PUT /users/{id} | Usuário do parâmetro `{id}` | `Admin` acessa tudo; `Doctor` e `Patient` só atualizam se `currentUser.sub === id`. |
+| GET /doctors/{id}/schedules | Médico do parâmetro `{id}` | `Admin` acessa tudo; `Doctor` só acessa se o `doctor.user.id` for o próprio `sub`. `Patient` não tem acesso. |
+| GET /patients/{id} | Paciente do parâmetro `{id}` | `Admin` acessa tudo; `Patient` só acessa se `patient.user.id === currentUser.sub`. `Doctor` não tem acesso por recurso. |
+| GET /patients/{id}/schedules | Paciente do parâmetro `{id}` | `Admin` acessa tudo; `Patient` só acessa se `patient.user.id === currentUser.sub`. `Doctor` não tem acesso por recurso. |
+| POST /schedules | Paciente indicado no payload (`patientId`) | `Admin` pode criar para qualquer paciente; `Patient` só pode criar para si mesmo (`patientId === currentUser.sub`). |
+| GET /schedules/{id} | Agendamento `{id}` | `Admin` acessa tudo; `Doctor` só acessa se `schedule.doctor.user.id === currentUser.sub`; `Patient` só acessa se `schedule.patient.user.id === currentUser.sub`. |
+| PATCH /schedules/{id}/status | Agendamento `{id}` | `Admin` pode alterar qualquer agendamento; `Patient` só pode cancelar o próprio agendamento (`schedule.patient.user.id === currentUser.sub`) e apenas para `CANCELLED`. |
+
+Implementação nos services:
+
+- `UsersService.assertCanAccessUser()` e `UsersService.assertCanUpdateUser()` comparam `currentUser.sub` com o `id` alvo e liberam `Admin`.
+- `PatientsService.assertCanAccessPatient()` libera `Admin` e permite `Patient` apenas quando o `user.id` do paciente é o próprio `sub`.
+- `DoctorsService.findSchedules()` libera `Admin` e permite `Doctor` apenas quando o `doctor.user.id` é o próprio `sub`.
+- `SchedulesService.assertCanAccessSchedule()` libera `Admin` e valida `doctor.user.id` ou `patient.user.id` conforme o perfil.
+- `SchedulesService.updateStatus()` restringe o cancelamento pelo paciente ao próprio agendamento.
+
+Essa separação mantém o controle por perfil no controller e o controle por recurso no service, evitando duplicação de regra e reduzindo o risco de exposição acidental de dados de outro usuário.
+
+### 3.38 Esquema nomeado de Bearer Auth e guia rápido de uso
+
+Decisão adotada: o Swagger passou a registrar o esquema de autenticação com nome explícito, `access-token`, para garantir que o botão `Authorize` e os decorators dos controllers apontem para o mesmo esquema.
+
+Trecho atual da configuração global:
+
+Arquivo: [src/main.ts](src/main.ts)
+
+```ts
+const config = new DocumentBuilder()
+  .setTitle('SGCM — Sistema de Gestão de Clínica Médica')
+  .setDescription(`API para gerenciamento de usuários, especialidades e agendamentos.
+
+Como testar a API no Swagger:
+
+1. Faça login em POST /auth/login.
+2. Copie o accessToken retornado.
+3. Clique em Authorize no topo da página.
+4. Cole o token no esquema access-token.
+5. Use os endpoints protegidos normalmente; o Swagger enviará o cabeçalho Authorization: Bearer {token} automaticamente nas rotas marcadas com @ApiBearerAuth('access-token').
+`)
+  .setVersion('2.1')
+  .addBearerAuth(
+    {
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      description: 'Insira o token JWT obtido em POST /auth/login',
+    },
+    ACCESS_TOKEN_BEARER_SCHEME,
+  )
+  .build();
+```
+
+Trecho atual do controller autenticado:
+
+Arquivo: [src/modules/schedules/schedules.controller.ts](src/modules/schedules/schedules.controller.ts)
+
+```ts
+@ApiTags('Schedules')
+@Controller('schedules')
+@ApiAuthResponses({
+  instance: '/schedules',
+  unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+})
+export class SchedulesController {
+```
+
+Decisão de usabilidade:
+
+- a descrição do Swagger agora funciona como guia rápido para o desenvolvedor;
+- o usuário entende onde fazer login, onde colar o token e quais rotas são públicas;
+- a referência ao esquema nomeado evita falhas silenciosas em que o token é inserido no Swagger, mas não chega aos endpoints protegidos.
+
+### 3.39 Decorators reutilizáveis para envelope e erros de autenticação
+
+Decisão adotada: para reduzir repetição e manter a documentação consistente, o projeto passou a usar decorators compostos para duas necessidades recorrentes:
+
+- documentar o envelope `{ data, meta }` nas respostas de sucesso;
+- documentar `401` e `403` nos endpoints protegidos.
+
+Trecho do utilitário de Swagger:
+
+Arquivo: [src/common/swagger/swagger.decorators.ts](src/common/swagger/swagger.decorators.ts)
+
+```ts
+export const ACCESS_TOKEN_BEARER_SCHEME = 'access-token';
+
+export function ApiWrappedResponse(options: ApiWrappedResponseOptions) {
+  return applyDecorators(
+    ApiResponse({
+      status: options.status ?? HttpStatus.OK,
+      description: options.description,
+      schema: {
+        type: 'object',
+        properties: {
+          data: dataSchema,
+          meta: {
+            type: 'object',
+            properties: metaProperties,
+            example: metaExample,
+          },
+        },
+      },
+    }),
+  );
+}
+
+export function ApiAuthResponses(options: ApiAuthResponsesOptions) {
+  return applyDecorators(
+    ApiBearerAuth(ACCESS_TOKEN_BEARER_SCHEME),
+    ApiUnauthorizedResponse({
+      description: options.unauthorizedDescription ?? 'Token ausente, inválido ou expirado.',
+      schema: {
+        example: {
+          type: 'https://sgcm.example.com/problems/unauthorized',
+          title: 'Não autenticado',
+          status: 401,
+          detail: options.unauthorizedDetail,
+          instance: options.instance,
+        },
+      },
+    }),
+  );
+}
+```
+
+Trecho de uso no endpoint de autenticação:
+
+Arquivo: [src/modules/auth/auth.controller.ts](src/modules/auth/auth.controller.ts)
+
+```ts
+@Post('login')
+@HttpCode(HttpStatus.OK)
+@UseGuards(LocalAuthGuard)
+@Public()
+@ApiWrappedResponse({
+  description: 'Autenticação bem-sucedida.',
+  model: AuthResponseDto,
+  status: HttpStatus.OK,
+  metaExample: {
+    timestamp: '2026-05-24T09:00:00.000Z',
+    path: '/auth/login',
+  },
+})
+@ApiUnauthorizedResponse({
+  description: 'Credenciais incorretas ou usuário inativo.',
+  schema: {
+    example: {
+      type: 'https://sgcm.example.com/problems/unauthorized',
+      title: 'Não autenticado',
+      status: 401,
+      detail: 'E-mail ou senha incorretos.',
+      instance: '/auth/login',
+    },
+  },
+})
+login(@Body() _dto: LoginDto, @CurrentUser() user: User) {
+```
+
+Critério adotado:
+
+- o helper `ApiWrappedResponse` é usado sempre que o retorno segue o envelope padrão;
+- o helper `ApiAuthResponses` é usado nos endpoints protegidos para evitar repetição dos mesmos exemplos de `401` e `403`;
+- a documentação fica consistente sem obrigar cada controller a reescrever manualmente o mesmo schema.
+
+### 3.40 Granularidade dos erros documentados
+
+Decisão adotada: a documentação Swagger deve ser **por endpoint**, e não apenas por status code genérico, sempre que o significado do erro mudar conforme a rota.
+
+Isso é necessário porque o mesmo `401` pode representar situações diferentes na API:
+
+- em `POST /auth/login`, `401` significa `credenciais incorretas`;
+- em `GET /schedules`, `401` significa `token ausente, inválido ou expirado`.
+
+Para quem integra com a API, essa distinção muda a ação esperada:
+
+- no login, o cliente precisa revisar e reenviar usuário e senha;
+- em uma rota protegida, o cliente precisa autenticar a sessão antes de repetir a chamada.
+
+Por isso, uma descrição genérica como apenas `401 Unauthorized` não é suficiente quando o comportamento de correção é diferente entre endpoints. O Swagger deve mostrar o `detail` esperado para cada rota crítica, usando exemplos coerentes com o fluxo real da aplicação.
+
+Critério adotado pelo grupo:
+
+- o código de status permanece padronizado (`401`, `403`, `404`, etc.);
+- a descrição e o exemplo de erro no Swagger devem ser específicos por endpoint quando a causa ou a correção esperada forem diferentes;
+- se dois endpoints usam o mesmo status por motivos distintos, a documentação deve deixar essa diferença explícita.
+
+Exemplos de aplicação:
+
+- `POST /auth/login` deve documentar `401` com descrição próxima de `E-mail ou senha incorretos.`;
+- `GET /schedules` deve documentar `401` com descrição próxima de `Token JWT ausente, inválido ou expirado.`;
+- quando houver `403`, o Swagger deve indicar que o usuário está autenticado, mas não tem permissão para o recurso específico.
+
+Com isso, o desenvolvedor que integra com a API consegue entender o que corrigir apenas lendo a documentação, sem depender de inferência pelo nome genérico do status HTTP.
 
 ---
 
 ## 4 - DIFICULDADES E APRENDIZADOS
+
+### Dificuldades encontradas etapa 1
 
 - Dificuldades:
   - Implementar manualmente a estratégia JTI no TypeORM devido à falta de suporte nativo.
@@ -449,6 +1438,17 @@ Justificativa:
   - Importância de contratos de API bem documentados (Swagger) e exemplos claros para consumidores.
   - Vantagem de diagramas (PlantUML) para alinhar modelagem de domínio com a equipe.
 
+### Dificuldades encontradas etapa 2
+
+As principais dificuldades da etapa foram:
+
+- padronização entre `User.id`, `Doctor.id` e `Patient.id`;
+- separação entre autorização por perfil e autorização por recurso;
+- distinção correta entre erros 401 e 403;
+- adaptação dos endpoints existentes da Etapa 1 para o novo modelo de autenticação;
+- atualização consistente do Swagger após introdução do Transform Interceptor.
+
+A principal solução adotada foi centralizar validações de acesso dentro dos services e manter os controllers responsáveis apenas pela orquestração das requisições.
 ## Conclusão
 
 Nesta primeira etapa, o objetivo é construir a base funcional do SGCM — modelando o domínio de uma clínica médica, implementando as operações essenciais e organizando o código de forma que o projeto possa evoluir com consistência nas etapas seguintes.
@@ -468,3 +1468,4 @@ Durante a execução, foram alcançados os seguintes marcos:
 **Documentação com Swagger** — todos os endpoints foram documentados de forma acessível, com exemplos de requisição, resposta e tratamento de erros padronizado.
 
 **Preparação para evolução** — as decisões tomadas nesta etapa (separação de controllers por domínio, factory pattern para criação de usuários, inativação lógica em vez de deleção física, conceito de `traceId` no filtro de erros) facilitam a introdução futura de autenticação JWT (Etapa 2), controle de acesso por perfil (Etapa 2) e entidades clínicas complexas como atendimentos, procedimentos, prontuários e laudos (Etapa 3).
+

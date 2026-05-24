@@ -2,11 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Patient } from '../entities/patient.entity';
 import { Repository, Like } from 'typeorm';
-import { NotFoundException } from '../../../common/exceptions';
-import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
+import { ForbiddenException, NotFoundException } from '../../../common/exceptions';
+import { PaginatedResponse } from '../../../common/interfaces/paginated-response.interface';
 import { FindPatientsQueryDto } from '../dto/find-patients-query.dto';
 import { SchedulesService } from '../../schedules/services/schedules.service';
-import { FindSchedulesQueryDto } from '../../schedules/dto/find-schedules-query.dto';
+import type { UserPayload } from '../../auth/models/user-payload.model';
+import { UserType } from '../enum/user-type.enum';
+import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
 
 @Injectable()
 export class PatientsService {
@@ -18,7 +20,7 @@ export class PatientsService {
 
   async findAll(
     query: FindPatientsQueryDto,
-  ): Promise<PaginatedResponseDto<Patient>> {
+  ): Promise<PaginatedResponse<Patient>> {
     const { page, limit, sort, search } = query;
 
     const skip = (page - 1) * limit;
@@ -50,18 +52,25 @@ export class PatientsService {
     };
   }
 
-  async findOne(id: number) {
+  private async findEntityByIdOrFail(id: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
-      where: { user: { id, isActive: true } },
+      where: { id },
       relations: { user: true },
     });
 
-    if (!patient) {
+    if (!patient || !patient.user.isActive) {
       throw new NotFoundException('Paciente', id);
     }
 
+    return patient;
+  }
+
+  async findOne(id: number) {
+    const patient = await this.findEntityByIdOrFail(id);
+
     return {
-      id: patient.user.id,
+      id: patient.id,
+      userId: patient.user.id,
       name: patient.user.name,
       email: patient.user.email,
       cpf: patient.cpf,
@@ -69,7 +78,47 @@ export class PatientsService {
     };
   }
 
-  async findSchedules(id: number, query: FindSchedulesQueryDto) {
-    return await this.schedulesService.findByPatient(id, query);
+  async findSchedules(
+    id: number,
+    query: FindRelatedSchedulesQueryDto,
+    currentUser: UserPayload,
+  ) {
+    const patient = await this.findEntityByIdOrFail(id);
+    this.assertCanAccessPatient(patient, currentUser);
+
+    return this.schedulesService.findByPatient(patient.id, query);
+  }
+
+  // Controle de Acesso
+
+  private assertCanAccessPatient(patient: Patient, currentUser: UserPayload): void {
+    if (currentUser.type === UserType.ADMIN) {
+      return;
+    }
+
+    if (
+      currentUser.type === UserType.PATIENT &&
+      patient.user.id === currentUser.sub
+    ) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      'Você não tem permissão para acessar dados de outro paciente.',
+    );
+  }
+
+  async findOneWithAccess(id: number, currentUser: UserPayload) {
+    const patient = await this.findEntityByIdOrFail(id);
+    this.assertCanAccessPatient(patient, currentUser);
+
+    return {
+      id: patient.id,
+      userId: patient.user.id,
+      name: patient.user.name,
+      email: patient.user.email,
+      cpf: patient.cpf,
+      birthDate: patient.birthDate,
+    };
   }
 }

@@ -5,7 +5,7 @@ import { FindSpecialtiesQueryDto } from './dto/find-specialties-query.dto';
 import { Specialty } from './entities/specialty.entity';
 import { Brackets, Like, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
+import { PaginatedResponse } from '../../common/interfaces/paginated-response.interface';
 import { NotFoundException } from '../../common';
 import { FindDoctorsQueryDto } from '../users/dto/find-doctors-query.dto';
 import { Doctor } from '../users/entities/doctor.entity';
@@ -31,7 +31,7 @@ export class SpecialtiesService {
 
   async findAll(
     query: FindSpecialtiesQueryDto
-  ): Promise<PaginatedResponseDto<Specialty>> { 
+  ): Promise<PaginatedResponse<Specialty>> { 
     const {page, limit, sort, search} = query;
 
     const skip = (page - 1) * limit;
@@ -86,7 +86,7 @@ export class SpecialtiesService {
     return this.specialtyRepository.remove(specialty);
   }
 
-  async findDoctors(query: FindDoctorsQueryDto, id: number): Promise<PaginatedResponseDto<Doctor>> {
+  async findDoctors(query: FindDoctorsQueryDto, id: number): Promise<PaginatedResponse<Doctor>> {
     const specialty = await this.specialtyRepository.findOne({ where: { id } });
     if (!specialty) {
       throw new NotFoundException('Especialidade', id);

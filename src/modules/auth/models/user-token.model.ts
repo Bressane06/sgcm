@@ -1,4 +1,5 @@
 export interface UserToken {
-  access_token: string;
-  token_type: string;
+  accessToken: string;
+  refreshToken: string;
+  tokenType: 'Bearer';
 }

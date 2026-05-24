@@ -1,37 +1,44 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
 import { compareSync, hashSync } from 'bcrypt';
 import { UsersService } from '../users/services/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserPayload } from './models/user-payload.model';
 import { AuthResponseDto } from './dto/auth-response.dto';
-import { UserType } from '../users/enum/user-type.enum';
+import { UnauthorizedException } from '../../common/exceptions';
+import { ConfigService } from '@nestjs/config';
+import { StringValue } from 'ms';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   private async generateTokens(user: User): Promise<AuthResponseDto> {
     const payload: UserPayload = {
       sub: user.id,
       email: user.email,
-      name: user.name,
       type: user.type,
     };
 
-    const access_token = this.jwtService.sign(payload);
-    const refresh_token = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get<StringValue>('JWT_EXPIRES_IN') ?? '15m',
+    });
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn:
+        this.configService.get<StringValue>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
+    });
 
-    user.refreshToken = hashSync(refresh_token, 10);
+    user.refreshToken = hashSync(refreshToken, 10);
     await this.usersService.saveRefreshToken(user.id, user.refreshToken);
 
     return {
-      access_token,
-      refresh_token,
-      token_type: 'Bearer',
+      accessToken,
+      refreshToken,
+      tokenType: 'Bearer',
     };
   }
 
@@ -45,17 +52,17 @@ export class AuthService {
       const user = await this.usersService.findOne(payload.sub);
 
       if (!user.refreshToken || !this.validateRefreshToken(refreshToken, user.refreshToken)) {
-        throw new UnauthorizedException('Refresh token inválido ou expirado');
+        throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
       }
 
       return this.generateTokens(user);
     } catch (error) {
-      throw new UnauthorizedException('Refresh token inválido ou expirado');
+      throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
     }
   }
 
-  async me(user: User): Promise<User> {
-    return user;
+  async me(user: UserPayload): Promise<User> {
+    return this.usersService.findOne(user.sub);
   }
 
   async logout(userId: number): Promise<void> {
@@ -66,17 +73,19 @@ export class AuthService {
     return compareSync(token, hash);
   }
 
-  async validateUser(email: string, pass: string, type: UserType | undefined): Promise<User | null> {
+  async validateUser(email: string, pass: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email, true);
 
-    if (user) {
-      const isPasswordValid = compareSync(pass, user.password);
-      if (isPasswordValid && user.type === type) {
-        const { password, ...result } = user;
-        return result as User;
-      }
+    if (!user || !user.isActive) {
+      return null;
     }
 
-    return null;
+    const isPasswordValid = compareSync(pass, user.password);
+
+    if (!isPasswordValid) {
+      return null;
+    }
+
+    return user;
   }
 }

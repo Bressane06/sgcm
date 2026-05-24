@@ -7,8 +7,9 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import {
   ConflictException,
   NotFoundException,
+  ForbiddenException
 } from '../../../common/exceptions';
-import { PaginatedResponseDto } from '../../../common/dto/paginated-response.dto';
+import { PaginatedResponse } from '../../../common/interfaces/paginated-response.interface';
 import { UsersFactoryService } from './users-factory.service';
 import { UsersUniquenessService } from './users-uniqueness.service';
 import { FindUsersQueryDto } from '../dto/find-users-query.dto';
@@ -17,6 +18,7 @@ import { Patient } from '../entities/patient.entity';
 import { Schedule } from '../../schedules/entities/schedule.entity';
 import { ScheduleStatus } from '../../schedules/enum/schedule-status.enum';
 import { UserType } from '../enum/user-type.enum';
+import type { UserPayload } from '../../auth/models/user-payload.model';
 
 @Injectable()
 export class UsersService {
@@ -112,7 +114,7 @@ export class UsersService {
     return await this.usersFactoryService.create(dto);
   }
 
-  async findAll(query: FindUsersQueryDto): Promise<PaginatedResponseDto<User>> {
+  async findAll(query: FindUsersQueryDto): Promise<PaginatedResponse<User>> {
     const { page, limit, sort, search } = query;
     const skip = (page - 1) * limit;
     const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
@@ -212,5 +214,81 @@ export class UsersService {
 
   async clearRefreshToken(id: number): Promise<void> {
     await this.userRepository.update(id, { refreshToken: null });
+  }
+
+  private assertCanAccessUser(targetUserId: number, currentUser: UserPayload): void {
+    if (currentUser.type === UserType.ADMIN) {
+      return;
+    }
+
+    if (currentUser.sub !== targetUserId) {
+      throw new ForbiddenException(
+        'Você não tem permissão para acessar dados de outro usuário.',
+      );
+    }
+  }
+
+  // Controle de Acesso
+
+  private assertCanUpdateUser(targetUserId: number, currentUser: UserPayload): void {
+    if (currentUser.type === UserType.ADMIN) {
+      return;
+    }
+
+    if (currentUser.sub !== targetUserId) {
+      throw new ForbiddenException(
+        'Você não tem permissão para atualizar dados de outro usuário.',
+      );
+    }
+  }
+
+  private assertCanRemoveUser(targetUserId: number, currentUser: UserPayload): void {
+    if (currentUser.sub === targetUserId) {
+      throw new ForbiddenException(
+        'Você não pode inativar sua própria conta.',
+      );
+    }
+  }
+
+  async findOneWithAccess(
+    id: number,
+    currentUser: UserPayload,
+  ): Promise<User> {
+    this.assertCanAccessUser(id, currentUser);
+    return this.findOne(id);
+  }
+
+  async updateWithAccess(
+    id: number,
+    dto: UpdateUserDto,
+    currentUser: UserPayload,
+  ): Promise<User> {
+    this.assertCanUpdateUser(id, currentUser);
+
+    if (currentUser.type !== UserType.ADMIN) {
+      delete dto.type;
+      delete dto.cpf;
+      delete dto.crm;
+      delete dto.accessLevel;
+    }
+
+    return this.update(id, dto);
+  }
+
+  async removeWithAccess(
+    id: number,
+    currentUser: UserPayload,
+  ): Promise<void> {
+    this.assertCanRemoveUser(id, currentUser);
+
+    const user = await this.findOne(id);
+
+    if (user.type === UserType.ADMIN) {
+      throw new ForbiddenException(
+        'Administradores não podem inativar outros administradores.',
+      );
+    }
+
+    await this.remove(id);
   }
 }
