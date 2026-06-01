@@ -1422,6 +1422,9 @@ Com isso, o desenvolvedor que integra com a API consegue entender o que corrigir
 
 ---
 
+## ETAPA 3
+
+
 ## 4 - DIFICULDADES E APRENDIZADOS
 
 ### Dificuldades encontradas etapa 1
