@@ -326,31 +326,21 @@ export class ReportsService {
     const validationUrl = this.getValidationUrl(report.validationCode);
     const qrCodeBuffer = await QRCode.toBuffer(validationUrl, {
       type: 'png',
-      width: 170,
+      width: 130,
       margin: 1,
       errorCorrectionLevel: 'M',
     });
 
-    const lines = [
-      'LAUDO MEDICO',
-      `Paciente: ${report.patient.user.name}`,
-      `Medico: ${report.doctor.user.name}`,
-      `Tipo de exame: ${report.examType}`,
-      `Resultado: ${report.result}`,
-      `Data de emissao: ${report.issuedAt.toISOString()}`,
-      `Codigo de validacao: ${report.validationCode}`,
-      `Link de validacao: ${validationUrl}`,
-      `Status: ${report.status}`,
-      report.status === ReportStatus.REVOKED && report.revokedAt
-        ? `Revogado em: ${report.revokedAt.toISOString()}`
-        : '',
-      report.status === ReportStatus.REVOKED && report.revokedReason
-        ? `Motivo da revogacao: ${report.revokedReason}`
-        : '',
-    ].filter(Boolean) as string[];
+    const pageWidth = 595.28;    // A4 em pontos
+    const pageHeight = 841.89;
+    const margin = 50;
+    const contentWidth = pageWidth - margin * 2;  // 495.28
+    const qrSize = 130;
+    const qrX = pageWidth - margin - qrSize;      // canto inferior direito
+    const qrY = pageHeight - margin - qrSize - 20; // reserva espaço pra legenda
 
     return await new Promise<Buffer>((resolve, reject) => {
-      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      const doc = new PDFDocument({ size: 'A4', margin });
       const chunks: Buffer[] = [];
 
       doc.on('data', (chunk: Buffer | Uint8Array) => {
@@ -359,25 +349,101 @@ export class ReportsService {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      doc.font('Helvetica-Bold').fontSize(18).text(lines[0] ?? 'LAUDO MEDICO');
-      doc.moveDown();
+      // ── Cabeçalho centralizado ──────────────────────────────────────────
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(16)
+        .text('CLÍNICA MÉDICA', margin, margin, { width: contentWidth, align: 'center' });
 
-      doc.font('Helvetica').fontSize(11);
-      for (const line of lines.slice(1)) {
-        doc.text(line, { width: 340 });
+      doc
+        .font('Helvetica')
+        .fontSize(11)
+        .fillColor('gray')
+        .text('Laudo Médico', { width: contentWidth, align: 'center' });
+
+      doc.fillColor('black').moveDown(0.5);
+
+      // Linha separadora
+      const lineY = doc.y;
+      doc
+        .moveTo(margin, lineY)
+        .lineTo(pageWidth - margin, lineY)
+        .strokeColor('#cccccc')
+        .lineWidth(0.5)
+        .stroke();
+
+      doc.moveDown(1);
+
+      // ── Campos justificados ─────────────────────────────────────────────
+      const fields: [string, string | null | undefined][] = [
+        ['Paciente',           report.patient.user.name],
+        ['Médico',             `${report.doctor.user.name} | CRM: ${report.doctor.crm}`],
+        ['Tipo de exame',      report.examType],
+        ['Resultado',          report.result],
+        ['Data de emissão',    report.issuedAt.toLocaleString('pt-BR')],
+        ['Status',             this.reportStatusLabels[report.status]],
+        ['Código de validação', report.validationCode],
+        ['Link de validação',  validationUrl],
+      ];
+
+      if (report.status === ReportStatus.REVOKED) {
+        if (report.revokedAt) {
+          fields.push(['Revogado em', report.revokedAt.toLocaleString('pt-BR')]);
+        }
+        if (report.revokedReason) {
+          fields.push(['Motivo da revogação', report.revokedReason]);
+        }
       }
 
-      doc.image(qrCodeBuffer, 390, 105, { width: 145 });
+      doc.font('Helvetica').fontSize(11);
+
+      for (const [label, value] of fields) {
+        if (!value) continue;
+
+        // Label em bold + valor justificado na mesma largura
+        const labelText = `${label}: `;
+        doc.font('Helvetica-Bold').text(labelText, { continued: true, width: contentWidth, align: 'justify' });
+        doc.font('Helvetica').text(value, { width: contentWidth, align: 'justify' });
+        doc.moveDown(0.3);
+      }
+
+      // ── QR Code — canto inferior direito ───────────────────────────────
+      doc.image(qrCodeBuffer, qrX, qrY, { width: qrSize });
       doc
-        .fontSize(9)
-        .text('Valide este laudo com o QR code', 380, 260, {
-          width: 160,
+        .fontSize(8)
+        .fillColor('gray')
+        .text('Valide este laudo com o QR code', qrX - 5, qrY + qrSize + 4, {
+          width: qrSize + 10,
           align: 'center',
         });
+
+      // ── Rodapé ─────────────────────────────────────────────────────────
+      const footerY = pageHeight - margin + 8;
+      doc
+        .moveTo(margin, footerY - 10)
+        .lineTo(pageWidth - margin, footerY - 10)
+        .strokeColor('#cccccc')
+        .lineWidth(0.5)
+        .stroke();
+
+      doc
+        .fontSize(8)
+        .fillColor('gray')
+        .text(
+          'Este documento é válido somente com o código de validação acima.',
+          margin,
+          footerY,
+          { width: contentWidth, align: 'center' },
+        );
 
       doc.end();
     });
   }
+
+  private readonly reportStatusLabels: Record<ReportStatus, string> = {
+    [ReportStatus.ACTIVE]: 'Ativo',
+    [ReportStatus.REVOKED]: 'Revogado',
+  };
 
   private getValidationUrl(code: string): string {
     const publicApiBaseUrl = (process.env.PUBLIC_API_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');

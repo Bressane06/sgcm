@@ -198,3 +198,43 @@ sgcm/
 | Patient | estela.patient@gmail.com | Patient@123 |
 
 Para autenticar, use `POST /auth/login`. Copie o `accessToken` retornado e clique em **Authorize** no Swagger.
+
+## Endpoints
+
+Controle de acesso por perfil
+A tabela abaixo apresenta, por endpoint, se o perfil Patient, Doctor ou Admin tem acesso (Sim) ou não (Não). Quando o acesso é permitido apenas ao próprio recurso (por exemplo, o paciente acessando apenas seus agendamentos), isso é indicado com Sim* (veja nota).
+
+| Endpoint | Patient | Doctor | Admin |
+|---|:---:|:---:|:---:|
+| POST /auth/login | Sim | Sim | Sim |
+| POST /auth/refresh | Sim | Sim | Sim |
+| GET /auth/me | Sim* | Sim* | Sim* |
+| POST /auth/logout | Sim* | Sim* | Sim* |
+| POST /users | Não | Não | Sim |
+| GET /users | Não | Não | Sim |
+| GET /users/{id} | Sim* | Sim | Sim |
+| PUT /users/{id} | Sim* | Sim | Sim |
+| DELETE /users/{id} | Não | Não | Sim |
+| GET /doctors | Sim | Sim | Sim |
+| GET /doctors/{id} | Sim | Sim | Sim |
+| GET /doctors/{id}/specialties | Sim | Sim | Sim |
+| POST /doctors/{id}/specialties | Não | Não | Sim |
+| DELETE /doctors/{id}/specialties/{specialtyId} | Não | Não | Sim |
+| GET /doctors/{id}/schedules | Não | Sim* | Sim |
+| GET /patients | Não | Não | Sim |
+| GET /patients/{id} | Sim* | Não | Sim |
+| GET /patients/{id}/schedules | Sim* | Não | Sim |
+| POST /specialties | Não | Não | Sim |
+| GET /specialties | Sim | Sim | Sim |
+| GET /specialties/{id} | Sim | Sim | Sim |
+| PUT /specialties/{id} | Não | Não | Sim |
+| DELETE /specialties/{id} | Não | Não | Sim |
+| GET /specialties/{id}/doctors | Sim | Sim | Sim |
+| POST /schedules | Sim* | Não | Sim |
+| GET /schedules | Não | Não | Sim |
+| GET /schedules/{id} | Sim* | Sim* | Sim |
+| PUT /schedules/{id} | Não | Não | Sim |
+| PATCH /schedules/{id}/status | Sim* | Não | Sim |
+| DELETE /schedules/{id} | Não | Não | Sim |
+
+> Sim* indica que o acesso está restrito ao recurso próprio (por exemplo, GET /users/{id} com o parâmetro id igual ao sub do token, ou GET /doctors/{id}/schedules quando o Doctor acessa sua própria agenda). O controle por recurso é implementado nos services (comparando currentUser.sub com o proprietário do recurso).
