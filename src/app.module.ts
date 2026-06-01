@@ -14,6 +14,7 @@ import { LoggingMiddleware } from './common/middlewares/logging.middleware';
 import { StringValue } from 'ms';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AdminModule } from './modules/admin/admin.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { AdminModule } from './modules/admin/admin.module';
     SchedulesModule,
     AuthModule,
     AdminModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [
