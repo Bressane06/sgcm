@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/is-public.decorator';
+import { SkipTransform } from '../../common/decorators/skip-transform.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ApiAuthResponses, ApiWrappedResponse } from '../../common/swagger';
 import type { UserPayload } from '../auth/models/user-payload.model';
@@ -61,6 +62,7 @@ export class ReportsController {
   }
 
   @Get('reports/:id/pdf')
+  @SkipTransform()
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @ApiParam({ name: 'id', type: Number, example: 1, description: 'ID do laudo' })
   @ApiAuthResponses({

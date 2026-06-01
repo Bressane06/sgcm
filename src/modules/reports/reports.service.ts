@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { Buffer } from 'buffer';
 import { Repository } from 'typeorm';
+import PDFDocument from 'pdfkit';
+import QRCode from 'qrcode';
 import { ForbiddenException, NotFoundException } from '../../common/exceptions';
 import { ReportStatus } from './enum/report-status.enum';
 import { Report } from './entities/report.entity';
@@ -79,7 +81,7 @@ export class ReportsService {
     const report = await this.findReportByIdOrFail(id);
     await this.assertCanAccessReport(report, currentUser);
 
-    const pdf = this.buildPdfBuffer(report);
+    const pdf = await this.buildPdfBuffer(report);
     return new StreamableFile(pdf, {
       type: 'application/pdf',
       disposition: `inline; filename="report-${report.id}.pdf"`,
@@ -320,7 +322,15 @@ export class ReportsService {
     };
   }
 
-  private buildPdfBuffer(report: Report): Buffer {
+  private async buildPdfBuffer(report: Report): Promise<Buffer> {
+    const validationUrl = this.getValidationUrl(report.validationCode);
+    const qrCodeBuffer = await QRCode.toBuffer(validationUrl, {
+      type: 'png',
+      width: 170,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+    });
+
     const lines = [
       'LAUDO MEDICO',
       `Paciente: ${report.patient.user.name}`,
@@ -329,6 +339,7 @@ export class ReportsService {
       `Resultado: ${report.result}`,
       `Data de emissao: ${report.issuedAt.toISOString()}`,
       `Codigo de validacao: ${report.validationCode}`,
+      `Link de validacao: ${validationUrl}`,
       `Status: ${report.status}`,
       report.status === ReportStatus.REVOKED && report.revokedAt
         ? `Revogado em: ${report.revokedAt.toISOString()}`
@@ -338,44 +349,38 @@ export class ReportsService {
         : '',
     ].filter(Boolean) as string[];
 
-    const textObjects = lines
-      .map((line, index) => {
-        const y = 760 - index * 24;
-        const size = index === 0 ? 18 : 11;
-        return `/F1 ${size} Tf\n1 0 0 1 50 ${y} Tm\n(${this.escapePdfText(line)}) Tj`;
-      })
-      .join('\n');
+    return await new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      const chunks: Buffer[] = [];
 
-    const stream = `BT\n${textObjects}\nET`;
-    const objects = [
-      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
-      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n',
-      '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
-      `5 0 obj\n<< /Length ${Buffer.byteLength(stream, 'utf8')} >>\nstream\n${stream}\nendstream\nendobj\n`,
-    ];
+      doc.on('data', (chunk: Buffer | Uint8Array) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
 
-    const header = '%PDF-1.4\n';
-    const offsets: number[] = [];
-    let currentOffset = Buffer.byteLength(header, 'utf8');
+      doc.font('Helvetica-Bold').fontSize(18).text(lines[0] ?? 'LAUDO MEDICO');
+      doc.moveDown();
 
-    for (const object of objects) {
-      offsets.push(currentOffset);
-      currentOffset += Buffer.byteLength(object, 'utf8');
-    }
+      doc.font('Helvetica').fontSize(11);
+      for (const line of lines.slice(1)) {
+        doc.text(line, { width: 340 });
+      }
 
-    const xrefOffset = currentOffset;
-    let xref = 'xref\n0 6\n0000000000 65535 f \n';
-    for (const offset of offsets) {
-      xref += `${offset.toString().padStart(10, '0')} 00000 n \n`;
-    }
+      doc.image(qrCodeBuffer, 390, 105, { width: 145 });
+      doc
+        .fontSize(9)
+        .text('Valide este laudo com o QR code', 380, 260, {
+          width: 160,
+          align: 'center',
+        });
 
-    const trailer = `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-
-    return Buffer.from(header + objects.join('') + xref + trailer, 'utf8');
+      doc.end();
+    });
   }
 
-  private escapePdfText(text: string): string {
-    return text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  private getValidationUrl(code: string): string {
+    const publicApiBaseUrl = (process.env.PUBLIC_API_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+    return `${publicApiBaseUrl}/reports/validate/${code}`;
   }
 }

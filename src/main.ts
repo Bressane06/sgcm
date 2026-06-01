@@ -19,7 +19,7 @@ async function bootstrap() {
   // execute primeiro e remova campos marcados com @Exclude() antes de o
   // TransformInterceptor montar o envelope { data, meta }.
   app.useGlobalInterceptors(
-    new TransformInterceptor(),
+    new TransformInterceptor(app.get(Reflector)),
     new ClassSerializerInterceptor(app.get(Reflector)),
   );
 

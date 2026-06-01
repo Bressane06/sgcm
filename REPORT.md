@@ -1424,6 +1424,106 @@ Com isso, o desenvolvedor que integra com a API consegue entender o que corrigir
 
 ## ETAPA 3
 
+### 3.34 Infraestrutura automática aplicada aos novos endpoints
+
+A infraestrutura das etapas anteriores continua sendo aplicada automaticamente aos novos endpoints da Etapa 3, porque foi registrada globalmente em [src/main.ts](src/main.ts): o middleware de logging permanece ativo para todas as requisições, o `HttpExceptionFilter` continua padronizando erros no formato RFC 7807, e os guards globais seguem protegendo os endpoints por padrão.
+
+Os dois casos de borda verificados nesta etapa foram:
+
+- `GET /reports/validate/{code}`: endpoint público marcado com `@Public()`, sem autenticação, mas ainda com logging, interceptor e formatação de erro ativos.
+- `GET /reports/{id}/pdf`: endpoint que retorna `StreamableFile` em vez de JSON, o que exigiu impedir a transformação automática do `TransformInterceptor`.
+
+Para manter o comportamento consistente com a Etapa 2, foi adotada a abordagem de um decorator explícito `@SkipTransform()`, reconhecido pelo interceptor global. Assim, a resposta binária do PDF não é envolvida no envelope `{ data, meta }`, enquanto as respostas JSON continuam seguindo o padrão existente.
+
+Trecho do código aplicado em [src/common/decorators/skip-transform.decorator.ts](src/common/decorators/skip-transform.decorator.ts) e [src/common/interceptors/transform.interceptor.ts](src/common/interceptors/transform.interceptor.ts):
+
+```typescript
+// src/common/decorators/skip-transform.decorator.ts
+export const SKIP_TRANSFORM_KEY = 'skipTransform';
+export const SkipTransform = () => SetMetadata(SKIP_TRANSFORM_KEY, true);
+
+// src/common/interceptors/transform.interceptor.ts
+const skipTransform = this.reflector.getAllAndOverride<boolean>(
+  SKIP_TRANSFORM_KEY,
+  [context.getHandler(), context.getClass()],
+);
+
+if (skipTransform) {
+  return next.handle();
+}
+```
+
+No controller, o endpoint de PDF foi anotado em [src/modules/reports/reports.controller.ts](src/modules/reports/reports.controller.ts) com `@SkipTransform()`, garantindo que o NestJS entregue o arquivo sem o envelope de transformação.
+
+O middleware de logging não precisou de alteração, porque ele registra o ciclo de vida da resposta pelos eventos `finish` e `close`, funcionando corretamente também para downloads de arquivo.
+
+Em resumo, o ajuste necessário foi apenas na transformação de resposta: a infraestrutura de autenticação, autorização, logging e tratamento de exceções já se mostrou compatível com os novos endpoints, desde que o PDF seja explicitamente excluído do transformador.
+
+#### 3.34.1 Exibição (`inline`) versus download direto do PDF
+
+O `GET /reports/{id}/pdf` exibe o conteúdo como resposta binária/textual, em vez de iniciar download automático. Isso ocorre porque a resposta foi configurada com `Content-Disposition: inline`.
+
+Essa decisão foi mantida nesta etapa por dois motivos:
+
+- facilita validação técnica rápida do conteúdo em ambiente de desenvolvimento;
+- mantém compatibilidade com clientes que preferem abrir o PDF no navegador antes de salvar.
+
+Ainda assim, o contrato funcional do endpoint continua sendo de entrega de arquivo PDF (`application/pdf`).
+
+#### 3.34.2 Contrato da validação pública para laudos ativos e revogados
+
+Como a revogação de laudo no SGCM é lógica (o registro permanece no banco), o endpoint público `GET /reports/validate/{code}` precisa responder de forma consistente para estados diferentes do mesmo documento.
+
+Decisão adotada:
+
+- Laudo `ACTIVE`: retorna dados básicos de validação e indica documento válido/ativo.
+- Laudo `REVOKED`: retorna os mesmos dados básicos necessários para conferência e indica explicitamente que o documento foi revogado.
+- Código inexistente: retorna `404 Not Found`.
+
+Justificativa:
+
+- Transparência: consumidores externos (ex.: auditoria, operadora, parceiro clínico) conseguem verificar autenticidade e estado do documento com o mesmo código de validação.
+- Privacidade: o endpoint público não expõe conteúdo clínico detalhado; retorna apenas informações mínimas para validação de autenticidade e status.
+- Segurança de integração: evita ambiguidade entre "código inválido" e "documento revogado", reduzindo decisões incorretas em fluxos externos.
+
+Com isso, o contrato público da Etapa 3 equilibra verificabilidade externa com proteção de dados sensíveis e mantém previsibilidade para quem integra a API.
+
+#### 3.34.3 QR code no PDF de laudo
+
+Foi adotada a inclusão de QR code no PDF do laudo apontando para o endpoint público de validação `GET /reports/validate/{code}`.
+
+Motivação da decisão:
+
+- aumenta a usabilidade do documento impresso, permitindo validação imediata por leitura de câmera;
+- reduz erros de digitação do `validationCode` quando a validação é feita manualmente;
+- mantém o mesmo contrato de autenticação da validação pública (endpoint sem token, porém com escopo de dados reduzido).
+
+Implementação aplicada:
+
+- geração de QR code com biblioteca `qrcode`;
+- renderização do PDF com `pdfkit`, incluindo texto obrigatório e imagem do QR code;
+- manutenção do `validationCode` também em formato textual para redundância operacional.
+
+Arquivo principal: [src/modules/reports/reports.service.ts](src/modules/reports/reports.service.ts).
+
+#### 3.34.4 Regras de acesso ao PDF do laudo
+
+O endpoint `GET /reports/{id}/pdf` é autenticado e exige controle por recurso no service.
+
+Contrato de acesso definido:
+
+- `ADMIN`: pode baixar qualquer laudo;
+- `PATIENT`: pode baixar apenas laudos em que é o próprio paciente do registro;
+- `DOCTOR`: pode baixar apenas laudos emitidos por ele (`issuedByDoctorId`).
+
+Decisão para laudo `REVOKED`:
+
+- o PDF continua acessível para os mesmos perfis autorizados por recurso;
+- a revogação não remove o documento da base e o PDF deve permanecer auditável historicamente;
+- o próprio conteúdo do laudo deixa explícito o status e dados de revogação quando aplicável.
+
+Com isso, a política de acesso preserva rastreabilidade clínica e jurídica sem abrir exposição indevida para usuários não autorizados.
+
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
