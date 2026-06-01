@@ -216,7 +216,10 @@ export class UsersService {
     await this.userRepository.update(id, { refreshToken: null });
   }
 
-  private assertCanAccessUser(targetUserId: number, currentUser: UserPayload): void {
+  private assertCanAccessUser(
+    targetUserId: number,
+    currentUser: UserPayload,
+  ): void {
     if (currentUser.type === UserType.ADMIN) {
       return;
     }
@@ -230,7 +233,10 @@ export class UsersService {
 
   // Controle de Acesso
 
-  private assertCanUpdateUser(targetUserId: number, currentUser: UserPayload): void {
+  private assertCanUpdateUser(
+    targetUserId: number,
+    currentUser: UserPayload,
+  ): void {
     if (currentUser.type === UserType.ADMIN) {
       return;
     }
@@ -242,18 +248,16 @@ export class UsersService {
     }
   }
 
-  private assertCanRemoveUser(targetUserId: number, currentUser: UserPayload): void {
+  private assertCanRemoveUser(
+    targetUserId: number,
+    currentUser: UserPayload,
+  ): void {
     if (currentUser.sub === targetUserId) {
-      throw new ForbiddenException(
-        'Você não pode inativar sua própria conta.',
-      );
+      throw new ForbiddenException('Você não pode inativar sua própria conta.');
     }
   }
 
-  async findOneWithAccess(
-    id: number,
-    currentUser: UserPayload,
-  ): Promise<User> {
+  async findOneWithAccess(id: number, currentUser: UserPayload): Promise<User> {
     this.assertCanAccessUser(id, currentUser);
     return this.findOne(id);
   }
@@ -275,10 +279,7 @@ export class UsersService {
     return this.update(id, dto);
   }
 
-  async removeWithAccess(
-    id: number,
-    currentUser: UserPayload,
-  ): Promise<void> {
+  async removeWithAccess(id: number, currentUser: UserPayload): Promise<void> {
     this.assertCanRemoveUser(id, currentUser);
 
     const user = await this.findOne(id);
