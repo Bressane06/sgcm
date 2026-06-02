@@ -19,7 +19,7 @@ export class Patient {
   @Column({ unique: true })
   cpf!: string;
 
-  @Column({ })
+  @Column({})
   birthDate!: Date;
 
   getAge(): number {

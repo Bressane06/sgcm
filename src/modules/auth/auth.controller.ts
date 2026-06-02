@@ -124,7 +124,8 @@ Cada refresh token pode ser usado apenas uma vez.`,
   })
   @ApiOperation({
     summary: 'Retornar dados do usuário autenticado',
-    description: 'Retorna dados completos do usuário, incluindo atributos específicos do perfil',
+    description:
+      'Retorna dados completos do usuário, incluindo atributos específicos do perfil',
   })
   @ApiWrappedResponse({
     description: 'Dados do usuário autenticado retornados com sucesso.',

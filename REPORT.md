@@ -1422,6 +1422,31 @@ Com isso, o desenvolvedor que integra com a API consegue entender o que corrigir
 
 ---
 
+## ETAPA 3
+
+### 3.41 Como o grupo lidou com DTOs de hierarquias nas etapas anteriores, e o que aprendeu?
+
+Na Etapa 1, o grupo definiu uma estratégia para estruturar os DTOs da hierarquia de Schedule: utilizar um único DTO com campos opcionais por modalidade ou criar DTOs separados para cada subtipo. Essa escolha impactou diretamente a validação, a documentação no Swagger e a clareza do código.
+
+Agora, ao lidar com Appointment e Procedure, é importante revisitar essa decisão com senso crítico:
+
+A abordagem adotada anteriormente funcionou bem na prática?
+- Na prática, existe um equilibrio entre economia de memória, espaços em branco na tabela, em relação à complexidade. 
+- Na etapa 1, foi implementado herança em duas features principais: Usuarios e Schedules.
+- A feature Usuarios foi implementada utilizando uma relação Joined Table Inheritance feita sem o auxilio de bibliotecas, foi um sacrifício de complexidade em troca de otimização de tabelas que custou caro, dificultando as consultas por ID em certos pontos, já que cada tabela PRECISA apresentar um atributo identificador.
+- Já a feature Schedules se mostrou consistente quando avaliada do ponto de vista prático, de cumprir o seu propósito. Além de facilitar queries eficientes quando precisou retornar agendamentos de todas as modalidades misturados.
+
+Gerou dificuldades de manutenção, validação ou documentação?'
+- Sim, a decisão tomada na feature Users gerou dificuldade na manutenção, validação e também na documentação.
+
+Faz sentido reaplicar o mesmo padrão neste contexto?
+- Sim, faz sentido reaplicar a abordagem STI no contexto das procedures pois, não é um disperdício grande de atributos nesse caso, já que as classes apresentam mais atributos em comum com a subclasse do que o contrário.
+
+Ou existem razões técnicas para adotar uma estratégia diferente?
+- Não, será implementado de acordo com a questão esclarecida a cima.
+
+A análise acima refletiu aprendizado real ao longo do projeto. Registrando no relatório não apenas a decisão atual, mas também a avaliação da escolha feita na Etapa 1, destacando o que funcionou, o que não funcionou e por quê.
+
 ## 4 - DIFICULDADES E APRENDIZADOS
 
 ### Dificuldades encontradas etapa 1

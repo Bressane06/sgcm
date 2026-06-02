@@ -4,7 +4,7 @@ import {
   Column,
   OneToOne,
   JoinColumn,
-  OneToMany
+  OneToMany,
 } from 'typeorm';
 import { User } from './user.entity';
 import { DoctorSpecialty } from '../../specialties/entities/doctor-specialty.entity';
@@ -22,8 +22,12 @@ export class Doctor {
 
   @Column({ unique: true })
   crm!: string;
-  
-  @OneToMany(() => DoctorSpecialty, doctorSpecialty => doctorSpecialty.doctor, { cascade: true })
+
+  @OneToMany(
+    () => DoctorSpecialty,
+    (doctorSpecialty) => doctorSpecialty.doctor,
+    { cascade: true },
+  )
   specialties!: DoctorSpecialty[];
 
   @OneToMany(() => Schedule, (schedule) => schedule.doctor)

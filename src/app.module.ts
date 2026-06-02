@@ -17,18 +17,17 @@ import { RolesGuard } from './common/guards/roles.guard';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    // Foi feito assim, pois o JwtModule precisa acessar a variável de ambiente 
-    // JWT_SECRET para configurar a chave secreta do JWT, e isso é feito 
-    // usando o ConfigService. O método registerAsync permite que o JwtModule 
-    // seja configurado de forma assíncrona, injetando o ConfigService para acessar 
+    // Foi feito assim, pois o JwtModule precisa acessar a variável de ambiente
+    // JWT_SECRET para configurar a chave secreta do JWT, e isso é feito
+    // usando o ConfigService. O método registerAsync permite que o JwtModule
+    // seja configurado de forma assíncrona, injetando o ConfigService para acessar
     // as variáveis de ambiente no momento da configuração.
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn:
-            configService.get<StringValue>('JWT_EXPIRES_IN') ?? '15m',
+          expiresIn: configService.get<StringValue>('JWT_EXPIRES_IN') ?? '15m',
         },
       }),
       global: true,
@@ -48,7 +47,7 @@ import { RolesGuard } from './common/guards/roles.guard';
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard }
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule implements NestModule {

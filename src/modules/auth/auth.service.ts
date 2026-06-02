@@ -51,13 +51,20 @@ export class AuthService {
       const payload = this.jwtService.verify(refreshToken);
       const user = await this.usersService.findOne(payload.sub);
 
-      if (!user.refreshToken || !this.validateRefreshToken(refreshToken, user.refreshToken)) {
-        throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
+      if (
+        !user.refreshToken ||
+        !this.validateRefreshToken(refreshToken, user.refreshToken)
+      ) {
+        throw new UnauthorizedException(
+          'O refresh token fornecido é inválido ou já foi utilizado.',
+        );
       }
 
       return this.generateTokens(user);
     } catch (error) {
-      throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
+      throw new UnauthorizedException(
+        'O refresh token fornecido é inválido ou já foi utilizado.',
+      );
     }
   }
 
