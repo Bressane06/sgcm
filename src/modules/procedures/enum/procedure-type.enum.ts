@@ -1,4 +1,4 @@
 export enum ProcedureType {
-  SIMPLE = 'simple',
-  SPECIALIZED = 'specialized',
+  SIMPLE = 'SIMPLE',
+  SPECIALIZED = 'SPECIALIZED',
 }
