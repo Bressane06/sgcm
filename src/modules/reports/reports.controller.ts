@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   StreamableFile,
 } from '@nestjs/common';
 import {
@@ -14,6 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiProduces,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -24,11 +26,15 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { ApiAuthResponses, ApiWrappedResponse } from '../../common/swagger';
 import type { UserPayload } from '../auth/models/user-payload.model';
 import { CreateReportDto } from './dto/create-report.dto';
+import { FindReportsQueryDto } from './dto/find-reports-query.dto';
 import { ReportResponseDto } from './dto/report-response.dto';
 import { ReportValidationDto } from './dto/report-validation.dto';
 import { RevokeReportDto } from './dto/revoke-report.dto';
 import { ReportsService } from './reports.service';
 import { UserType } from '../users/enum/user-type.enum';
+import { PaginatedResponse } from '../../common/interfaces/paginated-response.interface';
+import { Header } from '@nestjs/common';
+
 
 @ApiTags('Reports')
 @Controller()
@@ -64,6 +70,8 @@ export class ReportsController {
   @Get('reports/:id/pdf')
   @SkipTransform()
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
+  @Header('Content-Type', 'application/pdf')
+  @Header('Content-Disposition', 'attachment; filename="laudo.pdf"')
   @ApiParam({ name: 'id', type: Number, example: 1, description: 'ID do laudo' })
   @ApiAuthResponses({
     instance: '/reports/1/pdf',
@@ -123,11 +131,15 @@ export class ReportsController {
   @Get('patients/:id/reports')
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @ApiParam({ name: 'id', type: Number, example: 1, description: 'ID do paciente' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'sort', required: false, type: String, example: 'issuedAt:DESC' })
+  @ApiQuery({ name: 'status', required: false, enum: ['ACTIVE', 'REVOKED'] })
   @ApiAuthResponses({
     instance: '/patients/1/reports',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
   })
-  @ApiOperation({ summary: 'Listar laudos de um paciente' })
+  @ApiOperation({ summary: 'Listar laudos de um paciente com paginação' })
   @ApiWrappedResponse({
     description: 'Laudos do paciente retornados com sucesso.',
     model: ReportResponseDto,
@@ -139,19 +151,24 @@ export class ReportsController {
   })
   findByPatient(
     @Param('id') id: number,
+    @Query() query: FindReportsQueryDto,
     @CurrentUser() currentUser: UserPayload,
-  ): Promise<ReportResponseDto[]> {
-    return this.reportsService.findByPatient(Number(id), currentUser);
+  ): Promise<PaginatedResponse<ReportResponseDto>> {
+    return this.reportsService.findByPatient(Number(id), query, currentUser);
   }
 
   @Get('doctors/:id/reports')
-  @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
+  @Roles(UserType.ADMIN, UserType.DOCTOR)
   @ApiParam({ name: 'id', type: Number, example: 1, description: 'ID do médico' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'sort', required: false, type: String, example: 'issuedAt:DESC' })
+  @ApiQuery({ name: 'status', required: false, enum: ['ACTIVE', 'REVOKED'] })
   @ApiAuthResponses({
     instance: '/doctors/1/reports',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
   })
-  @ApiOperation({ summary: 'Listar laudos emitidos por um médico' })
+  @ApiOperation({ summary: 'Listar laudos emitidos por um médico com paginação' })
   @ApiWrappedResponse({
     description: 'Laudos do médico retornados com sucesso.',
     model: ReportResponseDto,
@@ -163,8 +180,9 @@ export class ReportsController {
   })
   findByDoctor(
     @Param('id') id: number,
+    @Query() query: FindReportsQueryDto,
     @CurrentUser() currentUser: UserPayload,
-  ): Promise<ReportResponseDto[]> {
-    return this.reportsService.findByDoctor(Number(id), currentUser);
+  ): Promise<PaginatedResponse<ReportResponseDto>> {
+    return this.reportsService.findByDoctor(Number(id), query, currentUser);
   }
 }

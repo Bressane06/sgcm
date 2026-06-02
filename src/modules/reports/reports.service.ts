@@ -17,6 +17,8 @@ import { RevokeReportDto } from './dto/revoke-report.dto';
 import { ReportResponseDto } from './dto/report-response.dto';
 import { ReportValidationDto } from './dto/report-validation.dto';
 import { ConflictException } from '../../common/exceptions/conflict.exception';
+import { FindReportsQueryDto } from './dto/find-reports-query.dto';
+import { PaginatedResponse } from '../../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class ReportsService {
@@ -84,7 +86,7 @@ export class ReportsService {
     const pdf = await this.buildPdfBuffer(report);
     return new StreamableFile(pdf, {
       type: 'application/pdf',
-      disposition: `inline; filename="report-${report.id}.pdf"`,
+      disposition:`attachment; filename="laudo-${report.validationCode}.pdf"`,
     });
   }
 
@@ -126,34 +128,74 @@ export class ReportsService {
 
   async findByPatient(
     id: number,
+    query: FindReportsQueryDto,
     currentUser: UserPayload,
-  ): Promise<ReportResponseDto[]> {
+  ): Promise<PaginatedResponse<ReportResponseDto>> {
     const patient = await this.findPatientOrFail(id);
     await this.assertCanAccessPatient(patient, currentUser);
 
-    const reports = await this.reportRepository.find({
-      where: { patientId: id },
-      order: { issuedAt: 'DESC' },
+    const { page, limit, sort, status } = query;
+    const skip = (page - 1) * limit;
+    const [field, direction] = sort ? sort.split(':') : ['issuedAt', 'DESC'];
+
+    const where: any = { patientId: id };
+    if (status) {
+      where.status = status;
+    }
+
+    const [reports, totalItems] = await this.reportRepository.findAndCount({
+      where,
+      order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
+      skip,
+      take: limit,
       relations: { patient: { user: true }, doctor: { user: true } },
     });
 
-    return reports.map((report) => this.toResponseDto(report));
+    return {
+      data: reports.map((report) => this.toResponseDto(report)),
+      meta: {
+        totalItems,
+        page,
+        limit,
+        totalPages: Math.ceil(totalItems / limit),
+      },
+    };
   }
 
   async findByDoctor(
     id: number,
+    query: FindReportsQueryDto,
     currentUser: UserPayload,
-  ): Promise<ReportResponseDto[]> {
+  ): Promise<PaginatedResponse<ReportResponseDto>> {
     const doctor = await this.findDoctorOrFail(id);
     await this.assertCanAccessDoctor(doctor, currentUser);
 
-    const reports = await this.reportRepository.find({
-      where: { doctorId: id },
-      order: { issuedAt: 'DESC' },
+    const { page, limit, sort, status } = query;
+    const skip = (page - 1) * limit;
+    const [field, direction] = sort ? sort.split(':') : ['issuedAt', 'DESC'];
+
+    const where: any = { doctorId: id };
+    if (status) {
+      where.status = status;
+    }
+
+    const [reports, totalItems] = await this.reportRepository.findAndCount({
+      where,
+      order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
+      skip,
+      take: limit,
       relations: { patient: { user: true }, doctor: { user: true } },
     });
 
-    return reports.map((report) => this.toResponseDto(report));
+    return {
+      data: reports.map((report) => this.toResponseDto(report)),
+      meta: {
+        totalItems,
+        page,
+        limit,
+        totalPages: Math.ceil(totalItems / limit),
+      },
+    };
   }
 
   private async findReportByIdOrFail(id: number): Promise<Report> {
@@ -168,7 +210,7 @@ export class ReportsService {
 
     return report;
   }
-
+  
   private async findPatientOrFail(id: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
       where: { id },

@@ -68,10 +68,6 @@ JWT_SECRET=cole_aqui_um_segredo_com_32_ou_mais_caracteres
 JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 
-# JWT Token
-JWT_SECRET=cole_aqui_um_segredo_com_32_ou_mais_caracteres
-JWT_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
 ```
 
 | Variável        | Descrição                                | Padrão             |
@@ -198,6 +194,31 @@ sgcm/
 | Patient | estela.patient@gmail.com | Patient@123 |
 
 Para autenticar, use `POST /auth/login`. Copie o `accessToken` retornado e clique em **Authorize** no Swagger.
+
+## ValidationCode
+
+Exemplo do `ValidationCode` = 9f0f68f5-e7cd-445e-8cbf-286d2fd91adf;
+
+**Implementação:**
+
+Arquivo: [src/modules/reports/reports.service.ts](src/modules/reports/reports.service.ts)
+
+```ts
+import { randomUUID } from 'crypto';
+
+const report = this.reportRepository.create({
+  appointmentId,
+  patientId: dto.patientId,
+  doctorId: dto.doctorId,
+  examType: dto.examType,
+  result: dto.result,
+  status: ReportStatus.ACTIVE,
+  validationCode: randomUUID(), // Gera UUID único
+  issuedByUserId: currentUser.sub,
+  issuedByDoctorId:
+    currentUser.type === UserType.DOCTOR ? doctor.id : dto.doctorId,
+});
+```
 
 ## Endpoints
 
