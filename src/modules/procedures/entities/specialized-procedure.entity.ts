@@ -1,9 +1,11 @@
-import { Column, Entity } from 'typeorm';
+import { ChildEntity, Column, Entity } from 'typeorm';
 import { AuthorizationStatus } from '../enum/authorization-status.enum';
 import { ComplexityLevel } from '../enum/complexity-level.enum';
 import { Procedure } from './procedure.entity';
+import { ProcedureType } from '../enum/procedure-type.enum';
 
 @Entity('specialized_procedures')
+@ChildEntity(ProcedureType.SPECIALIZED)
 export class SpecializedProcedure extends Procedure {
   @Column()
   requiredEquipment!: string;
