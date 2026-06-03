@@ -1426,49 +1426,28 @@ Com isso, o desenvolvedor que integra com a API consegue entender o que corrigir
 
 ## ETAPA 3
 
-### 3.41 Implementação do módulo `Appointments`
+### 3.41 Implementação do módulo Appointments
 
-Na terceira e última etapa do trabalho foi implementado o módulo de **Atendimentos (Appointments)** com foco em registrar os atendimentos clínicos originados por agendamentos (`Schedules`). As decisões e entregas principais foram:
+Foi implementado o módulo responsável pelo gerenciamento dos atendimentos realizados na clínica médica.
 
-- Estratégia: hierarquia de `Appointment` com subclasses `Consultation`, `Exam` e `FollowUp` usando STI via `@TableInheritance`/`@ChildEntity`, mantendo consistência com outras hierarquias do projeto.
-- Requisitos de negócio implementados:
-  - Só é permitido criar um `Appointment` para um `Schedule` com status `CONFIRMED`.
-  - A criação do `Appointment` e a transição do `Schedule` para `COMPLETED` são feitas dentro de uma transação, garantindo atomicidade.
-  - É proibida a criação de múltiplos atendimentos para o mesmo agendamento (verificação de existência prévia).
+O módulo contempla:
 
-Arquivos principais adicionados:
-
-- `src/modules/appointments/appointments.module.ts`
-- `src/modules/appointments/appointments.controller.ts`
-- `src/modules/appointments/appointments.service.ts`
-- `src/modules/appointments/entities/appointment.entity.ts`
-- `src/modules/appointments/entities/consultation.entity.ts`
-- `src/modules/appointments/entities/exam.entity.ts`
-- `src/modules/appointments/entities/follow-up.entity.ts`
-- `src/modules/appointments/dto/create-appointment.dto.ts`
-- `src/modules/appointments/dto/update-appointment.dto.ts`
-- `src/modules/appointments/dto/find-appointments-query.dto.ts`
-- `src/modules/appointments/dto/appointment-response.dto.ts`
-- `src/modules/appointments/enum/appointment-type.enum.ts`
-- `src/modules/appointments/enum/appointment-status.enum.ts`
+- criação de atendimentos a partir de agendamentos confirmados;
+- atualização de informações clínicas;
+- finalização de atendimentos;
+- listagem paginada com filtros;
+- controle de acesso por perfil e por recurso;
+- integração com o módulo Schedules.
 
 Endpoints implementados:
 
-- `POST /appointments` — cria um atendimento a partir de um `scheduleId` (regras acima).
-- `GET /appointments` — listagem paginada com filtros por `scheduleId`, `status` e `type`.
-- `GET /appointments/:id` — consulta com verificação de acesso por perfil (Doctor, Patient, Admin).
-- `PUT /appointments/:id` — atualização parcial do atendimento (campos permitidos conforme tipo).
-- `PATCH /appointments/:id/finish` — marca atendimento como finalizado (`FINISHED`).
-
-Integração com `SchedulesModule`:
-
-- O `AppointmentsService` valida a existência e o status do `Schedule` antes da criação.
-- A atualização do status do `Schedule` para `COMPLETED` ocorre dentro da mesma transação que persiste o `Appointment`, garantindo consistência mesmo em falhas.
-
-Observações de documentação e testes:
-
-- Os DTOs e decorators do Swagger foram adicionados para documentar os novos endpoints e manter o envelope `{ data, meta }` consistente com o `TransformInterceptor`.
-- Linter passou para os arquivos do módulo `appointments`. A build completa do projeto depende das dependências externas instaladas (JWT/Passport), conforme já registrado no relatório.
+- `POST /appointments`
+- `GET /appointments`
+- `GET /appointments/{id}`
+- `PUT /appointments/{id}`
+- `PATCH /appointments/{id}/finish`
+- `GET /doctors/{id}/appointments`
+- `GET /patients/{id}/appointments`
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
@@ -1517,3 +1496,4 @@ Durante a execução, foram alcançados os seguintes marcos:
 
 **Preparação para evolução** — as decisões tomadas nesta etapa (separação de controllers por domínio, factory pattern para criação de usuários, inativação lógica em vez de deleção física, conceito de `traceId` no filtro de erros) facilitam a introdução futura de autenticação JWT (Etapa 2), controle de acesso por perfil (Etapa 2) e entidades clínicas complexas como atendimentos, procedimentos, prontuários e laudos (Etapa 3).
 
+Ao longo das três etapas do projeto, foi desenvolvido o SGCM (Sistema de Gerenciamento de Clínica Médica), contemplando autenticação, controle de acesso, gerenciamento de usuários, especialidades, agendamentos e atendimentos clínicos.

@@ -1,6 +1,6 @@
 # SGCM — Sistema de Gerenciamento de Clínica Médica
 
-API REST para gerenciamento de usuários com perfis diferenciados (Admin, Doctor e Patient), validações, documentação Swagger e herança de tabelas no banco de dados.
+API REST para gerenciamento de clínica médica, contemplando usuários (Admin, Doctor e Patient), especialidades, agendamentos (Schedules), atendimentos (Appointments), autenticação JWT, controle de acesso por perfil, documentação Swagger e persistência com TypeORM.
 
 Para detalhes de implementação e decisões técnicas, consulte o [`REPORT.md`](./REPORT.md).
 
@@ -195,6 +195,16 @@ sgcm/
     ├── app.e2e-spec.ts
     └── jest-e2e.json
 ```
+## Funcionalidades
+
+- Autenticação JWT
+- Controle de acesso por perfis (Admin, Doctor e Patient)
+- Gerenciamento de usuários
+- Gerenciamento de especialidades
+- Gerenciamento de agendamentos
+- Gerenciamento de atendimentos
+- Documentação Swagger
+- Tratamento padronizado de erros (RFC 7807)
 
 ## Credenciais de Teste
 
