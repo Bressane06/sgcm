@@ -493,6 +493,8 @@ Justificativa:
 - Evita crescimento de complexidade no service principal de usuários.
 - Facilita manutenção do fluxo de criação por perfil em um único ponto.
 
+
+
 ## ETAPA 2
 
 ### 3.20 Uso de interfaces e utils para paginação
@@ -1422,6 +1424,31 @@ Com isso, o desenvolvedor que integra com a API consegue entender o que corrigir
 
 ---
 
+## ETAPA 3
+
+### 3.41 Implementação do módulo Appointments
+
+Foi implementado o módulo responsável pelo gerenciamento dos atendimentos realizados na clínica médica.
+
+O módulo contempla:
+
+- criação de atendimentos a partir de agendamentos confirmados;
+- atualização de informações clínicas;
+- finalização de atendimentos;
+- listagem paginada com filtros;
+- controle de acesso por perfil e por recurso;
+- integração com o módulo Schedules.
+
+Endpoints implementados:
+
+- `POST /appointments`
+- `GET /appointments`
+- `GET /appointments/{id}`
+- `PUT /appointments/{id}`
+- `PATCH /appointments/{id}/finish`
+- `GET /doctors/{id}/appointments`
+- `GET /patients/{id}/appointments`
+
 ## 4 - DIFICULDADES E APRENDIZADOS
 
 ### Dificuldades encontradas etapa 1
@@ -1469,3 +1496,4 @@ Durante a execução, foram alcançados os seguintes marcos:
 
 **Preparação para evolução** — as decisões tomadas nesta etapa (separação de controllers por domínio, factory pattern para criação de usuários, inativação lógica em vez de deleção física, conceito de `traceId` no filtro de erros) facilitam a introdução futura de autenticação JWT (Etapa 2), controle de acesso por perfil (Etapa 2) e entidades clínicas complexas como atendimentos, procedimentos, prontuários e laudos (Etapa 3).
 
+Ao longo das três etapas do projeto, foi desenvolvido o SGCM (Sistema de Gerenciamento de Clínica Médica), contemplando autenticação, controle de acesso, gerenciamento de usuários, especialidades, agendamentos e atendimentos clínicos.
