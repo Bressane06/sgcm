@@ -232,8 +232,12 @@ export class AppointmentsService {
   async findAll(
     query: FindAppointmentsQueryDto,
   ): Promise<{ data: AppointmentResponseDto[]; meta: any }> {
-    const { page, limit, sort, scheduleId, status, type } = query;
-    const [field, direction] = sort ? sort.split(':') : ['createdAt', 'DESC'];
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const sort = query.sort ?? 'createdAt:DESC';
+    const { scheduleId, status, type } = query;
+
+    const [field, direction] = sort.split(':');
 
     const normalizedDirection =
       direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';

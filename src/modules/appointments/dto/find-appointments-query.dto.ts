@@ -1,48 +1,34 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsEnum,
-  IsInt,
-  IsOptional,
-  IsPositive,
-  IsString,
-} from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsPositive } from 'class-validator';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { AppointmentStatus } from '../enum/appointment-status.enum';
 import { AppointmentType } from '../enum/appointment-type.enum';
 
-export class FindAppointmentsQueryDto {
-  @ApiPropertyOptional({ example: 1 })
-  @Type(() => Number)
-  @IsInt()
-  @IsPositive()
-  @IsOptional()
-  page = 1;
-
-  @ApiPropertyOptional({ example: 10 })
-  @Type(() => Number)
-  @IsInt()
-  @IsPositive()
-  @IsOptional()
-  limit = 10;
-
-  @ApiPropertyOptional({ example: 'createdAt:DESC', type: String })
-  @IsString()
-  @IsOptional()
-  sort = 'createdAt:DESC';
-
-  @ApiPropertyOptional({ example: 1 })
+export class FindAppointmentsQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({
+    description: 'ID do agendamento relacionado ao atendimento',
+    example: 7,
+    type: Number,
+  })
   @Type(() => Number)
   @IsInt()
   @IsPositive()
   @IsOptional()
   scheduleId?: number;
 
-  @ApiPropertyOptional({ enum: AppointmentStatus })
+  @ApiPropertyOptional({
+    description: 'Status do atendimento',
+    enum: AppointmentStatus,
+  })
   @IsEnum(AppointmentStatus)
   @IsOptional()
   status?: AppointmentStatus;
 
-  @ApiPropertyOptional({ enum: AppointmentType })
+  @ApiPropertyOptional({
+    description: 'Tipo do atendimento',
+    enum: AppointmentType,
+  })
   @IsEnum(AppointmentType)
   @IsOptional()
   type?: AppointmentType;
