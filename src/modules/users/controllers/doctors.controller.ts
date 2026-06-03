@@ -18,7 +18,6 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import type { UserPayload } from '../../auth/models/user-payload.model';
 import { UserType } from '../enum/user-type.enum';
 import { ApiAuthResponses } from '../../../common/swagger';
-import { FindAppointmentsQueryDto } from '../../appointments/dto/find-appointments-query.dto';
 
 @ApiTags('Doctors')
 @Controller('doctors')
@@ -83,16 +82,5 @@ export class DoctorsController {
     @CurrentUser() user: UserPayload,
   ) {
     return this.doctorsService.findSchedules(Number(id), query, user);
-  }
-
-  @Get(':id/appointments')
-  @Roles(UserType.ADMIN, UserType.DOCTOR)
-  @ApiOperation({ summary: 'Listar atendimentos de um médico' })
-  findAppointments(
-    @Param('id') id: number,
-    @Query() query: FindAppointmentsQueryDto,
-    @CurrentUser() user: UserPayload,
-  ) {
-    return this.doctorsService.findAppointments(Number(id), query, user);
   }
 }
