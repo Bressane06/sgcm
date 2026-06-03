@@ -17,6 +17,7 @@ import { Specialty } from '../specialties/entities/specialty.entity';
 import { DoctorSpecialty } from '../specialties/entities/doctor-specialty.entity';
 import { SchedulesModule } from '../schedules/schedules.module';
 import { Schedule } from '../schedules/entities/schedule.entity';
+import { AppointmentsModule } from '../appointments/appointments.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { Schedule } from '../schedules/entities/schedule.entity';
     ]),
     SpecialtiesModule,
     SchedulesModule,
+    AppointmentsModule,
   ],
   controllers: [UsersController, PatientsController, DoctorsController],
   providers: [
