@@ -6,7 +6,7 @@ export class AppointmentResponseDto {
   @ApiProperty({ example: 1 })
   id!: number;
 
-  @ApiProperty({ enum: AppointmentStatus, example: AppointmentStatus.OPEN })
+  @ApiProperty({ enum: AppointmentStatus, example: AppointmentStatus.IN_PROGRESS })
   status!: AppointmentStatus;
 
   @ApiProperty({ enum: AppointmentType, example: AppointmentType.CONSULTATION })
@@ -25,10 +25,10 @@ export class AppointmentResponseDto {
   patientId!: number;
 
   @ApiPropertyOptional({ example: 'Dor de cabeça e febre' })
-  consultationReason?: string;
+  reason?: string;
 
   @ApiPropertyOptional({ example: 'Gripe' })
-  diagnosis?: string;
+  diagnosticHypothesis?: string;
 
   @ApiPropertyOptional({ example: 'Paracetamol 500mg de 8/8h' })
   prescription?: string;

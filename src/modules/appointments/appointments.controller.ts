@@ -31,8 +31,11 @@ export class AppointmentsController {
   @Post()
   @Roles(UserType.ADMIN, UserType.DOCTOR)
   @ApiOperation({ summary: 'Criar atendimento para agendamento confirmado' })
-  create(@Body() dto: CreateAppointmentDto) {
-    return this.appointmentsService.create(dto);
+  create(
+    @Body() dto: CreateAppointmentDto,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.appointmentsService.create(dto, user);
   }
 
   @Get()
@@ -54,14 +57,21 @@ export class AppointmentsController {
   @Put(':id')
   @Roles(UserType.ADMIN, UserType.DOCTOR)
   @ApiOperation({ summary: 'Atualizar atendimento' })
-  update(@Param('id') id: number, @Body() dto: UpdateAppointmentDto) {
-    return this.appointmentsService.update(Number(id), dto);
+  update(
+    @Param('id') id: number,
+    @Body() dto: UpdateAppointmentDto,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.appointmentsService.update(Number(id), dto, user);
   }
 
   @Patch(':id/finish')
   @Roles(UserType.ADMIN, UserType.DOCTOR)
   @ApiOperation({ summary: 'Finalizar atendimento' })
-  finish(@Param('id') id: number) {
-    return this.appointmentsService.finish(Number(id));
+  finish(
+    @Param('id') id: number,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.appointmentsService.finish(Number(id), user);
   }
 }

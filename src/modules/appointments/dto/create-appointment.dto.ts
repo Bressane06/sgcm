@@ -27,7 +27,7 @@ export class CreateAppointmentDto {
   )
   @IsString()
   @IsNotEmpty()
-  consultationReason?: string;
+  reason?: string;
 
   @ApiPropertyOptional({ example: 'Gripe' })
   @ValidateIf(
@@ -35,7 +35,7 @@ export class CreateAppointmentDto {
   )
   @IsString()
   @IsNotEmpty()
-  diagnosis?: string;
+  diagnosticHypothesis?: string;
 
   @ApiPropertyOptional({ example: 'Paracetamol 500mg de 8/8h' })
   @ValidateIf(

@@ -19,7 +19,7 @@ export abstract class Appointment {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'varchar', default: AppointmentStatus.OPEN })
+  @Column({ type: 'varchar', default: AppointmentStatus.IN_PROGRESS })
   status!: AppointmentStatus;
 
   @Column({ type: 'varchar' })

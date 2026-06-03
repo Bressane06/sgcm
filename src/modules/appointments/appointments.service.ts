@@ -44,15 +44,15 @@ export class AppointmentsService {
         ...(dto.nextSteps ? ['nextSteps'] : []),
       ],
       [AppointmentType.EXAM]: [
-        ...(dto.consultationReason ? ['consultationReason'] : []),
-        ...(dto.diagnosis ? ['diagnosis'] : []),
+        ...(dto.reason ? ['reason'] : []),
+        ...(dto.diagnosticHypothesis ? ['diagnosticHypothesis'] : []),
         ...(dto.prescription ? ['prescription'] : []),
         ...(dto.notes ? ['notes'] : []),
         ...(dto.nextSteps ? ['nextSteps'] : []),
       ],
       [AppointmentType.FOLLOW_UP]: [
-        ...(dto.consultationReason ? ['consultationReason'] : []),
-        ...(dto.diagnosis ? ['diagnosis'] : []),
+        ...(dto.reason ? ['reason'] : []),
+        ...(dto.diagnosticHypothesis ? ['diagnosticHypothesis'] : []),
         ...(dto.prescription ? ['prescription'] : []),
         ...(dto.examName ? ['examName'] : []),
         ...(dto.result ? ['result'] : []),
@@ -72,6 +72,14 @@ export class AppointmentsService {
   private async findScheduleOrFail(scheduleId: number): Promise<Schedule> {
     const schedule = await this.scheduleRepository.findOne({
       where: { id: scheduleId },
+      relations: {
+        doctor: {
+          user: true,
+        },
+        patient: {
+          user: true,
+        },
+      },
     });
 
     if (!schedule) {
@@ -89,15 +97,15 @@ export class AppointmentsService {
     const base = {
       schedule,
       type: dto.type,
-      status: AppointmentStatus.OPEN,
+      status: AppointmentStatus.IN_PROGRESS,
     };
 
     switch (dto.type) {
       case AppointmentType.CONSULTATION:
         return manager.getRepository(Consultation).create({
           ...base,
-          consultationReason: dto.consultationReason,
-          diagnosis: dto.diagnosis,
+          reason: dto.reason,
+          diagnosticHypothesis: dto.diagnosticHypothesis,
           prescription: dto.prescription,
         });
 
@@ -130,13 +138,13 @@ export class AppointmentsService {
       scheduledAt: appointment.schedule.scheduledAt,
       doctorId: appointment.schedule.doctorId,
       patientId: appointment.schedule.patientId,
-      consultationReason:
+      reason:
         appointment.type === AppointmentType.CONSULTATION
-          ? (appointment as Consultation).consultationReason
+          ? (appointment as Consultation).reason
           : undefined,
-      diagnosis:
+      diagnosticHypothesis:
         appointment.type === AppointmentType.CONSULTATION
-          ? (appointment as Consultation).diagnosis
+          ? (appointment as Consultation).diagnosticHypothesis
           : undefined,
       prescription:
         appointment.type === AppointmentType.CONSULTATION
@@ -189,10 +197,42 @@ export class AppointmentsService {
     return appointment;
   }
 
-  async create(dto: CreateAppointmentDto): Promise<AppointmentResponseDto> {
+  private assertDoctorOwnsAppointment(
+    appointment: Appointment,
+    currentUser: UserPayload,
+  ): void {
+    if (currentUser.type === UserType.ADMIN) {
+      return;
+    }
+
+    if (
+      currentUser.type === UserType.DOCTOR &&
+      appointment.schedule.doctor.user.id === currentUser.sub
+    ) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      'Médico só pode modificar seus próprios atendimentos.',
+    );
+  }
+
+  async create(
+    dto: CreateAppointmentDto,
+    currentUser: UserPayload,
+  ): Promise<AppointmentResponseDto> {
     this.assertAllowedFieldsForType(dto, dto.type);
 
     const schedule = await this.findScheduleOrFail(dto.scheduleId);
+
+    if (
+      currentUser.type === UserType.DOCTOR &&
+      schedule.doctor.user.id !== currentUser.sub
+    ) {
+      throw new ForbiddenException(
+        'Médico só pode criar atendimentos para seus próprios agendamentos.',
+      );
+    }
 
     if (schedule.status !== ScheduleStatus.CONFIRMED) {
       throw new BadRequestException(
@@ -312,8 +352,11 @@ export class AppointmentsService {
   async update(
     id: number,
     dto: UpdateAppointmentDto,
+    currentUser: UserPayload,
   ): Promise<AppointmentResponseDto> {
     const appointment = await this.findAppointmentOrFail(id);
+
+    this.assertDoctorOwnsAppointment(appointment, currentUser);
 
     if (dto.type && dto.type !== appointment.type) {
       throw new BadRequestException(
@@ -326,9 +369,9 @@ export class AppointmentsService {
 
     if (currentType === AppointmentType.CONSULTATION) {
       const consultation = appointment as Consultation;
-      consultation.consultationReason =
-        dto.consultationReason ?? consultation.consultationReason;
-      consultation.diagnosis = dto.diagnosis ?? consultation.diagnosis;
+      consultation.reason =
+        dto.reason ?? consultation.reason;
+      consultation.diagnosticHypothesis = dto.diagnosticHypothesis ?? consultation.diagnosticHypothesis;
       consultation.prescription = dto.prescription ?? consultation.prescription;
     }
 
@@ -349,8 +392,13 @@ export class AppointmentsService {
     return this.toResponse(saved);
   }
 
-  async finish(id: number): Promise<AppointmentResponseDto> {
+  async finish(
+    id: number,
+    currentUser: UserPayload,
+  ): Promise<AppointmentResponseDto> {
     const appointment = await this.findAppointmentOrFail(id);
+
+    this.assertDoctorOwnsAppointment(appointment, currentUser);
 
     if (appointment.status === AppointmentStatus.FINISHED) {
       throw ConflictException.businessRule(
