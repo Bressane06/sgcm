@@ -167,6 +167,18 @@ export class AppointmentsService {
     };
   }
 
+  private async findAppointmentOrFail(id: number): Promise<Appointment> {
+    const appointment = await this.appointmentRepository.findOne({
+      where: { id },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Atendimento', id);
+    }
+
+    return appointment;
+  }
+
   async create(dto: CreateAppointmentDto): Promise<AppointmentResponseDto> {
     this.assertAllowedFieldsForType(dto, dto.type);
 
@@ -203,6 +215,95 @@ export class AppointmentsService {
         return saved;
       },
     );
+
+    return this.toResponse(appointment);
+  }
+
+  async findAll(
+    query: FindAppointmentsQueryDto,
+    currentUser: UserPayload,
+  ): Promise<{ data: AppointmentResponseDto[]; meta: any }> {
+    const { page, limit, sort, scheduleId, status, type } = query;
+    const [field, direction] = sort ? sort.split(':') : ['createdAt', 'DESC'];
+    const normalizedDirection =
+      direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+    const allowedSortFields = [
+      'createdAt',
+      'updatedAt',
+      'id',
+      'status',
+      'type',
+    ];
+    const sortField = allowedSortFields.includes(field) ? field : 'createdAt';
+
+    const qb = this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.schedule', 'schedule');
+
+    if (scheduleId) {
+      qb.andWhere('appointment.scheduleId = :scheduleId', { scheduleId });
+    }
+
+    if (status) {
+      qb.andWhere('appointment.status = :status', { status });
+    }
+
+    if (type) {
+      qb.andWhere('appointment.type = :type', { type });
+    }
+
+    if (currentUser.type === UserType.DOCTOR) {
+      qb.andWhere('schedule.doctorId = :doctorId', {
+        doctorId: currentUser.sub,
+      });
+    }
+
+    if (currentUser.type === UserType.PATIENT) {
+      qb.andWhere('schedule.patientId = :patientId', {
+        patientId: currentUser.sub,
+      });
+    }
+
+    const totalItems = await qb.getCount();
+    const data = await qb
+      .orderBy(`appointment.${sortField}`, normalizedDirection)
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return {
+      data: data.map((appointment) => this.toResponse(appointment)),
+      meta: {
+        totalItems,
+        page,
+        limit,
+        totalPages: Math.ceil(totalItems / limit),
+      },
+    };
+  }
+
+  async findOneWithAccess(
+    id: number,
+    currentUser: UserPayload,
+  ): Promise<AppointmentResponseDto> {
+    const appointment = await this.findAppointmentOrFail(id);
+
+    if (currentUser.type === UserType.DOCTOR) {
+      if (appointment.schedule.doctorId !== currentUser.sub) {
+        throw new ForbiddenException(
+          'Médico só pode acessar seus próprios atendimentos.',
+        );
+      }
+    }
+
+    if (currentUser.type === UserType.PATIENT) {
+      if (appointment.schedule.patientId !== currentUser.sub) {
+        throw new ForbiddenException(
+          'Paciente só pode acessar seus próprios atendimentos.',
+        );
+      }
+    }
 
     return this.toResponse(appointment);
   }
