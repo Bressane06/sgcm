@@ -147,6 +147,13 @@ sgcm/
 │   │   ├── swagger/
 │   │   └── utils/
 │   └── modules/
+│       ├── appointments/
+│       │   ├── dto/
+│       │   ├── entities/
+│       │   ├── enum/
+│       │   ├── appointments.controller.ts
+│       │   ├── appointments.module.ts
+│       │   └── appointments.service.ts
 │       ├── auth/
 │       │   ├── auth.controller.spec.ts
 │       │   ├── auth.controller.ts
