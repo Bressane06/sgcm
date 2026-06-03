@@ -1,34 +1,46 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Put,
+} from '@nestjs/common';
 import { MedicalRecordsService } from './medical-records.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
 
-@Controller('medical-records')
+@Controller('')
 export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}
 
-  @Post()
+  @Post('appointments/:appointmentId/records')
   create(@Body() createMedicalRecordDto: CreateMedicalRecordDto) {
     return this.medicalRecordsService.create(createMedicalRecordDto);
   }
 
-  @Get()
-  findAll() {
-    return this.medicalRecordsService.findAll();
+  @Get('appointments/:appointmentId/records')
+  findAppointmentRecords(@Param('appointmentId') appointmentId: string) {
+    return this.medicalRecordsService.findAppointmentRecords(+appointmentId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.medicalRecordsService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMedicalRecordDto: UpdateMedicalRecordDto) {
+  @Put('records/:id')
+  update(
+    @Param('id') id: string,
+    @Body() updateMedicalRecordDto: UpdateMedicalRecordDto,
+  ) {
     return this.medicalRecordsService.update(+id, updateMedicalRecordDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.medicalRecordsService.remove(+id);
+  @Get('patient/:id/records')
+  findPatientRecords(@Param('id') id: string) {
+    return this.medicalRecordsService.findPatientRecords(+id);
+  }
+
+  @Get('doctors/:id/records')
+  findDoctorRecords(@Param('id') id: string) {
+    return this.medicalRecordsService.findDoctorRecords(+id);
   }
 }

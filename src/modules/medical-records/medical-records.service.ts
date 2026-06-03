@@ -8,7 +8,7 @@ export class MedicalRecordsService {
     return 'This action adds a new medicalRecord';
   }
 
-  findAll() {
+  findAppointmentRecords() {
     return `This action returns all medicalRecords`;
   }
 
