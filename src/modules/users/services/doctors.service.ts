@@ -15,8 +15,6 @@ import type { UserPayload } from '../../auth/models/user-payload.model';
 import { ForbiddenException } from '../../../common/exceptions';
 import { UserType } from '../enum/user-type.enum';
 import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
-import { FindAppointmentsQueryDto } from '../../appointments/dto/find-appointments-query.dto';
-import { AppointmentsService } from '../../appointments/appointments.service';
 
 @Injectable()
 export class DoctorsService {
@@ -28,7 +26,6 @@ export class DoctorsService {
     private readonly specialtyRepository: Repository<Specialty>,
     @InjectRepository(DoctorSpecialty)
     private readonly doctorSpecialtyRepository: Repository<DoctorSpecialty>,
-    private readonly appointmentsService: AppointmentsService,
   ) {}
 
   private async findEntityByIdOrFail(id: number): Promise<Doctor> {
@@ -199,24 +196,5 @@ export class DoctorsService {
     }
 
     return this.schedulesService.findByDoctor(doctor.id, query);
-  }
-
-  async findAppointments(
-    id: number,
-    query: FindAppointmentsQueryDto,
-    currentUser: UserPayload,
-  ) {
-    const doctor = await this.findEntityByIdOrFail(id);
-
-    if (
-      currentUser.type === UserType.DOCTOR &&
-      doctor.user.id !== currentUser.sub
-    ) {
-      throw new ForbiddenException(
-        'Médico só pode acessar seus próprios atendimentos.',
-      );
-    }
-
-    return this.appointmentsService.findByDoctor(doctor.id, query);
   }
 }

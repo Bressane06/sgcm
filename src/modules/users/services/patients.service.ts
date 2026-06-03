@@ -9,8 +9,6 @@ import { SchedulesService } from '../../schedules/services/schedules.service';
 import type { UserPayload } from '../../auth/models/user-payload.model';
 import { UserType } from '../enum/user-type.enum';
 import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
-import { FindAppointmentsQueryDto } from '../../appointments/dto/find-appointments-query.dto';
-import { AppointmentsService } from '../../appointments/appointments.service';
 
 @Injectable()
 export class PatientsService {
@@ -18,7 +16,6 @@ export class PatientsService {
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
     private readonly schedulesService: SchedulesService,
-    private readonly appointmentsService: AppointmentsService,
   ) {}
 
   async findAll(
@@ -123,16 +120,5 @@ export class PatientsService {
       cpf: patient.cpf,
       birthDate: patient.birthDate,
     };
-  }
-
-  async findAppointments(
-    id: number,
-    query: FindAppointmentsQueryDto,
-    currentUser: UserPayload,
-  ) {
-    const patient = await this.findEntityByIdOrFail(id);
-    this.assertCanAccessPatient(patient, currentUser);
-
-    return this.appointmentsService.findByPatient(patient.id, query);
   }
 }
