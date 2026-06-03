@@ -3,12 +3,15 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { FindAppointmentsQueryDto } from './dto/find-appointments-query.dto';
+import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { AppointmentsService } from './appointments.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -47,5 +50,19 @@ export class AppointmentsController {
   @ApiOperation({ summary: 'Buscar atendimento por ID' })
   findOne(@Param('id') id: number, @CurrentUser() user: UserPayload) {
     return this.appointmentsService.findOneWithAccess(Number(id), user);
+  }
+
+  @Put(':id')
+  @Roles(UserType.ADMIN, UserType.DOCTOR)
+  @ApiOperation({ summary: 'Atualizar atendimento' })
+  update(@Param('id') id: number, @Body() dto: UpdateAppointmentDto) {
+    return this.appointmentsService.update(Number(id), dto);
+  }
+
+  @Patch(':id/finish')
+  @Roles(UserType.ADMIN, UserType.DOCTOR)
+  @ApiOperation({ summary: 'Finalizar atendimento' })
+  finish(@Param('id') id: number) {
+    return this.appointmentsService.finish(Number(id));
   }
 }

@@ -307,4 +307,59 @@ export class AppointmentsService {
 
     return this.toResponse(appointment);
   }
+
+  async update(
+    id: number,
+    dto: UpdateAppointmentDto,
+  ): Promise<AppointmentResponseDto> {
+    const appointment = await this.findAppointmentOrFail(id);
+
+    if (dto.type && dto.type !== appointment.type) {
+      throw new BadRequestException(
+        'O tipo de atendimento não pode ser alterado após a criação.',
+      );
+    }
+
+    const currentType = appointment.type;
+    this.assertAllowedFieldsForType(dto, currentType);
+
+    if (currentType === AppointmentType.CONSULTATION) {
+      const consultation = appointment as Consultation;
+      consultation.consultationReason =
+        dto.consultationReason ?? consultation.consultationReason;
+      consultation.diagnosis = dto.diagnosis ?? consultation.diagnosis;
+      consultation.prescription = dto.prescription ?? consultation.prescription;
+    }
+
+    if (currentType === AppointmentType.EXAM) {
+      const exam = appointment as Exam;
+      exam.examName = dto.examName ?? exam.examName;
+      exam.result = dto.result ?? exam.result;
+      exam.observations = dto.observations ?? exam.observations;
+    }
+
+    if (currentType === AppointmentType.FOLLOW_UP) {
+      const followUp = appointment as FollowUp;
+      followUp.notes = dto.notes ?? followUp.notes;
+      followUp.nextSteps = dto.nextSteps ?? followUp.nextSteps;
+    }
+
+    const saved = await this.appointmentRepository.save(appointment);
+    return this.toResponse(saved);
+  }
+
+  async finish(id: number): Promise<AppointmentResponseDto> {
+    const appointment = await this.findAppointmentOrFail(id);
+
+    if (appointment.status === AppointmentStatus.FINISHED) {
+      throw ConflictException.businessRule(
+        'Atendimento já finalizado',
+        `O atendimento com id ${id} já está finalizado.`,
+      );
+    }
+
+    appointment.status = AppointmentStatus.FINISHED;
+    const saved = await this.appointmentRepository.save(appointment);
+    return this.toResponse(saved);
+  }
 }
