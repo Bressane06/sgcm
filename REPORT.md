@@ -1447,6 +1447,13 @@ Ou existem razões técnicas para adotar uma estratégia diferente?
 
 A análise acima refletiu aprendizado real ao longo do projeto. Registrando no relatório não apenas a decisão atual, mas também a avaliação da escolha feita na Etapa 1, destacando o que funcionou, o que não funcionou e por quê.
 
+### 3.42 O que o PATCH /procedures/{id}/authorization recebe no corpo?
+
+Por motivos de melhor modularização, implementar uma abordagem mais semântica, com dois endpoints distintos:
+- PATCH /procedures/{id}/authorize
+- PATCH /procedures/{id}/deny
+Abordagem essa que dispensa o corpo da requisição.
+
 ## 4 - DIFICULDADES E APRENDIZADOS
 
 ### Dificuldades encontradas etapa 1
