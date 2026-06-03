@@ -288,6 +288,21 @@ export class ReportsService {
       return;
     }
 
+    if (currentUser.type === UserType.DOCTOR) {
+      const currentDoctor = await this.findDoctorByUserIdOrFail(currentUser.sub);
+      
+      const hasReports = await this.reportRepository.exists({
+        where: {
+          patientId: patient.id,
+          issuedByDoctorId: currentDoctor.id,
+        },
+      });
+
+      if (hasReports) {
+        return;
+      }
+    }
+
     throw new ForbiddenException('Você não tem permissão para acessar os laudos deste paciente.');
   }
 
