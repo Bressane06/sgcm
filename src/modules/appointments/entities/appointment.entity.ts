@@ -25,12 +25,12 @@ export abstract class Appointment {
   @Column({ type: 'varchar' })
   type!: AppointmentType;
 
-//   @OneToOne(() => Schedule, { eager: true })
-//   @JoinColumn({ name: 'scheduleId' })
-//   schedule!: Schedule;
+  @OneToOne(() => Schedule, { eager: true })
+  @JoinColumn({ name: 'scheduleId' })
+  schedule!: Schedule;
 
-//   @RelationId((appointment: Appointment) => appointment.schedule)
-//   scheduleId!: number;
+  @RelationId((appointment: Appointment) => appointment.schedule)
+  scheduleId!: number;
 
   @CreateDateColumn()
   createdAt!: Date;
