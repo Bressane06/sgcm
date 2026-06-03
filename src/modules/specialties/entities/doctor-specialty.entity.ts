@@ -1,26 +1,37 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { Doctor } from "../../users/entities/doctor.entity";
-import { Specialty } from "./specialty.entity";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Doctor } from '../../users/entities/doctor.entity';
+import { Specialty } from './specialty.entity';
 
-@Entity('doctorSpecialty')
+@Entity('doctor_specialty')
 export class DoctorSpecialty {
-    @PrimaryGeneratedColumn()
-    id!: number;
+  @PrimaryGeneratedColumn()
+  id!: number;
 
-    @ManyToOne(() => Doctor, doctor => doctor.specialties, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'doctorId' })
-    doctor!: Doctor;
+  @ManyToOne(() => Doctor, (doctor) => doctor.specialties, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'doctorId' })
+  doctor!: Doctor;
 
-    @Column()
-    doctorId!: number;
+  @Column()
+  doctorId!: number;
 
-    @ManyToOne(() => Specialty, specialty => specialty.doctors, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'specialtyId' })
-    specialty!: Specialty;
+  @ManyToOne(() => Specialty, (specialty) => specialty.doctors, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'specialtyId' })
+  specialty!: Specialty;
 
-    @Column()
-    specialtyId!: number;
-    
-    @CreateDateColumn()
-    assignAt!: Date;
+  @Column()
+  specialtyId!: number;
+
+  @CreateDateColumn()
+  assignAt!: Date;
 }
