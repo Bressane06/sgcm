@@ -305,6 +305,18 @@ export class AppointmentsService {
       qb.andWhere('appointment.type = :type', { type });
     }
 
+    if (query.doctorId) {
+      qb.andWhere('schedule.doctorId = :doctorId', {
+        doctorId: query.doctorId,
+      });
+    }
+
+    if (query.patientId) {
+      qb.andWhere('schedule.patientId = :patientId', {
+        patientId: query.patientId,
+      });
+    }
+
     const appointments = await qb
       .orderBy(`appointment.${sortField}`, normalizedDirection)
       .skip((page - 1) * limit)
@@ -364,6 +376,12 @@ export class AppointmentsService {
       );
     }
 
+    if (appointment.status === AppointmentStatus.FINISHED) {
+      throw new ConflictException(
+        'Não é possível atualizar um atendimento finalizado.',
+      );
+    }
+
     const currentType = appointment.type;
     this.assertAllowedFieldsForType(dto, currentType);
 
@@ -402,13 +420,32 @@ export class AppointmentsService {
 
     if (appointment.status === AppointmentStatus.FINISHED) {
       throw ConflictException.businessRule(
-        'Atendimento já finalizado',
-        `O atendimento com id ${id} já está finalizado.`,
+        'O Atendimento já foi finalizado anteriormente',
       );
     }
 
     appointment.status = AppointmentStatus.FINISHED;
     const saved = await this.appointmentRepository.save(appointment);
     return this.toResponse(saved);
+  }
+
+  async findByDoctor(
+    doctorId: number,
+    query: FindAppointmentsQueryDto,
+  ): Promise<{ data: AppointmentResponseDto[]; meta: any }> {
+    return this.findAll({
+      ...query,
+      doctorId,
+    });
+  }
+
+  async findByPatient(
+    patientId: number,
+    query: FindAppointmentsQueryDto,
+  ): Promise<{ data: AppointmentResponseDto[]; meta: any }> {
+    return this.findAll({
+      ...query,
+      patientId,
+    });
   }
 }

@@ -32,4 +32,26 @@ export class FindAppointmentsQueryDto extends PaginationQueryDto {
   @IsEnum(AppointmentType)
   @IsOptional()
   type?: AppointmentType;
+
+  @ApiPropertyOptional({
+    description: 'ID do médico',
+    example: 4,
+    type: Number,
+  })
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  doctorId?: number;
+
+  @ApiPropertyOptional({
+    description: 'ID do paciente',
+    example: 7,
+    type: Number,
+  })
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  patientId?: number;
 }
