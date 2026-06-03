@@ -25,7 +25,7 @@ export class FindAppointmentsQueryDto {
   @IsOptional()
   limit = 10;
 
-  @ApiPropertyOptional({ example: 'createdAt:DESC' })
+  @ApiPropertyOptional({ example: 'createdAt:DESC', type: String })
   @IsString()
   @IsOptional()
   sort = 'createdAt:DESC';

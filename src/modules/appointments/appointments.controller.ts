@@ -40,9 +40,8 @@ export class AppointmentsController {
   @ApiOperation({ summary: 'Listar atendimentos' })
   findAll(
     @Query() query: FindAppointmentsQueryDto,
-    @CurrentUser() user: UserPayload,
   ) {
-    return this.appointmentsService.findAll(query, user);
+    return this.appointmentsService.findAll(query);
   }
 
   @Get(':id')

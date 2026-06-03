@@ -231,29 +231,23 @@ export class AppointmentsService {
 
   async findAll(
     query: FindAppointmentsQueryDto,
-    currentUser: UserPayload,
   ): Promise<{ data: AppointmentResponseDto[]; meta: any }> {
     const { page, limit, sort, scheduleId, status, type } = query;
     const [field, direction] = sort ? sort.split(':') : ['createdAt', 'DESC'];
+
     const normalizedDirection =
       direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
-    const allowedSortFields = [
-      'createdAt',
-      'updatedAt',
-      'id',
-      'status',
-      'type',
-    ];
+    const allowedSortFields = ['createdAt', 'updatedAt', 'id', 'status', 'type'];
     const sortField = allowedSortFields.includes(field) ? field : 'createdAt';
 
     const qb = this.appointmentRepository
       .createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.schedule', 'schedule')
       .leftJoinAndSelect('schedule.doctor', 'doctor')
-      .leftJoinAndSelect('schedule.doctor', 'doctor')
-      .leftJoinAndSelect('schedule.doctor', 'doctor')
-      .leftJoinAndSelect('schedule.doctor', 'doctor');
+      .leftJoinAndSelect('doctor.user', 'doctorUser')
+      .leftJoinAndSelect('schedule.patient', 'patient')
+      .leftJoinAndSelect('patient.user', 'patientUser');
 
     if (scheduleId) {
       qb.andWhere('appointment.scheduleId = :scheduleId', { scheduleId });
@@ -267,25 +261,13 @@ export class AppointmentsService {
       qb.andWhere('appointment.type = :type', { type });
     }
 
-    if (currentUser.type === UserType.DOCTOR) {
-      qb.andWhere('doctorUser.id = :userId', {
-        userId: currentUser.sub,
-      });
-    }
-
-    if (currentUser.type === UserType.PATIENT) {
-      qb.andWhere('patientUser.id = :userId', {
-        userId: currentUser.sub,
-      });
-    }
-
-    const totalItems = await qb.clone().getCount();
-
     const appointments = await qb
       .orderBy(`appointment.${sortField}`, normalizedDirection)
       .skip((page - 1) * limit)
       .take(limit)
       .getMany();
+
+    const totalItems = appointments.length;
 
     return {
       data: appointments.map((appointment) => this.toResponse(appointment)),
