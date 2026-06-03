@@ -36,7 +36,7 @@ export class AppointmentsController {
   }
 
   @Get()
-  @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
+  @Roles(UserType.ADMIN)
   @ApiOperation({ summary: 'Listar atendimentos' })
   findAll(
     @Query() query: FindAppointmentsQueryDto,

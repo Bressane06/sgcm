@@ -170,6 +170,16 @@ export class AppointmentsService {
   private async findAppointmentOrFail(id: number): Promise<Appointment> {
     const appointment = await this.appointmentRepository.findOne({
       where: { id },
+      relations: {
+        schedule: {
+          doctor: {
+            user: true,
+          },
+          patient: {
+            user: true,
+          },
+        },
+      },
     });
 
     if (!appointment) {
@@ -239,7 +249,11 @@ export class AppointmentsService {
 
     const qb = this.appointmentRepository
       .createQueryBuilder('appointment')
-      .leftJoinAndSelect('appointment.schedule', 'schedule');
+      .leftJoinAndSelect('appointment.schedule', 'schedule')
+      .leftJoinAndSelect('schedule.doctor', 'doctor')
+      .leftJoinAndSelect('schedule.doctor', 'doctor')
+      .leftJoinAndSelect('schedule.doctor', 'doctor')
+      .leftJoinAndSelect('schedule.doctor', 'doctor');
 
     if (scheduleId) {
       qb.andWhere('appointment.scheduleId = :scheduleId', { scheduleId });
@@ -254,26 +268,27 @@ export class AppointmentsService {
     }
 
     if (currentUser.type === UserType.DOCTOR) {
-      qb.andWhere('schedule.doctorId = :doctorId', {
-        doctorId: currentUser.sub,
+      qb.andWhere('doctorUser.id = :userId', {
+        userId: currentUser.sub,
       });
     }
 
     if (currentUser.type === UserType.PATIENT) {
-      qb.andWhere('schedule.patientId = :patientId', {
-        patientId: currentUser.sub,
+      qb.andWhere('patientUser.id = :userId', {
+        userId: currentUser.sub,
       });
     }
 
-    const totalItems = await qb.getCount();
-    const data = await qb
+    const totalItems = await qb.clone().getCount();
+
+    const appointments = await qb
       .orderBy(`appointment.${sortField}`, normalizedDirection)
       .skip((page - 1) * limit)
       .take(limit)
       .getMany();
 
     return {
-      data: data.map((appointment) => this.toResponse(appointment)),
+      data: appointments.map((appointment) => this.toResponse(appointment)),
       meta: {
         totalItems,
         page,
@@ -290,7 +305,7 @@ export class AppointmentsService {
     const appointment = await this.findAppointmentOrFail(id);
 
     if (currentUser.type === UserType.DOCTOR) {
-      if (appointment.schedule.doctorId !== currentUser.sub) {
+      if (appointment.schedule.doctor.user.id !== currentUser.sub) {
         throw new ForbiddenException(
           'Médico só pode acessar seus próprios atendimentos.',
         );
@@ -298,7 +313,7 @@ export class AppointmentsService {
     }
 
     if (currentUser.type === UserType.PATIENT) {
-      if (appointment.schedule.patientId !== currentUser.sub) {
+      if (appointment.schedule.patient.user.id !== currentUser.sub) {
         throw new ForbiddenException(
           'Paciente só pode acessar seus próprios atendimentos.',
         );
