@@ -13,6 +13,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { LoggingMiddleware } from './common/middlewares/logging.middleware';
 import { StringValue } from 'ms';
 import { RolesGuard } from './common/guards/roles.guard';
+import { ProceduresModule } from './modules/procedures/procedures.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     SpecialtiesModule,
     SchedulesModule,
     AuthModule,
+    ProceduresModule,
   ],
   controllers: [AppController],
   providers: [

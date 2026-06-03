@@ -1,32 +1,36 @@
-import { ChildEntity, Column, Entity } from 'typeorm';
+import { ChildEntity, Column } from 'typeorm';
 import { AuthorizationStatus } from '../enum/authorization-status.enum';
 import { ComplexityLevel } from '../enum/complexity-level.enum';
 import { Procedure } from './procedure.entity';
 import { ProcedureType } from '../enum/procedure-type.enum';
 
-@Entity('specialized_procedures')
 @ChildEntity(ProcedureType.SPECIALIZED)
 export class SpecializedProcedure extends Procedure {
-  @Column()
-  requiredEquipment!: string;
+  @Column({ nullable: true })
+  requiredEquipment?: string;
 
   @Column({
-    type: 'enum',
+    type: 'varchar',
     enum: ComplexityLevel,
+    nullable: true,
   })
-  complexityLevel!: ComplexityLevel;
-
-  @Column()
-  requiresAuthorization!: boolean;
-
-  @Column({
-    type: 'enum',
-    enum: AuthorizationStatus,
-  })
-  authorizationStatus!: AuthorizationStatus;
+  complexityLevel?: ComplexityLevel;
 
   @Column({ nullable: true })
-  authorizedAt!: Date | null;
+  requiresAuthorization?: boolean;
+
+  @Column({
+    type: 'varchar',
+    enum: AuthorizationStatus,
+    nullable: true,
+  })
+  authorizationStatus?: AuthorizationStatus;
+
+  @Column({ nullable: true })
+  authorizedAt?: Date;
+
+  @Column({ nullable: true })
+  deniedAt?: Date;
 
   authorize(): void {
     if (!this.requiresAuthorization) {
@@ -41,10 +45,10 @@ export class SpecializedProcedure extends Procedure {
 
   deny(): void {
     this.authorizationStatus = AuthorizationStatus.DENIED;
-    this.authorizedAt = null;
+    this.deniedAt = new Date();
   }
 
-  isPending(): boolean {
+  isPending(): boolean | undefined {
     return (
       this.requiresAuthorization &&
       this.authorizationStatus === AuthorizationStatus.PENDING
