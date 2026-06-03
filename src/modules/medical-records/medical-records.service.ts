@@ -10,18 +10,21 @@ import { NotFoundException } from '../../common';
 export class MedicalRecordsService {
   constructor(
     @InjectRepository(MedicalRecord)
-    private medicalRecordRepository: Repository<MedicalRecord>,
+    private readonly medicalRecordRepository: Repository<MedicalRecord>,
   ) {}
 
   create(createMedicalRecordDto: CreateMedicalRecordDto) {
     return 'This action adds a new medicalRecord';
   }
 
-  findAppointmentRecords() {
+  findAppointmentRecords(id: number) {
     return `This action returns all medicalRecords`;
   }
 
-  async update(id: number, updateMedicalRecordDto: UpdateMedicalRecordDto): Promise<MedicalRecord>{
+  async update(
+    id: number,
+    updateMedicalRecordDto: UpdateMedicalRecordDto,
+  ): Promise<MedicalRecord> {
     const record = await this.medicalRecordRepository.findOneBy({ id });
 
     if (!record) {
@@ -38,14 +41,12 @@ export class MedicalRecordsService {
   findPatientRecords(id: number) {
     const records = this.medicalRecordRepository.find({
       where: {
-        updatedBy: {
-          patients: {
-            id,
-          },
+        patientId: {
+          id,
         },
       },
     });
-    return records; 
+    return records;
   }
 
   findDoctorRecords(id: number) {
