@@ -7,6 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from './modules/users/users.module';
 import { SpecialtiesModule } from './modules/specialties/specialties.module';
 import { SchedulesModule } from './modules/schedules/schedules.module';
+import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
@@ -19,10 +20,10 @@ import { ReportsModule } from './modules/reports/reports.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    // Foi feito assim, pois o JwtModule precisa acessar a variável de ambiente 
-    // JWT_SECRET para configurar a chave secreta do JWT, e isso é feito 
-    // usando o ConfigService. O método registerAsync permite que o JwtModule 
-    // seja configurado de forma assíncrona, injetando o ConfigService para acessar 
+    // Foi feito assim, pois o JwtModule precisa acessar a variável de ambiente
+    // JWT_SECRET para configurar a chave secreta do JWT, e isso é feito
+    // usando o ConfigService. O método registerAsync permite que o JwtModule
+    // seja configurado de forma assíncrona, injetando o ConfigService para acessar
     // as variáveis de ambiente no momento da configuração.
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -44,6 +45,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     UsersModule,
     SpecialtiesModule,
     SchedulesModule,
+    AppointmentsModule,
     AuthModule,
     AdminModule,
     ReportsModule,

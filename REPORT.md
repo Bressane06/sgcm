@@ -493,6 +493,8 @@ Justificativa:
 - Evita crescimento de complexidade no service principal de usuários.
 - Facilita manutenção do fluxo de criação por perfil em um único ponto.
 
+
+
 ## ETAPA 2
 
 ### 3.20 Uso de interfaces e utils para paginação
@@ -1424,7 +1426,30 @@ Com isso, o desenvolvedor que integra com a API consegue entender o que corrigir
 
 ## ETAPA 3
 
-### 3.34 Infraestrutura automática aplicada aos novos endpoints
+### 3.41 Implementação do módulo Appointments
+
+Foi implementado o módulo responsável pelo gerenciamento dos atendimentos realizados na clínica médica.
+
+O módulo contempla:
+
+- criação de atendimentos a partir de agendamentos confirmados;
+- atualização de informações clínicas;
+- finalização de atendimentos;
+- listagem paginada com filtros;
+- controle de acesso por perfil e por recurso;
+- integração com o módulo Schedules.
+
+Endpoints implementados:
+
+- `POST /appointments`
+- `GET /appointments`
+- `GET /appointments/{id}`
+- `PUT /appointments/{id}`
+- `PATCH /appointments/{id}/finish`
+- `GET /doctors/{id}/appointments`
+- `GET /patients/{id}/appointments`
+
+### 3.42 Infraestrutura automática aplicada aos novos endpoints
 
 A infraestrutura das etapas anteriores continua sendo aplicada automaticamente aos novos endpoints da Etapa 3, porque foi registrada globalmente em [src/main.ts](src/main.ts): o middleware de logging permanece ativo para todas as requisições, o `HttpExceptionFilter` continua padronizando erros no formato RFC 7807, e os guards globais seguem protegendo os endpoints por padrão.
 
@@ -1459,7 +1484,7 @@ O middleware de logging não precisou de alteração, porque ele registra o cicl
 
 Em resumo, o ajuste necessário foi apenas na transformação de resposta: a infraestrutura de autenticação, autorização, logging e tratamento de exceções já se mostrou compatível com os novos endpoints, desde que o PDF seja explicitamente excluído do transformador.
 
-#### 3.34.1 Exibição (`inline`) versus download direto do PDF
+#### 3.42.1 Exibição (`inline`) versus download direto do PDF
 
 O `GET /reports/{id}/pdf` exibe o conteúdo como resposta binária/textual, em vez de iniciar download automático. Isso ocorre porque a resposta foi configurada com `Content-Disposition: inline`.
 
@@ -1470,7 +1495,7 @@ Essa decisão foi mantida nesta etapa por dois motivos:
 
 Ainda assim, o contrato funcional do endpoint continua sendo de entrega de arquivo PDF (`application/pdf`).
 
-#### 3.34.2 Contrato da validação pública para laudos ativos e revogados
+#### 3.42.2 Contrato da validação pública para laudos ativos e revogados
 
 Como a revogação de laudo no SGCM é lógica (o registro permanece no banco), o endpoint público `GET /reports/validate/{code}` precisa responder de forma consistente para estados diferentes do mesmo documento.
 
@@ -1488,7 +1513,7 @@ Justificativa:
 
 Com isso, o contrato público da Etapa 3 equilibra verificabilidade externa com proteção de dados sensíveis e mantém previsibilidade para quem integra a API.
 
-#### 3.34.3 QR code no PDF de laudo
+#### 3.42.3 QR code no PDF de laudo
 
 Foi adotada a inclusão de QR code no PDF do laudo apontando para o endpoint público de validação `GET /reports/validate/{code}`.
 
@@ -1506,7 +1531,7 @@ Implementação aplicada:
 
 Arquivo principal: [src/modules/reports/reports.service.ts](src/modules/reports/reports.service.ts).
 
-#### 3.34.4 Regras de acesso ao PDF do laudo
+#### 3.42.4 Regras de acesso ao PDF do laudo
 
 O endpoint `GET /reports/{id}/pdf` é autenticado e exige controle por recurso no service.
 
@@ -1572,3 +1597,4 @@ Durante a execução, foram alcançados os seguintes marcos:
 
 **Preparação para evolução** — as decisões tomadas nesta etapa (separação de controllers por domínio, factory pattern para criação de usuários, inativação lógica em vez de deleção física, conceito de `traceId` no filtro de erros) facilitam a introdução futura de autenticação JWT (Etapa 2), controle de acesso por perfil (Etapa 2) e entidades clínicas complexas como atendimentos, procedimentos, prontuários e laudos (Etapa 3).
 
+Ao longo das três etapas do projeto, foi desenvolvido o SGCM (Sistema de Gerenciamento de Clínica Médica), contemplando autenticação, controle de acesso, gerenciamento de usuários, especialidades, agendamentos e atendimentos clínicos.

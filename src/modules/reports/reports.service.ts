@@ -19,6 +19,7 @@ import { ReportValidationDto } from './dto/report-validation.dto';
 import { ConflictException } from '../../common/exceptions/conflict.exception';
 import { FindReportsQueryDto } from './dto/find-reports-query.dto';
 import { PaginatedResponse } from '../../common/interfaces/paginated-response.interface';
+import { Appointment } from '../appointments/entities/appointment.entity';
 
 @Injectable()
 export class ReportsService {
@@ -29,6 +30,8 @@ export class ReportsService {
     private readonly patientRepository: Repository<Patient>,
     @InjectRepository(Doctor)
     private readonly doctorRepository: Repository<Doctor>,
+    @InjectRepository(Appointment)
+    private readonly appointmentRepository: Repository<Appointment>,
   ) {}
 
   async create(
@@ -36,6 +39,17 @@ export class ReportsService {
     dto: CreateReportDto,
     currentUser: UserPayload,
   ): Promise<ReportResponseDto> {
+    const appointment = await this.appointmentRepository.findOne({
+      where: { id: appointmentId },
+      relations: { schedule: true},
+    });
+
+    if(!appointment){
+      throw new NotFoundException('Atendimento', appointmentId);
+    }
+
+    await this.assertCanAccessAppointment(appointment, currentUser);
+
     await this.findPatientOrFail(dto.patientId);
     const doctor = await this.findDoctorOrFail(dto.doctorId);
 
@@ -125,6 +139,51 @@ export class ReportsService {
 
     return this.toResponseDto(await this.findReportByIdOrFail(id));
   }
+
+  // async findAppointments(
+  //   id: number,
+  //   query: FindReportsQueryDto,
+  //   currentUser: UserPayload,
+  // ): Promise<PaginatedResponse<ReportResponseDto>> {
+    
+  //   const appointment = await this.appointmentRepository.findOne({
+  //     where: { id },
+  //     relations: { schedule: true },
+  //   });
+
+  //   if (!appointment) {
+  //     throw new NotFoundException('Atendimento', id);
+  //   }
+
+  //   await this.assertCanAccessAppointment(appointment, currentUser);
+
+  //   const { page, limit, sort, status } = query;
+  //   const skip = (page - 1) * limit;
+  //   const [field, direction] = sort ? sort.split(':') : ['issuedAt', 'DESC'];
+
+  //   const where: any = { appointmentId: id };
+  //   if (status) {
+  //     where.status = status;
+  //   }
+
+  //   const [reports, totalItems] = await this.reportRepository.findAndCount({
+  //     where,
+  //     order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
+  //     skip,
+  //     take: limit,
+  //     relations: { patient: { user: true }, doctor: { user: true } },
+  //   });
+
+  //   return {
+  //     data: reports.map((report) => this.toResponseDto(report)),
+  //     meta: {
+  //       totalItems,
+  //       page,
+  //       limit,
+  //       totalPages: Math.ceil(totalItems / limit),
+  //     },
+  //   };
+  // }
 
   async findByPatient(
     id: number,
@@ -338,6 +397,36 @@ export class ReportsService {
     if (currentDoctor.id !== report.issuedByDoctorId) {
       throw new ForbiddenException('Você não tem permissão para revogar este laudo.');
     }
+  }
+
+  private async assertCanAccessAppointment(
+    appointment: Appointment,
+    currentUser: UserPayload,
+  ): Promise<void> {
+    
+    if (currentUser.type === UserType.ADMIN) {
+      return;
+    }
+
+    if (currentUser.type === UserType.PATIENT) {
+      const patient = await this.patientRepository.findOne({
+        where: { user: { id: currentUser.sub } },
+      });
+
+      if (patient && appointment.schedule.patientId === patient.id) {
+        return;
+      }
+    }
+
+    if (currentUser.type === UserType.DOCTOR) {
+      const doctor = await this.findDoctorByUserIdOrFail(currentUser.sub);
+
+      if (doctor && appointment.schedule.doctorId === doctor.id) {
+        return;
+      }
+    }
+
+    throw new ForbiddenException('Você não tem permissão para acessar os laudos deste atendimento.'); 
   }
 
   private toResponseDto(report: Report): ReportResponseDto {

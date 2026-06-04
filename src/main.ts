@@ -68,7 +68,7 @@ As respostas de sucesso seguem o envelope { data, meta } produzido pelo Transfor
   SwaggerModule.setup('api', app, document, {
     swaggerOptions: {
       tagsSorter: (a, b) => {
-        const order = ['Auth', 'Users', 'Doctors', 'Patients', 'Schedules', 'Specialties', 'Reports', 'Admin Reports'];
+        const order = ['Auth', 'Users', 'Doctors', 'Patients', 'Schedules', 'Specialties', 'Appointments','Reports', 'Admin Reports'];
         return order.indexOf(a) - order.indexOf(b);
       },
     },
