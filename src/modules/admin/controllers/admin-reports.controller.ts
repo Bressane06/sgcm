@@ -6,6 +6,8 @@ import { AdminSchedulesReportDto } from '../dto/admin-schedules-report.dto';
 import { UserType } from '../../users/enum/user-type.enum';
 import { AdminSchedulesReportQueryDto } from '../dto/admin-schedules-report-query.dto';
 import { AdminReportsService } from '../services/admin-reports.service';
+import { AdminAppointmentsReportDto } from '../dto/admin-appointments-report.dto';
+import { AdminAppointmentsReportQueryDto } from '../dto/admin-appointments-report-query.dto';
 
 @ApiTags('Admin Reports')
 @Controller('admin/reports')
@@ -25,4 +27,14 @@ export class AdminReportsController {
   ): Promise<AdminSchedulesReportDto> {
     return this.adminReportsService.getSchedulesReport(query);
   }
+
+  @Get('appointments')
+  @ApiOperation({ summary: 'Gerar relatório de atendimentos' })
+  @ApiOkResponse({ type: AdminAppointmentsReportDto })
+  async getAppointmentsReport(
+    @Query() query: AdminAppointmentsReportQueryDto,
+  ): Promise<AdminAppointmentsReportDto> {
+    return this.adminReportsService.getAppointmentsReport(query);
+  }
+
 }
