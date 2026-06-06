@@ -7,6 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from './modules/users/users.module';
 import { SpecialtiesModule } from './modules/specialties/specialties.module';
 import { SchedulesModule } from './modules/schedules/schedules.module';
+import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
@@ -42,6 +43,7 @@ import { MedicalRecordsModule } from './modules/medical-records/medical-records.
     UsersModule,
     SpecialtiesModule,
     SchedulesModule,
+    AppointmentsModule,
     AuthModule,
     MedicalRecordsModule,
   ],
