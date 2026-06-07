@@ -31,6 +31,11 @@ export class MedicalRecordsController {
     return this.medicalRecordsService.update(+id, updateMedicalRecordDto);
   }
 
+  @Put('records/:id')
+  delete() {
+    return this.medicalRecordsService.delete();
+  }
+
   @Get('patient/:id/records')
   findPatientRecords(@Param('id') id: string) {
     return this.medicalRecordsService.findPatientRecords(+id);
