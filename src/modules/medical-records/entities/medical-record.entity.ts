@@ -4,11 +4,13 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Doctor } from '../../users/entities/doctor.entity';
 import { Patient } from '../../users/entities/patient.entity';
+import { Exam } from '../../appointments/entities/exam.entity';
 
 @Entity('medical_record')
 export class MedicalRecord {
@@ -36,7 +38,10 @@ export class MedicalRecord {
 
   @ManyToOne(() => Patient, { nullable: false })
   @JoinColumn({ name: 'patientId' })
-  patientId!: Patient;
+  patient!: Patient;
+
+  @OneToOne(() => Exam, { nullable: false })
+  AppointmentId!: number;
 
   update(diagnosis: string, prescriptions: string, notes: string): void {
     this.diagnosis = diagnosis;

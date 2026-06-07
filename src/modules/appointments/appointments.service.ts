@@ -240,7 +240,20 @@ export class AppointmentsService {
       );
     }
 
+    const existingCount = await this.
     const existingCount = await this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .where('appointment.scheduleId = :scheduleId', {
+        scheduleId: dto.scheduleId,
+      })
+      .getCount();
+
+    if (existingCount > 0) {
+      throw ConflictException.businessRule(
+        'Atendimento já existente',
+        `O agendamento com id ${dto.scheduleId} já possui um atendimento associado.`,
+      );
+    }
       .createQueryBuilder('appointment')
       .where('appointment.scheduleId = :scheduleId', {
         scheduleId: dto.scheduleId,
@@ -282,7 +295,13 @@ export class AppointmentsService {
     const normalizedDirection =
       direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
-    const allowedSortFields = ['createdAt', 'updatedAt', 'id', 'status', 'type'];
+    const allowedSortFields = [
+      'createdAt',
+      'updatedAt',
+      'id',
+      'status',
+      'type',
+    ];
     const sortField = allowedSortFields.includes(field) ? field : 'createdAt';
 
     const qb = this.appointmentRepository
@@ -387,9 +406,9 @@ export class AppointmentsService {
 
     if (currentType === AppointmentType.CONSULTATION) {
       const consultation = appointment as Consultation;
-      consultation.reason =
-        dto.reason ?? consultation.reason;
-      consultation.diagnosticHypothesis = dto.diagnosticHypothesis ?? consultation.diagnosticHypothesis;
+      consultation.reason = dto.reason ?? consultation.reason;
+      consultation.diagnosticHypothesis =
+        dto.diagnosticHypothesis ?? consultation.diagnosticHypothesis;
       consultation.prescription = dto.prescription ?? consultation.prescription;
     }
 

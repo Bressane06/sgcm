@@ -2,14 +2,20 @@ import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
 import { MedicalRecordsService } from './medical-records.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { UserPayload } from '../auth/models/user-payload.model';
 
 @Controller('')
 export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}
 
   @Post('appointments/:appointmentId/records')
-  create(@Body() createMedicalRecordDto: CreateMedicalRecordDto) {
-    return this.medicalRecordsService.create(createMedicalRecordDto);
+  create(
+    @Param('appointmentId') id: string,
+    @Body() createMedicalRecordDto: CreateMedicalRecordDto,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.medicalRecordsService.create(+id, createMedicalRecordDto, user);
   }
 
   @Get('appointments/:appointmentId/records')

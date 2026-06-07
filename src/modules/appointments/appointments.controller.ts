@@ -31,19 +31,14 @@ export class AppointmentsController {
   @Post()
   @Roles(UserType.ADMIN, UserType.DOCTOR)
   @ApiOperation({ summary: 'Criar atendimento para agendamento confirmado' })
-  create(
-    @Body() dto: CreateAppointmentDto,
-    @CurrentUser() user: UserPayload,
-  ) {
+  create(@Body() dto: CreateAppointmentDto, @CurrentUser() user: UserPayload) {
     return this.appointmentsService.create(dto, user);
   }
 
   @Get()
   @Roles(UserType.ADMIN)
   @ApiOperation({ summary: 'Listar atendimentos' })
-  findAll(
-    @Query() query: FindAppointmentsQueryDto,
-  ) {
+  findAll(@Query() query: FindAppointmentsQueryDto) {
     return this.appointmentsService.findAll(query);
   }
 
@@ -68,10 +63,7 @@ export class AppointmentsController {
   @Patch(':id/finish')
   @Roles(UserType.ADMIN, UserType.DOCTOR)
   @ApiOperation({ summary: 'Finalizar atendimento' })
-  finish(
-    @Param('id') id: number,
-    @CurrentUser() user: UserPayload,
-  ) {
+  finish(@Param('id') id: number, @CurrentUser() user: UserPayload) {
     return this.appointmentsService.finish(Number(id), user);
   }
 }
