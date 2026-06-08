@@ -59,8 +59,7 @@ export class UsersService {
     userId: number,
   ): Promise<void> {
     const doctor = await this.doctorRepository.findOne({
-      where: { user: { id: userId } },
-      relations: { user: true },
+      where: { id: userId  }
     });
 
     if (!doctor) {
@@ -86,8 +85,7 @@ export class UsersService {
     userId: number,
   ): Promise<void> {
     const patient = await this.patientRepository.findOne({
-      where: { user: { id: userId } },
-      relations: { user: true },
+      where: {  id: userId  },
     });
 
     if (!patient) {

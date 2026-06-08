@@ -107,7 +107,7 @@ export class ReportsService {
   async validate(code: string): Promise<ReportValidationDto> {
     const report = await this.reportRepository.findOne({
       where: { validationCode: code },
-      relations: { patient: { user: true }, doctor: { user: true } },
+      relations: { patient: true , doctor: true  },
     });
 
     if (!report) {
@@ -207,7 +207,9 @@ export class ReportsService {
       order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
       skip,
       take: limit,
-      relations: { patient: { user: true }, doctor: { user: true } },
+      relations: { 
+        patient: true, 
+        doctor: true },
     });
 
     return {
@@ -243,7 +245,10 @@ export class ReportsService {
       order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
       skip,
       take: limit,
-      relations: { patient: { user: true }, doctor: { user: true } },
+      relations: { 
+        patient: true, 
+        doctor: true
+       },
     });
 
     return {
@@ -260,7 +265,7 @@ export class ReportsService {
   private async findReportByIdOrFail(id: number): Promise<Report> {
     const report = await this.reportRepository.findOne({
       where: { id },
-      relations: { patient: { user: true }, doctor: { user: true } },
+      relations: { patient: true , doctor: true },
     });
 
     if (!report) {
@@ -272,8 +277,7 @@ export class ReportsService {
   
   private async findPatientOrFail(id: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
-      where: { id },
-      relations: { user: true },
+      where: { id }
     });
 
     if (!patient) {
@@ -285,8 +289,7 @@ export class ReportsService {
 
   private async findDoctorOrFail(id: number): Promise<Doctor> {
     const doctor = await this.doctorRepository.findOne({
-      where: { id },
-      relations: { user: true },
+      where: { id }
     });
 
     if (!doctor) {
@@ -298,8 +301,7 @@ export class ReportsService {
 
   private async findDoctorByUserIdOrFail(userId: number): Promise<Doctor> {
     const doctor = await this.doctorRepository.findOne({
-      where: { user: { id: userId } },
-      relations: { user: true },
+      where: { id: userId  },
     });
 
     if (!doctor) {
@@ -319,7 +321,7 @@ export class ReportsService {
 
     if (
       currentUser.type === UserType.PATIENT &&
-      report.patient.user.id === currentUser.sub
+      report.patient.id === currentUser.sub
     ) {
       return;
     }
@@ -343,7 +345,7 @@ export class ReportsService {
       return;
     }
 
-    if (currentUser.type === UserType.PATIENT && patient.user.id === currentUser.sub) {
+    if (currentUser.type === UserType.PATIENT && patient.id === currentUser.sub) {
       return;
     }
 
@@ -373,7 +375,7 @@ export class ReportsService {
       return;
     }
 
-    if (currentUser.type === UserType.DOCTOR && doctor.user.id === currentUser.sub) {
+    if (currentUser.type === UserType.DOCTOR && doctor.id === currentUser.sub) {
       return;
     }
 
@@ -410,7 +412,7 @@ export class ReportsService {
 
     if (currentUser.type === UserType.PATIENT) {
       const patient = await this.patientRepository.findOne({
-        where: { user: { id: currentUser.sub } },
+        where: { id: currentUser.sub  },
       });
 
       if (patient && appointment.schedule.patientId === patient.id) {
@@ -437,13 +439,13 @@ export class ReportsService {
       status: report.status,
       patient: {
         id: report.patient.id,
-        name: report.patient.user.name,
-        email: report.patient.user.email,
+        name: report.patient.name,
+        email: report.patient.email,
       },
       doctor: {
         id: report.doctor.id,
-        name: report.doctor.user.name,
-        email: report.doctor.user.email,
+        name: report.doctor.name,
+        email: report.doctor.email,
         crm: report.doctor.crm,
       },
       examType: report.examType,
@@ -460,8 +462,8 @@ export class ReportsService {
       validationCode: report.validationCode,
       status: report.status,
       revoked: report.status === ReportStatus.REVOKED,
-      patientName: report.patient.user.name,
-      doctorName: report.doctor.user.name,
+      patientName: report.patient.name,
+      doctorName: report.doctor.name,
       examType: report.examType,
       issuedAt: report.issuedAt,
       revokedAt: report.revokedAt ?? null,
@@ -522,8 +524,8 @@ export class ReportsService {
 
       // ── Campos justificados ─────────────────────────────────────────────
       const fields: [string, string | null | undefined][] = [
-        ['Paciente',           report.patient.user.name],
-        ['Médico',             `${report.doctor.user.name} | CRM: ${report.doctor.crm}`],
+        ['Paciente',           report.patient.name],
+        ['Médico',             `${report.doctor.name} | CRM: ${report.doctor.crm}`],
         ['Tipo de exame',      report.examType],
         ['Resultado',          report.result],
         ['Data de emissão',    report.issuedAt.toLocaleString('pt-BR')],

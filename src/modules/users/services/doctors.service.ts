@@ -34,10 +34,9 @@ export class DoctorsService {
   private async findEntityByIdOrFail(id: number): Promise<Doctor> {
     const doctor = await this.doctorRepository.findOne({
       where: { id },
-      relations: { user: true },
     });
 
-    if (!doctor || !doctor.user.isActive) {
+    if (!doctor || !doctor.isActive) {
       throw new NotFoundException('Médico', id);
     }
 
@@ -53,14 +52,11 @@ export class DoctorsService {
     const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
 
     const where = search
-      ? [
-          { user: { name: Like(`%${search}%`), isActive: true } },
-        ]
-      : { user: { isActive: true } };
+      ? [{ name: Like(`%${search}%`), isActive: true }]
+      : { isActive: true };
 
     const [doctors, totalItems] = await this.doctorRepository.findAndCount({
       where,
-      relations: { user: true },
       order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
       skip,
       take: limit,
@@ -84,9 +80,9 @@ export class DoctorsService {
 
     return {
       id: doctor.id,
-      userId: doctor.user.id,
-      name: doctor.user.name,
-      email: doctor.user.email,
+      userId: doctor.id,
+      name: doctor.name,
+      email: doctor.email,
       crm: doctor.crm,
     };
   }
@@ -148,15 +144,13 @@ export class DoctorsService {
 
     if (doctorSpecialtyExists) {
       throw ConflictException.businessRule(
-        `O médico ${doctor.user.name} já possui a especialidade ${specialty.name} associada.  `);
+        `O médico ${doctor.name} já possui a especialidade ${specialty.name} associada.  `);
     }
 
     const doctorSpecialty =  this.doctorSpecialtyRepository.create({
       specialtyId: specialty.id,
       doctorId: doctor.id
     });
-
-    console.log(doctorSpecialty);
 
     return await this.doctorSpecialtyRepository.save(doctorSpecialty);
   }
@@ -191,7 +185,7 @@ export class DoctorsService {
 
     if (
       currentUser.type === UserType.DOCTOR &&
-      doctor.user.id !== currentUser.sub
+      doctor.id !== currentUser.sub
     ) {
       throw new ForbiddenException(
         'Você não tem permissão para acessar agendamentos de outro médico.',
@@ -210,7 +204,7 @@ export class DoctorsService {
 
     if (
       currentUser.type === UserType.DOCTOR &&
-      doctor.user.id !== currentUser.sub
+      doctor.id !== currentUser.sub
     ) {
       throw new ForbiddenException(
         'Médico só pode acessar seus próprios atendimentos.',

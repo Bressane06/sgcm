@@ -247,7 +247,7 @@ export class SchedulesService {
     const schedule = await this.findEntityOrFail(id);
 
     if (currentUser.type === UserType.PATIENT) {
-      if (schedule.patient?.user?.id !== currentUser.sub) {
+      if (schedule.patient?.id !== currentUser.sub) {
         throw new ForbiddenException(
           'Paciente só pode cancelar seus próprios agendamentos.',
         );
@@ -352,8 +352,7 @@ export class SchedulesService {
 
   private async findDoctorOrFail(id: number): Promise<Doctor> {
     const doctor = await this.doctorRepository.findOne({
-      where: { id, user: { isActive: true } },
-      relations: { user: true },
+      where: { id, isActive: true },
     });
 
     if (!doctor) {
@@ -365,8 +364,7 @@ export class SchedulesService {
 
   private async findPatientOrFail(id: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
-      where: { id, user: { isActive: true } },
-      relations: { user: true },
+      where: { id, isActive: true },
     });
 
     if (!patient) {
@@ -459,11 +457,11 @@ export class SchedulesService {
       return;
     }
 
-    if (currentUser.type === UserType.DOCTOR && schedule.doctor?.user?.id === currentUser.sub) {
+    if (currentUser.type === UserType.DOCTOR && schedule.doctor?.id === currentUser.sub) {
       return;
     }
 
-    if (currentUser.type === UserType.PATIENT && schedule.patient?.user?.id === currentUser.sub) {
+    if (currentUser.type === UserType.PATIENT && schedule.patient?.id === currentUser.sub) {
       return;
     }
 
