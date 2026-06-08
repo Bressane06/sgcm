@@ -6,7 +6,10 @@ export class AppointmentResponseDto {
   @ApiProperty({ example: 1 })
   id!: number;
 
-  @ApiProperty({ enum: AppointmentStatus, example: AppointmentStatus.IN_PROGRESS })
+  @ApiProperty({
+    enum: AppointmentStatus,
+    example: AppointmentStatus.IN_PROGRESS,
+  })
   status!: AppointmentStatus;
 
   @ApiProperty({ enum: AppointmentType, example: AppointmentType.CONSULTATION })

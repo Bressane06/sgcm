@@ -240,20 +240,7 @@ export class AppointmentsService {
       );
     }
 
-    const existingCount = await this.
     const existingCount = await this.appointmentRepository
-      .createQueryBuilder('appointment')
-      .where('appointment.scheduleId = :scheduleId', {
-        scheduleId: dto.scheduleId,
-      })
-      .getCount();
-
-    if (existingCount > 0) {
-      throw ConflictException.businessRule(
-        'Atendimento já existente',
-        `O agendamento com id ${dto.scheduleId} já possui um atendimento associado.`,
-      );
-    }
       .createQueryBuilder('appointment')
       .where('appointment.scheduleId = :scheduleId', {
         scheduleId: dto.scheduleId,

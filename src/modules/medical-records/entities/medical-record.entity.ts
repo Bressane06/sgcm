@@ -8,9 +8,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Doctor } from '../../users/entities/doctor.entity';
 import { Patient } from '../../users/entities/patient.entity';
 import { Exam } from '../../appointments/entities/exam.entity';
+import { User } from '../../users/entities/user.entity';
+import { Doctor } from '../../users/entities/doctor.entity';
 
 @Entity('medical_record')
 export class MedicalRecord {
@@ -32,16 +33,20 @@ export class MedicalRecord {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  @ManyToOne(() => Doctor, { nullable: false })
+  @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'updatedBy' })
-  updatedBy!: Doctor;
+  updatedBy!: User;
+
+  @ManyToOne(() => Doctor, { nullable: false })
+  @JoinColumn({ name: 'createdBy' })
+  createdBy!: Doctor;
 
   @ManyToOne(() => Patient, { nullable: false })
   @JoinColumn({ name: 'patientId' })
   patient!: Patient;
 
   @OneToOne(() => Exam, { nullable: false })
-  AppointmentId!: number;
+  appointmentId!: number;
 
   update(diagnosis: string, prescriptions: string, notes: string): void {
     this.diagnosis = diagnosis;

@@ -70,7 +70,10 @@ export class SpecialtiesController {
   @Get(':id/doctors')
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @ApiOperation({ summary: 'Retorna os médicos da especialidade.' })
-  async findDoctors(@Query() query: FindDoctorsQueryDto, @Param('id') id: string) {
+  async findDoctors(
+    @Query() query: FindDoctorsQueryDto,
+    @Param('id') id: string,
+  ) {
     return await this.specialtiesService.findDoctors(query, +id);
   }
 }

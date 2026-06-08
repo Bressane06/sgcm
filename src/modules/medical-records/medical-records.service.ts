@@ -13,8 +13,8 @@ import { UserPayload } from '../auth/models/user-payload.model';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { UserType } from '../users/enum/user-type.enum';
 import { AppointmentStatus } from '../appointments/enum/appointment-status.enum';
-import { Doctor } from '../users/entities/doctor.entity';
 import { AppointmentType } from '../appointments/enum/appointment-type.enum';
+import { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
 
 @Injectable()
 export class MedicalRecordsService {
@@ -23,8 +23,6 @@ export class MedicalRecordsService {
     private readonly medicalRecordRepository: Repository<MedicalRecord>,
     @InjectRepository(Appointment)
     private readonly appointmentRepository: Repository<Appointment>,
-    @InjectRepository(Doctor)
-    private readonly doctorRepository: Repository<Doctor>,
   ) {}
 
   private async findAppointmentOrFail(
@@ -46,19 +44,35 @@ export class MedicalRecordsService {
     return appointment;
   }
 
+  private toResponse(record: MedicalRecord): MedicalRecordResponseDto {
+    const response: MedicalRecordResponseDto = {
+      id: record.id,
+      patientId: record.patient.id,
+      updatedBy: record.updatedBy.id,
+      appointmentId: record.appointmentId,
+      diagnosis: record.diagnosis,
+      notes: record.notes,
+      prescriptions: record.prescriptions,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    };
+
+    return response;
+  }
+
   async create(
     id: number,
     createMedicalRecordDto: CreateMedicalRecordDto,
     user: UserPayload,
-  ) {
+  ): Promise<MedicalRecordResponseDto> {
     const appointment = await this.findAppointmentOrFail(id);
 
     if (
-      appointment.schedule.doctor.id != user.sub &&
+      appointment.schedule.doctor.id !== user.sub &&
       user.type === UserType.DOCTOR
     ) {
       throw new ForbiddenException(
-        'Médico só pode criar laudos para seus próprios atendimentos.',
+        'Médico só pode criar prontuários para seus próprios atendimentos.',
       );
     }
 
@@ -72,7 +86,7 @@ export class MedicalRecordsService {
     }
 
     const medicalRecord = await this.medicalRecordRepository.findOne({
-      where: { AppointmentId: id },
+      where: { appointmentId: id },
     });
 
     if (medicalRecord) {
@@ -86,7 +100,7 @@ export class MedicalRecordsService {
       createMedicalRecordDto,
     );
 
-    return saved;
+    return this.toResponse(saved);
   }
 
   findAppointmentRecords(id: number) {
@@ -96,18 +110,25 @@ export class MedicalRecordsService {
   async update(
     id: number,
     updateMedicalRecordDto: UpdateMedicalRecordDto,
-  ): Promise<MedicalRecord> {
+    user: UserPayload,
+  ): Promise<MedicalRecordResponseDto> {
     const record = await this.medicalRecordRepository.findOneBy({ id });
 
     if (!record) {
-      throw new NotFoundException('Medical record not found');
+      throw new NotFoundException('Prontuário não encontrado.');
+    }
+
+    if (record.id !== user.sub && user.type === UserType.DOCTOR) {
+      throw new ForbiddenException(
+        'Médico só pode alterar seus próprios prontuários.',
+      );
     }
 
     Object.assign(record, updateMedicalRecordDto);
 
-    await this.medicalRecordRepository.save(record);
+    const saved = await this.medicalRecordRepository.save(record);
 
-    return record;
+    return this.toResponse(saved);
   }
 
   delete() {
@@ -117,19 +138,15 @@ export class MedicalRecordsService {
     );
   }
 
-  findPatientRecords(id: number) {
-    const records = this.medicalRecordRepository.find({
-      where: {
-        patientId: {
-          id,
-        },
-      },
+  async findPatientRecords(id: number): Promise<MedicalRecord[]> {
+    const records = await this.medicalRecordRepository.find({
+      where: { patient: { id } },
     });
     return records;
   }
 
-  findDoctorRecords(id: number) {
-    const records = this.medicalRecordRepository.find({
+  async findDoctorRecords(id: number): Promise<MedicalRecord[]> {
+    const records = await this.medicalRecordRepository.find({
       where: {
         updatedBy: {
           id,

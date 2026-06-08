@@ -9,16 +9,16 @@ import type { UserPayload } from '../auth/models/user-payload.model';
 export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}
 
-  @Post('appointments/:appointmentId/records')
+  @Post('appointments/:id/records')
   create(
-    @Param('appointmentId') id: string,
+    @Param('id') id: string,
     @Body() createMedicalRecordDto: CreateMedicalRecordDto,
     @CurrentUser() user: UserPayload,
   ) {
     return this.medicalRecordsService.create(+id, createMedicalRecordDto, user);
   }
 
-  @Get('appointments/:appointmentId/records')
+  @Get('appointments/:id       /records')
   findAppointmentRecords(@Param('appointmentId') appointmentId: string) {
     return this.medicalRecordsService.findAppointmentRecords(+appointmentId);
   }
@@ -27,8 +27,9 @@ export class MedicalRecordsController {
   update(
     @Param('id') id: string,
     @Body() updateMedicalRecordDto: UpdateMedicalRecordDto,
+    @CurrentUser() user: UserPayload,
   ) {
-    return this.medicalRecordsService.update(+id, updateMedicalRecordDto);
+    return this.medicalRecordsService.update(+id, updateMedicalRecordDto, user);
   }
 
   @Put('records/:id')
