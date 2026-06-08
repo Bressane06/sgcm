@@ -15,6 +15,8 @@ import { LoggingMiddleware } from './common/middlewares/logging.middleware';
 import { StringValue } from 'ms';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { MedicalRecordsModule } from './modules/medical-records/medical-records.
     AppointmentsModule,
     AuthModule,
     MedicalRecordsModule,
+    AdminModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [

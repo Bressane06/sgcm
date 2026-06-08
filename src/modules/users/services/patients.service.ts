@@ -31,14 +31,13 @@ export class PatientsService {
 
     const where = search
       ? [
-          { user: { name: Like(`%${search}%`), isActive: true } },
-          { user: { email: Like(`%${search}%`), isActive: true } },
+          { name: Like(`%${search}%`), isActive: true },
+          { email: Like(`%${search}%`), isActive: true },
         ]
-      : { user: { isActive: true } };
+      : { isActive: true };
 
     const [patients, totalItems] = await this.patientRepository.findAndCount({
       where,
-      relations: { user: true },
       order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
       skip,
       take: limit,
@@ -57,11 +56,10 @@ export class PatientsService {
 
   private async findEntityByIdOrFail(id: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
-      where: { id },
-      relations: { user: true },
+      where: { id }
     });
 
-    if (!patient || !patient.user.isActive) {
+    if (!patient || !patient.isActive) {
       throw new NotFoundException('Paciente', id);
     }
 
@@ -73,9 +71,9 @@ export class PatientsService {
 
     return {
       id: patient.id,
-      userId: patient.user.id,
-      name: patient.user.name,
-      email: patient.user.email,
+      userId: patient.id,
+      name: patient.name,
+      email: patient.email,
       cpf: patient.cpf,
       birthDate: patient.birthDate,
     };
@@ -101,7 +99,7 @@ export class PatientsService {
 
     if (
       currentUser.type === UserType.PATIENT &&
-      patient.user.id === currentUser.sub
+      patient.id === currentUser.sub
     ) {
       return;
     }
@@ -117,9 +115,9 @@ export class PatientsService {
 
     return {
       id: patient.id,
-      userId: patient.user.id,
-      name: patient.user.name,
-      email: patient.user.email,
+      userId: patient.id,
+      name: patient.name,
+      email: patient.email,
       cpf: patient.cpf,
       birthDate: patient.birthDate,
     };

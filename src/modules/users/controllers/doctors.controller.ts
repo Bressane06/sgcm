@@ -9,7 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { DoctorsService } from '../services/doctors.service';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
 import { UpdateSpecialtyDto } from '../../specialties/dto/update-specialty.dto';
 import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
@@ -53,6 +53,13 @@ export class DoctorsController {
   @Post(':id/specialties')
   @Roles(UserType.ADMIN)
   @ApiOperation({ summary: 'Associar especialidade ao médico' })
+    @ApiBody({
+    schema: {
+      example: {
+        name: 'Cardiologia'
+      }
+    }
+  })
   async associateSpecialty(@Param('id') id: number, @Body() specialtyDto: UpdateSpecialtyDto) {
     return await this.doctorsService.associateSpecialty(
       Number(id),

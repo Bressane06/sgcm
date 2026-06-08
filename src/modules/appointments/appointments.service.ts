@@ -73,12 +73,8 @@ export class AppointmentsService {
     const schedule = await this.scheduleRepository.findOne({
       where: { id: scheduleId },
       relations: {
-        doctor: {
-          user: true,
-        },
-        patient: {
-          user: true,
-        },
+        doctor: true,
+        patient: true,
       },
     });
 
@@ -180,12 +176,8 @@ export class AppointmentsService {
       where: { id },
       relations: {
         schedule: {
-          doctor: {
-            user: true,
-          },
-          patient: {
-            user: true,
-          },
+          doctor: true,
+          patient: true,
         },
       },
     });
@@ -207,7 +199,7 @@ export class AppointmentsService {
 
     if (
       currentUser.type === UserType.DOCTOR &&
-      appointment.schedule.doctor.user.id === currentUser.sub
+      appointment.schedule.doctor.id === currentUser.sub
     ) {
       return;
     }
@@ -227,7 +219,7 @@ export class AppointmentsService {
 
     if (
       currentUser.type === UserType.DOCTOR &&
-      schedule.doctor.user.id !== currentUser.sub
+      schedule.doctor.id !== currentUser.sub
     ) {
       throw new ForbiddenException(
         'Médico só pode criar atendimentos para seus próprios agendamentos.',
@@ -295,9 +287,7 @@ export class AppointmentsService {
       .createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.schedule', 'schedule')
       .leftJoinAndSelect('schedule.doctor', 'doctor')
-      .leftJoinAndSelect('doctor.user', 'doctorUser')
       .leftJoinAndSelect('schedule.patient', 'patient')
-      .leftJoinAndSelect('patient.user', 'patientUser');
 
     if (scheduleId) {
       qb.andWhere('appointment.scheduleId = :scheduleId', { scheduleId });
@@ -349,7 +339,7 @@ export class AppointmentsService {
     const appointment = await this.findAppointmentOrFail(id);
 
     if (currentUser.type === UserType.DOCTOR) {
-      if (appointment.schedule.doctor.user.id !== currentUser.sub) {
+      if (appointment.schedule.doctor.id !== currentUser.sub) {
         throw new ForbiddenException(
           'Médico só pode acessar seus próprios atendimentos.',
         );
@@ -357,7 +347,7 @@ export class AppointmentsService {
     }
 
     if (currentUser.type === UserType.PATIENT) {
-      if (appointment.schedule.patient.user.id !== currentUser.sub) {
+      if (appointment.schedule.patient.id !== currentUser.sub) {
         throw new ForbiddenException(
           'Paciente só pode acessar seus próprios atendimentos.',
         );

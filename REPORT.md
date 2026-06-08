@@ -20,8 +20,8 @@
   </thead>
   <tbody>
     <tr>
-      <td rowspan="2"><b>Arthur Coutinho</b></td>
-      <td>• Desenvolvimento da feature Doctors;<br>• Desenvolvimento da feature Specialties;<br>• Elaboração e organização da documentação Swagger. <br>• Criação e manutenção do diagrama PlantUML.</td>
+      <td rowspan="3"><b>Arthur Coutinho</b></td>
+      <td>• Desenvolvimento da feature Doctors;<br>• Desenvolvimento da feature Specialties;<br>• Elaboração e organização da documentação Swagger.<br>• Criação e manutenção do diagrama PlantUML.</td>
       <td>1</td>
     </tr>
     <tr>
@@ -29,16 +29,24 @@
       <td>2</td>
     </tr>
     <tr>
-      <td rowspan="2"><b>Estela Medeiros</b></td>
+      <td>• Desenvolvimento do módulo Procedures;<br>• Desenvolvimento do módulo Prontuários.</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <td rowspan="3"><b>Estela Medeiros</b></td>
       <td>• Desenvolvimento da feature Patients;<br>• Desenvolvimento da feature Schedules.<br>• Apoio técnico e revisão nas demais branches do projeto.</td>
       <td>1</td>
     </tr>
     <tr>
-      <td>• Módulo de autenticação.<br>• Guardas e controle de acesso</td>
+      <td>• Módulo de autenticação.<br>• Guardas e controle de acesso.</td>
       <td>2</td>
     </tr>
     <tr>
-      <td rowspan="2"><b>Gabriel Bressane</b></td>
+      <td>• Desenvolvimento do módulo Appointments.</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <td rowspan="3"><b>Gabriel Bressane</b></td>
       <td>• Desenvolvimento do módulo Users;<br>• Implementação dos exception filters e tratamento global de erros.<br>• Elaboração da documentação técnica;<br>• Administração do repositório no GitHub.</td>
       <td>1</td>
     </tr>
@@ -46,8 +54,14 @@
       <td>• Expansão do exception filter;<br>• Implementação do transform interceptor;<br>• Implementação do logging middleware;<br>• Atualização e organização da documentação técnica.</td>
       <td>2</td>
     </tr>
+    <tr>
+      <td>• Desenvolvimento do módulo Reports;<br>• Desenvolvimento dos relatórios administrativos (Admin Reports);<br>• Atualização, revisão e organização da documentação técnica e Swagger.</td>
+      <td>3</td>
+    </tr>
+
   </tbody>
 </table>
+
 
 > Todos os membros participaram das Pull Requests e colaboraram entre si sempre que necessário, realizando revisões de código, suporte técnico e auxílio na integração das funcionalidades.
 
@@ -1448,6 +1462,267 @@ Endpoints implementados:
 - `PATCH /appointments/{id}/finish`
 - `GET /doctors/{id}/appointments`
 - `GET /patients/{id}/appointments`
+
+### 3.42 Infraestrutura automática aplicada aos novos endpoints
+
+A infraestrutura das etapas anteriores continua sendo aplicada automaticamente aos novos endpoints da Etapa 3, porque foi registrada globalmente em [src/main.ts](src/main.ts): o middleware de logging permanece ativo para todas as requisições, o `HttpExceptionFilter` continua padronizando erros no formato RFC 7807, e os guards globais seguem protegendo os endpoints por padrão.
+
+Os dois casos de borda verificados nesta etapa foram:
+
+- `GET /reports/validate/{code}`: endpoint público marcado com `@Public()`, sem autenticação, mas ainda com logging, interceptor e formatação de erro ativos.
+- `GET /reports/{id}/pdf`: endpoint que retorna `StreamableFile` em vez de JSON, o que exigiu impedir a transformação automática do `TransformInterceptor`.
+
+Para manter o comportamento consistente com a Etapa 2, foi adotada a abordagem de um decorator explícito `@SkipTransform()`, reconhecido pelo interceptor global. Assim, a resposta binária do PDF não é envolvida no envelope `{ data, meta }`, enquanto as respostas JSON continuam seguindo o padrão existente.
+
+Trecho do código aplicado em [src/common/decorators/skip-transform.decorator.ts](src/common/decorators/skip-transform.decorator.ts) e [src/common/interceptors/transform.interceptor.ts](src/common/interceptors/transform.interceptor.ts):
+
+```typescript
+// src/common/decorators/skip-transform.decorator.ts
+export const SKIP_TRANSFORM_KEY = 'skipTransform';
+export const SkipTransform = () => SetMetadata(SKIP_TRANSFORM_KEY, true);
+
+// src/common/interceptors/transform.interceptor.ts
+const skipTransform = this.reflector.getAllAndOverride<boolean>(
+  SKIP_TRANSFORM_KEY,
+  [context.getHandler(), context.getClass()],
+);
+
+if (skipTransform) {
+  return next.handle();
+}
+```
+
+No controller, o endpoint de PDF foi anotado em [src/modules/reports/reports.controller.ts](src/modules/reports/reports.controller.ts) com `@SkipTransform()`, garantindo que o NestJS entregue o arquivo sem o envelope de transformação.
+
+O middleware de logging não precisou de alteração, porque ele registra o ciclo de vida da resposta pelos eventos `finish` e `close`, funcionando corretamente também para downloads de arquivo.
+
+Em resumo, o ajuste necessário foi apenas na transformação de resposta: a infraestrutura de autenticação, autorização, logging e tratamento de exceções já se mostrou compatível com os novos endpoints, desde que o PDF seja explicitamente excluído do transformador.
+
+#### 3.42.1 Exibição (`inline`) versus download direto do PDF
+
+O `GET /reports/{id}/pdf` exibe o conteúdo como resposta binária/textual, em vez de iniciar download automático. Isso ocorre porque a resposta foi configurada com `Content-Disposition: inline`.
+
+Essa decisão foi mantida nesta etapa por dois motivos:
+
+- facilita validação técnica rápida do conteúdo em ambiente de desenvolvimento;
+- mantém compatibilidade com clientes que preferem abrir o PDF no navegador antes de salvar.
+
+Ainda assim, o contrato funcional do endpoint continua sendo de entrega de arquivo PDF (`application/pdf`).
+
+#### 3.42.2 Contrato da validação pública para laudos ativos e revogados
+
+Como a revogação de laudo no SGCM é lógica (o registro permanece no banco), o endpoint público `GET /reports/validate/{code}` precisa responder de forma consistente para estados diferentes do mesmo documento.
+
+Decisão adotada:
+
+- Laudo `ACTIVE`: retorna dados básicos de validação e indica documento válido/ativo.
+- Laudo `REVOKED`: retorna os mesmos dados básicos necessários para conferência e indica explicitamente que o documento foi revogado.
+- Código inexistente: retorna `404 Not Found`.
+
+Justificativa:
+
+- Transparência: consumidores externos (ex.: auditoria, operadora, parceiro clínico) conseguem verificar autenticidade e estado do documento com o mesmo código de validação.
+- Privacidade: o endpoint público não expõe conteúdo clínico detalhado; retorna apenas informações mínimas para validação de autenticidade e status.
+- Segurança de integração: evita ambiguidade entre "código inválido" e "documento revogado", reduzindo decisões incorretas em fluxos externos.
+
+Com isso, o contrato público da Etapa 3 equilibra verificabilidade externa com proteção de dados sensíveis e mantém previsibilidade para quem integra a API.
+
+#### 3.42.3 QR code no PDF de laudo
+
+Foi adotada a inclusão de QR code no PDF do laudo apontando para o endpoint público de validação `GET /reports/validate/{code}`.
+
+Motivação da decisão:
+
+- aumenta a usabilidade do documento impresso, permitindo validação imediata por leitura de câmera;
+- reduz erros de digitação do `validationCode` quando a validação é feita manualmente;
+- mantém o mesmo contrato de autenticação da validação pública (endpoint sem token, porém com escopo de dados reduzido).
+
+Implementação aplicada:
+
+- geração de QR code com biblioteca `qrcode`;
+- renderização do PDF com `pdfkit`, incluindo texto obrigatório e imagem do QR code;
+- manutenção do `validationCode` também em formato textual para redundância operacional.
+
+Arquivo principal: [src/modules/reports/reports.service.ts](src/modules/reports/reports.service.ts).
+
+#### 3.42.4 Regras de acesso ao PDF do laudo
+
+O endpoint `GET /reports/{id}/pdf` é autenticado e exige controle por recurso no service.
+
+Contrato de acesso definido:
+
+- `ADMIN`: pode baixar qualquer laudo;
+- `PATIENT`: pode baixar apenas laudos em que é o próprio paciente do registro;
+- `DOCTOR`: pode baixar apenas laudos emitidos por ele (`issuedByDoctorId`).
+
+Decisão para laudo `REVOKED`:
+
+- o PDF continua acessível para os mesmos perfis autorizados por recurso;
+- a revogação não remove o documento da base e o PDF deve permanecer auditável historicamente;
+- o próprio conteúdo do laudo deixa explícito o status e dados de revogação quando aplicável.
+
+Com isso, a política de acesso preserva rastreabilidade clínica e jurídica sem abrir exposição indevida para usuários não autorizados.
+
+### 3.43 Taxa de Ocupação
+
+A taxa de ocupação mede a proporção de agendamentos que resultaram efetivamente em atendimento dentro do período analisado.
+
+#### Fórmula
+
+```text
+Taxa de Ocupação (%) =
+(COMPLETED / (PENDING + CONFIRMED + COMPLETED + CANCELLED)) × 100
+```
+
+#### Justificativa
+
+O denominador considera todos os agendamentos criados no período, independentemente de seu status final, representando a demanda total atendida pela clínica.
+
+O numerador considera apenas os agendamentos com status `COMPLETED`, pois são aqueles que efetivamente resultaram em atendimento realizado.
+
+Os agendamentos com status `CANCELLED` permanecem no denominador porque representam horários que chegaram a ser reservados, mas não geraram atendimento. Sua inclusão permite que a métrica reflita perdas de ocupação decorrentes de cancelamentos, fornecendo uma visão mais fiel da utilização da agenda.
+
+#### Interpretação
+
+- **100%**: todos os agendamentos resultaram em atendimento.
+- **Taxas menores**: indicam perdas de ocupação causadas por cancelamentos ou agendamentos que permaneceram pendentes ou apenas confirmados durante o período analisado.
+- **Quanto maior a taxa**, maior a eficiência no aproveitamento da agenda médica.
+
+### 3.44 Migração da hierarquia `User` de JTI manual para STI nativo
+
+#### Motivação
+
+Na Etapa 2, o professor apontou que o uso de composição via `@OneToOne` entre `User`, `Doctor`, `Patient` e `Admin` não satisfaz o requisito de herança nativa do TypeORM.
+
+Como o TypeORM não oferece JTI nativo (conforme já documentado na seção 3.1.1), a migração adotada foi para **STI** com `@TableInheritance` e `@ChildEntity`.
+
+#### O que mudou
+
+**Entidades:**
+- `User` passou a usar `@TableInheritance({ column: { type: 'varchar', name: 'type' } })`
+- `Admin`, `Doctor` e `Patient` passaram a usar `@ChildEntity` e a **estender** `User` formalmente
+
+**Schema:**
+- As tabelas `admin`, `doctor` e `patient` foram eliminadas
+- Todos os campos foram consolidados na tabela `user`, com colunas `nullable` para campos específicos de cada perfil (`crm`, `cpf`, `birthDate`, `accessLevel`)
+
+**Código:**
+- Todas as referências a `doctor.user.id`, `patient.user.id`, `doctor.user.name` etc. foram substituídas por `doctor.id`, `doctor.name` etc.
+- `relations: { user: true }` foi removido de todas as queries
+- `UsersFactoryService` foi simplificado — cada subtipo é criado diretamente no repositório correspondente, sem cascade entre tabelas
+
+#### Impacto corrigido
+
+A migração também corrigiu um bug identificado no fluxo de criação de agendamentos por pacientes. No modelo JTI, `currentUser.sub` correspondia ao `user.id`, enquanto `patientId` no schedule correspondia ao `patient.id` — valores distintos. Com STI, `patient.id === user.id`, eliminando a ambiguidade e tornando a regra de posse coerente em todo o sistema.
+
+#### Trade-off aceito
+
+A tabela `user` passa a ter colunas `nullable` para campos que não pertencem a todos os perfis, o que era evitado no JTI. Para o contexto do SGCM com SQLite e volume reduzido de dados, esse custo foi considerado aceitável em troca de conformidade com o requisito do framework e da simplificação do código resultante.
+
+### 3.45 Estrutura de resposta dos relatórios administrativos
+
+#### Formato de agregação por categoria
+
+Decisão adotada: representar totais por categoria como **objeto com categorias como chaves**, por exemplo:
+
+```json
+{
+  "byStatus": {
+    "PENDING": 12,
+    "CONFIRMED": 34,
+    "CANCELLED": 5,
+    "COMPLETED": 8
+  }
+}
+```
+
+Alternativa considerada: array de objetos `[{ "status": "PENDING", "count": 12 }]`.
+
+Justificativa da escolha:
+
+- o formato em objeto é mais compacto e direto para leitura humana e consumo por frontend;
+- o acesso por chave é semanticamente mais natural para dados categóricos fixos e conhecidos em tempo de compilação;
+- os enums `ScheduleStatus`, `ScheduleType`, `AppointmentStatus` e `AppointmentType` são estáveis — novas categorias exigiriam mudança de código de qualquer forma, eliminando a vantagem de extensibilidade do array;
+- o mapa é inicializado com `createEmptyAggregationMap` a partir dos valores do enum, garantindo que todas as categorias apareçam na resposta mesmo quando o count for zero — comportamento que o array não oferece sem lógica adicional.
+
+#### Integração com o Transform Interceptor
+
+Os endpoints de relatório **seguem o envelope padrão** `{ data, meta }` produzido pelo `TransformInterceptor`, sem nenhuma exceção. A resposta final observada pelo consumidor segue o formato:
+
+```json
+{
+  "data": {
+    "period": {
+      "startDate": "2026-01-01",
+      "endDate": "2026-12-31"
+    },
+    "total": 59,
+    "byStatus": {
+      "PENDING": 12,
+      "CONFIRMED": 34,
+      "CANCELLED": 5,
+      "COMPLETED": 8
+    },
+    "byType": {
+      "IN_PERSON": 30,
+      "ONLINE": 20,
+      "HOME": 9
+    }
+  },
+  "meta": {
+    "timestamp": "2026-06-08T00:00:00.000Z",
+    "path": "/admin/reports/schedules"
+  }
+}
+```
+
+Não há paginação (`totalItems`, `totalPages`, `page`, `limit`) porque os relatórios retornam dados agregados, e não listas de registros individuais. O `meta` contém apenas `timestamp` e `path`, produzidos automaticamente pelo interceptor.
+
+### 3.46 Queries SQL otimizadas vs. lógica em memória
+
+Decisão adotada: usar **queries SQL com `GROUP BY` e funções de agregação** via `createQueryBuilder` do TypeORM, delegando o processamento ao banco de dados.
+
+```typescript
+// Exemplo aplicado em getSchedulesReport
+const [rawTotal, byStatusRows, byTypeRows] = await Promise.all([
+  queryBuilder.clone()
+    .select('COUNT(schedule.id)', 'total')
+    .getRawOne(),
+  queryBuilder.clone()
+    .select('schedule.status', 'key')
+    .addSelect('COUNT(*)', 'count')
+    .groupBy('schedule.status')
+    .getRawMany(),
+  queryBuilder.clone()
+    .select('schedule.type', 'key')
+    .addSelect('COUNT(*)', 'count')
+    .groupBy('schedule.type')
+    .getRawMany(),
+]);
+```
+
+Alternativa considerada: buscar todos os registros brutos e agregar em memória no service.
+
+Justificativa da escolha:
+
+- em um sistema real com milhares de agendamentos, trazer todos os registros para memória apenas para contá-los seria ineficiente e potencialmente inviável;
+- `GROUP BY` no banco é a abordagem padrão para agregações — o banco de dados é otimizado para esse tipo de operação;
+- as três queries são disparadas em paralelo com `Promise.all`, reduzindo a latência total;
+- o uso de `.clone()` no `QueryBuilder` evita recriar o filtro de período a cada query, mantendo consistência e reduzindo duplicação de código.
+
+Limitação reconhecida: para o volume de dados de um projeto didático com SQLite, a abordagem em memória também funcionaria sem impacto perceptível. A escolha por SQL foi feita conscientemente considerando o que seria adequado em ambiente de produção.
+
+### 3.47 Ausência do endpoint `DELETE /records/{id}`
+
+O endpoint `DELETE /records/{id}` não foi implementado de forma intencional.
+
+Prontuários médicos são registros permanentes e, por regra de negócio, não podem ser excluídos em nenhuma circunstância, independentemente do papel do usuário ou do estado do registro. Nesse contexto, disponibilizar um endpoint de exclusão — mesmo que apenas para retornar `409 Conflict` — sugeriria uma funcionalidade que o sistema jamais oferecerá, contrariando o próprio contrato da API.
+
+A inexistência do endpoint comunica essa restrição de maneira mais clara. Ao não encontrar uma operação `DELETE` para o recurso, o consumidor da API compreende que a exclusão não faz parte das capacidades do sistema. Essa decisão é reforçada pela documentação no Swagger, que explicita o caráter permanente e imutável dos prontuários.
+
+Esse cenário difere de restrições condicionais, como a impossibilidade de excluir um médico que possua agendamentos ativos. Nesses casos, o endpoint existe porque a operação é válida em determinadas situações, e o retorno `409 Conflict` representa apenas uma condição temporária que impede sua execução. Para os prontuários, entretanto, a restrição é definitiva e estrutural, o que justifica a ausência completa do endpoint.
+
+
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
