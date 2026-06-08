@@ -281,9 +281,7 @@ export class AppointmentsService {
       .createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.schedule', 'schedule')
       .leftJoinAndSelect('schedule.doctor', 'doctor')
-      .leftJoinAndSelect('doctor.user', 'doctorUser')
       .leftJoinAndSelect('schedule.patient', 'patient')
-      .leftJoinAndSelect('patient.user', 'patientUser');
 
     if (scheduleId) {
       qb.andWhere('appointment.scheduleId = :scheduleId', { scheduleId });

@@ -41,22 +41,22 @@ export class ReportsService {
   ): Promise<ReportResponseDto> {
     const appointment = await this.appointmentRepository.findOne({
       where: { id: appointmentId },
-      relations: { schedule: true},
+      relations: { schedule: true },
     });
 
-    if(!appointment){
+    if (!appointment) {
       throw new NotFoundException('Atendimento', appointmentId);
     }
 
     await this.assertCanAccessAppointment(appointment, currentUser);
 
-    await this.findPatientOrFail(dto.patientId);
-    const doctor = await this.findDoctorOrFail(dto.doctorId);
+    const patientId = appointment.schedule.patientId;
+    const doctorId = appointment.schedule.doctorId;
+
+    const doctor = await this.findDoctorOrFail(doctorId);
 
     if (currentUser.type === UserType.DOCTOR) {
-      const currentDoctor = await this.findDoctorByUserIdOrFail(currentUser.sub);
-
-      if (currentDoctor.id !== doctor.id) {
+      if (currentUser.sub !== doctor.id) {
         throw new ForbiddenException(
           'Você só pode emitir laudos vinculados ao seu próprio cadastro profissional.',
         );
@@ -64,29 +64,23 @@ export class ReportsService {
     }
 
     const activeReport = await this.reportRepository.findOne({
-      where: {
-        appointmentId,
-        status: ReportStatus.ACTIVE,
-      },
+      where: { appointmentId, status: ReportStatus.ACTIVE },
     });
 
     if (activeReport) {
-      throw ConflictException.businessRule(
-        'Laudo ativo já existente para este exame.',
-      );
+      throw ConflictException.businessRule('Laudo ativo já existente para este exame.');
     }
 
     const report = this.reportRepository.create({
       appointmentId,
-      patientId: dto.patientId,
-      doctorId: dto.doctorId,
+      patientId,
+      doctorId,
       examType: dto.examType,
       result: dto.result,
       status: ReportStatus.ACTIVE,
       validationCode: randomUUID(),
       issuedByUserId: currentUser.sub,
-      issuedByDoctorId:
-        currentUser.type === UserType.DOCTOR ? doctor.id : dto.doctorId,
+      issuedByDoctorId: doctor.id,
     });
 
     const saved = await this.reportRepository.save(report);
@@ -139,52 +133,6 @@ export class ReportsService {
 
     return this.toResponseDto(await this.findReportByIdOrFail(id));
   }
-
-  // async findAppointments(
-  //   id: number,
-  //   query: FindReportsQueryDto,
-  //   currentUser: UserPayload,
-  // ): Promise<PaginatedResponse<ReportResponseDto>> {
-    
-  //   const appointment = await this.appointmentRepository.findOne({
-  //     where: { id },
-  //     relations: { schedule: true },
-  //   });
-
-  //   if (!appointment) {
-  //     throw new NotFoundException('Atendimento', id);
-  //   }
-
-  //   await this.assertCanAccessAppointment(appointment, currentUser);
-
-  //   const { page, limit, sort, status } = query;
-  //   const skip = (page - 1) * limit;
-  //   const [field, direction] = sort ? sort.split(':') : ['issuedAt', 'DESC'];
-
-  //   const where: any = { appointmentId: id };
-  //   if (status) {
-  //     where.status = status;
-  //   }
-
-  //   const [reports, totalItems] = await this.reportRepository.findAndCount({
-  //     where,
-  //     order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
-  //     skip,
-  //     take: limit,
-  //     relations: { patient: { user: true }, doctor: { user: true } },
-  //   });
-
-  //   return {
-  //     data: reports.map((report) => this.toResponseDto(report)),
-  //     meta: {
-  //       totalItems,
-  //       page,
-  //       limit,
-  //       totalPages: Math.ceil(totalItems / limit),
-  //     },
-  //   };
-  // }
-
   async findByPatient(
     id: number,
     query: FindReportsQueryDto,

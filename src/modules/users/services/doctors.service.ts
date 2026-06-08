@@ -75,12 +75,11 @@ export class DoctorsService {
 
   async findOne(
     id: number,
-  ): Promise<{ id: number; userId: number; name: string; email: string; crm: string }> {
+  ): Promise<{ id: number; name: string; email: string; crm: string }> {
     const doctor = await this.findEntityByIdOrFail(id);
 
     return {
       id: doctor.id,
-      userId: doctor.id,
       name: doctor.name,
       email: doctor.email,
       crm: doctor.crm,
