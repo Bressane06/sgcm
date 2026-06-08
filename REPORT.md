@@ -1574,6 +1574,129 @@ Os agendamentos com status `CANCELLED` permanecem no denominador porque represen
 - **Taxas menores**: indicam perdas de ocupação causadas por cancelamentos ou agendamentos que permaneceram pendentes ou apenas confirmados durante o período analisado.
 - **Quanto maior a taxa**, maior a eficiência no aproveitamento da agenda médica.
 
+### 3.44 Migração da hierarquia `User` de JTI manual para STI nativo
+
+#### Motivação
+
+Na Etapa 2, o professor apontou que o uso de composição via `@OneToOne` entre `User`, `Doctor`, `Patient` e `Admin` não satisfaz o requisito de herança nativa do TypeORM.
+
+Como o TypeORM não oferece JTI nativo (conforme já documentado na seção 3.1.1), a migração adotada foi para **STI** com `@TableInheritance` e `@ChildEntity`.
+
+#### O que mudou
+
+**Entidades:**
+- `User` passou a usar `@TableInheritance({ column: { type: 'varchar', name: 'type' } })`
+- `Admin`, `Doctor` e `Patient` passaram a usar `@ChildEntity` e a **estender** `User` formalmente
+
+**Schema:**
+- As tabelas `admin`, `doctor` e `patient` foram eliminadas
+- Todos os campos foram consolidados na tabela `user`, com colunas `nullable` para campos específicos de cada perfil (`crm`, `cpf`, `birthDate`, `accessLevel`)
+
+**Código:**
+- Todas as referências a `doctor.user.id`, `patient.user.id`, `doctor.user.name` etc. foram substituídas por `doctor.id`, `doctor.name` etc.
+- `relations: { user: true }` foi removido de todas as queries
+- `UsersFactoryService` foi simplificado — cada subtipo é criado diretamente no repositório correspondente, sem cascade entre tabelas
+
+#### Impacto corrigido
+
+A migração também corrigiu um bug identificado no fluxo de criação de agendamentos por pacientes. No modelo JTI, `currentUser.sub` correspondia ao `user.id`, enquanto `patientId` no schedule correspondia ao `patient.id` — valores distintos. Com STI, `patient.id === user.id`, eliminando a ambiguidade e tornando a regra de posse coerente em todo o sistema.
+
+#### Trade-off aceito
+
+A tabela `user` passa a ter colunas `nullable` para campos que não pertencem a todos os perfis, o que era evitado no JTI. Para o contexto do SGCM com SQLite e volume reduzido de dados, esse custo foi considerado aceitável em troca de conformidade com o requisito do framework e da simplificação do código resultante.
+
+### 3.45 Estrutura de resposta dos relatórios administrativos
+
+#### Formato de agregação por categoria
+
+Decisão adotada: representar totais por categoria como **objeto com categorias como chaves**, por exemplo:
+
+```json
+{
+  "byStatus": {
+    "PENDING": 12,
+    "CONFIRMED": 34,
+    "CANCELLED": 5,
+    "COMPLETED": 8
+  }
+}
+```
+
+Alternativa considerada: array de objetos `[{ "status": "PENDING", "count": 12 }]`.
+
+Justificativa da escolha:
+
+- o formato em objeto é mais compacto e direto para leitura humana e consumo por frontend;
+- o acesso por chave é semanticamente mais natural para dados categóricos fixos e conhecidos em tempo de compilação;
+- os enums `ScheduleStatus`, `ScheduleType`, `AppointmentStatus` e `AppointmentType` são estáveis — novas categorias exigiriam mudança de código de qualquer forma, eliminando a vantagem de extensibilidade do array;
+- o mapa é inicializado com `createEmptyAggregationMap` a partir dos valores do enum, garantindo que todas as categorias apareçam na resposta mesmo quando o count for zero — comportamento que o array não oferece sem lógica adicional.
+
+#### Integração com o Transform Interceptor
+
+Os endpoints de relatório **seguem o envelope padrão** `{ data, meta }` produzido pelo `TransformInterceptor`, sem nenhuma exceção. A resposta final observada pelo consumidor segue o formato:
+
+```json
+{
+  "data": {
+    "period": {
+      "startDate": "2026-01-01",
+      "endDate": "2026-12-31"
+    },
+    "total": 59,
+    "byStatus": {
+      "PENDING": 12,
+      "CONFIRMED": 34,
+      "CANCELLED": 5,
+      "COMPLETED": 8
+    },
+    "byType": {
+      "IN_PERSON": 30,
+      "ONLINE": 20,
+      "HOME": 9
+    }
+  },
+  "meta": {
+    "timestamp": "2026-06-08T00:00:00.000Z",
+    "path": "/admin/reports/schedules"
+  }
+}
+```
+
+Não há paginação (`totalItems`, `totalPages`, `page`, `limit`) porque os relatórios retornam dados agregados, e não listas de registros individuais. O `meta` contém apenas `timestamp` e `path`, produzidos automaticamente pelo interceptor.
+
+### 3.46 Queries SQL otimizadas vs. lógica em memória
+
+Decisão adotada: usar **queries SQL com `GROUP BY` e funções de agregação** via `createQueryBuilder` do TypeORM, delegando o processamento ao banco de dados.
+
+```typescript
+// Exemplo aplicado em getSchedulesReport
+const [rawTotal, byStatusRows, byTypeRows] = await Promise.all([
+  queryBuilder.clone()
+    .select('COUNT(schedule.id)', 'total')
+    .getRawOne(),
+  queryBuilder.clone()
+    .select('schedule.status', 'key')
+    .addSelect('COUNT(*)', 'count')
+    .groupBy('schedule.status')
+    .getRawMany(),
+  queryBuilder.clone()
+    .select('schedule.type', 'key')
+    .addSelect('COUNT(*)', 'count')
+    .groupBy('schedule.type')
+    .getRawMany(),
+]);
+```
+
+Alternativa considerada: buscar todos os registros brutos e agregar em memória no service.
+
+Justificativa da escolha:
+
+- em um sistema real com milhares de agendamentos, trazer todos os registros para memória apenas para contá-los seria ineficiente e potencialmente inviável;
+- `GROUP BY` no banco é a abordagem padrão para agregações — o banco de dados é otimizado para esse tipo de operação;
+- as três queries são disparadas em paralelo com `Promise.all`, reduzindo a latência total;
+- o uso de `.clone()` no `QueryBuilder` evita recriar o filtro de período a cada query, mantendo consistência e reduzindo duplicação de código.
+
+Limitação reconhecida: para o volume de dados de um projeto didático com SQLite, a abordagem em memória também funcionaria sem impacto perceptível. A escolha por SQL foi feita conscientemente considerando o que seria adequado em ambiente de produção.
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 

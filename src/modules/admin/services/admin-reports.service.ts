@@ -165,12 +165,8 @@ export class AdminReportsService {
 
     const total = schedules.length
 
-    const byStatus = {
-      PENDING: 0,
-      CONFIRMED: 0,
-      CANCELLED: 0,
-      COMPLETED: 0,
-    };
+    const byStatus = this.createEmptyAggregationMap(Object.values(ScheduleStatus));
+
 
     for (const s of schedules) {
       byStatus[s.status]++;
