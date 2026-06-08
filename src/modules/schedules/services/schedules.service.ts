@@ -74,22 +74,20 @@ export class SchedulesService {
 
   async create(
     dto: CreateScheduleDto,
-    currentUser: UserPayload
+    currentUser: UserPayload,
   ): Promise<ScheduleResponseDto> {
     this.assertAllowedFieldsForType(dto);
     this.assertFutureDate(dto.scheduledAt);
 
-    const patientId =
-      currentUser.type === UserType.PATIENT ? currentUser.sub : dto.patientId;
-
-    if (currentUser.type === UserType.PATIENT && dto.patientId && dto.patientId !== currentUser.sub) {
-      throw new ForbiddenException(
-        'Paciente só pode criar agendamentos para si mesmo.',
-      );
+    if (currentUser.type === UserType.PATIENT) {
+      if (dto.patientId && dto.patientId !== currentUser.sub) {
+        throw new ForbiddenException('Paciente só pode criar agendamentos para si mesmo.');
+      }
+      dto.patientId = currentUser.sub;
     }
 
     const doctor = await this.findDoctorOrFail(dto.doctorId);
-    const patient = await this.findPatientOrFail(patientId);
+    const patient = await this.findPatientOrFail(dto.patientId);
 
     await this.assertNoConfirmedConflict(dto.doctorId, new Date(dto.scheduledAt));
 
@@ -100,7 +98,7 @@ export class SchedulesService {
       doctor,
       doctorId: dto.doctorId,
       patient,
-      patientId,
+      patientId: dto.patientId,
     };
 
     switch (dto.type) {
