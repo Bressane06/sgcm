@@ -20,8 +20,8 @@
   </thead>
   <tbody>
     <tr>
-      <td rowspan="2"><b>Arthur Coutinho</b></td>
-      <td>• Desenvolvimento da feature Doctors;<br>• Desenvolvimento da feature Specialties;<br>• Elaboração e organização da documentação Swagger. <br>• Criação e manutenção do diagrama PlantUML.</td>
+      <td rowspan="3"><b>Arthur Coutinho</b></td>
+      <td>• Desenvolvimento da feature Doctors;<br>• Desenvolvimento da feature Specialties;<br>• Elaboração e organização da documentação Swagger.<br>• Criação e manutenção do diagrama PlantUML.</td>
       <td>1</td>
     </tr>
     <tr>
@@ -29,16 +29,24 @@
       <td>2</td>
     </tr>
     <tr>
-      <td rowspan="2"><b>Estela Medeiros</b></td>
+      <td>• Desenvolvimento do módulo Procedures;<br>• Desenvolvimento do módulo Prontuários.</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <td rowspan="3"><b>Estela Medeiros</b></td>
       <td>• Desenvolvimento da feature Patients;<br>• Desenvolvimento da feature Schedules.<br>• Apoio técnico e revisão nas demais branches do projeto.</td>
       <td>1</td>
     </tr>
     <tr>
-      <td>• Módulo de autenticação.<br>• Guardas e controle de acesso</td>
+      <td>• Módulo de autenticação.<br>• Guardas e controle de acesso.</td>
       <td>2</td>
     </tr>
     <tr>
-      <td rowspan="2"><b>Gabriel Bressane</b></td>
+      <td>• Desenvolvimento do módulo Appointments.</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <td rowspan="3"><b>Gabriel Bressane</b></td>
       <td>• Desenvolvimento do módulo Users;<br>• Implementação dos exception filters e tratamento global de erros.<br>• Elaboração da documentação técnica;<br>• Administração do repositório no GitHub.</td>
       <td>1</td>
     </tr>
@@ -46,8 +54,14 @@
       <td>• Expansão do exception filter;<br>• Implementação do transform interceptor;<br>• Implementação do logging middleware;<br>• Atualização e organização da documentação técnica.</td>
       <td>2</td>
     </tr>
+    <tr>
+      <td>• Desenvolvimento do módulo Reports;<br>• Desenvolvimento dos relatórios administrativos (Admin Reports);<br>• Atualização, revisão e organização da documentação técnica e Swagger.</td>
+      <td>3</td>
+    </tr>
+
   </tbody>
 </table>
+
 
 > Todos os membros participaram das Pull Requests e colaboraram entre si sempre que necessário, realizando revisões de código, suporte técnico e auxílio na integração das funcionalidades.
 
@@ -1697,6 +1711,18 @@ Justificativa da escolha:
 - o uso de `.clone()` no `QueryBuilder` evita recriar o filtro de período a cada query, mantendo consistência e reduzindo duplicação de código.
 
 Limitação reconhecida: para o volume de dados de um projeto didático com SQLite, a abordagem em memória também funcionaria sem impacto perceptível. A escolha por SQL foi feita conscientemente considerando o que seria adequado em ambiente de produção.
+
+### 3.47 Ausência do endpoint `DELETE /records/{id}`
+
+O endpoint `DELETE /records/{id}` não foi implementado de forma intencional.
+
+Prontuários médicos são registros permanentes e, por regra de negócio, não podem ser excluídos em nenhuma circunstância, independentemente do papel do usuário ou do estado do registro. Nesse contexto, disponibilizar um endpoint de exclusão — mesmo que apenas para retornar `409 Conflict` — sugeriria uma funcionalidade que o sistema jamais oferecerá, contrariando o próprio contrato da API.
+
+A inexistência do endpoint comunica essa restrição de maneira mais clara. Ao não encontrar uma operação `DELETE` para o recurso, o consumidor da API compreende que a exclusão não faz parte das capacidades do sistema. Essa decisão é reforçada pela documentação no Swagger, que explicita o caráter permanente e imutável dos prontuários.
+
+Esse cenário difere de restrições condicionais, como a impossibilidade de excluir um médico que possua agendamentos ativos. Nesses casos, o endpoint existe porque a operação é válida em determinadas situações, e o retorno `409 Conflict` representa apenas uma condição temporária que impede sua execução. Para os prontuários, entretanto, a restrição é definitiva e estrutural, o que justifica a ausência completa do endpoint.
+
+
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 

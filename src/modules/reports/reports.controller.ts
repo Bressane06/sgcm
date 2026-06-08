@@ -34,6 +34,7 @@ import { ReportsService } from './reports.service';
 import { UserType } from '../users/enum/user-type.enum';
 import { PaginatedResponse } from '../../common/interfaces/paginated-response.interface';
 import { Header } from '@nestjs/common';
+import { ReportStatus } from './enum/report-status.enum';
 
 
 @ApiTags('Reports')
@@ -163,7 +164,7 @@ export class ReportsController {
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiQuery({ name: 'sort', required: false, type: String, example: 'issuedAt:DESC' })
-  @ApiQuery({ name: 'status', required: false, enum: ['ACTIVE', 'REVOKED'] })
+  @ApiQuery({ name: 'status', required: false, enum: ReportStatus })
   @ApiAuthResponses({
     instance: '/doctors/1/reports',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
