@@ -1722,6 +1722,81 @@ A inexistência do endpoint comunica essa restrição de maneira mais clara. Ao 
 
 Esse cenário difere de restrições condicionais, como a impossibilidade de excluir um médico que possua agendamentos ativos. Nesses casos, o endpoint existe porque a operação é válida em determinadas situações, e o retorno `409 Conflict` representa apenas uma condição temporária que impede sua execução. Para os prontuários, entretanto, a restrição é definitiva e estrutural, o que justifica a ausência completa do endpoint.
 
+### 3.48 Controle de Acesso com Autorização Delegada
+
+#### Problema
+
+O modelo **RBAC (Role-Based Access Control)** atende ao controle de acesso padrão, mas não cobre situações comuns em ambientes clínicos, como:
+
+* Pacientes compartilhando prontuários com familiares ou outros médicos;
+* Médicos delegando pacientes durante férias ou afastamentos;
+* Especialistas acessando dados após encaminhamentos.
+
+Para esses casos, é necessária uma camada complementar de **autorização delegada**.
+
+---
+
+#### Solução Proposta
+
+Criar a tabela `authorized_access`, responsável por registrar permissões temporárias ou específicas concedidas entre usuários.
+
+```sql
+authorized_access (
+  id,                  -- Identificador da autorização
+  granted_by_user_id,  -- Quem concede o acesso
+  granted_to_user_id,  -- Quem recebe o acesso
+  scope,               -- Escopo (todos os pacientes ou paciente específico)
+  patient_id,          -- Paciente relacionado à autorização
+  access_level,        -- Nível de acesso (read, write, full)
+  reason,              -- Motivo da delegação
+  expires_at,          -- Data de expiração
+  created_at           -- Data de criação
+)
+```
+
+#### Principais Cenários
+
+**Delegação por Paciente**
+
+* Compartilhar prontuário com familiar;
+* Autorizar acesso a outro médico ou especialista;
+* Revogar acessos quando necessário.
+
+**Delegação por Médico**
+
+* Designar médico substituto para todos os pacientes (`all_patients`);
+* Encaminhar paciente para especialista (`specific_patient`);
+* Conceder acesso a equipes de atendimento ou pesquisa.
+
+---
+
+#### Integração com RBAC
+
+A autorização delegada funciona como uma exceção controlada ao RBAC:
+
+```text
+1. Usuário possui a permissão pelo papel (role)?
+   └─► Sim → acesso liberado
+
+2. Caso contrário, existe autorização ativa em authorized_access?
+   └─► Sim → acesso liberado por delegação
+   └─► Não → acesso negado (403)
+```
+
+Todo acesso concedido por delegação deve ser registrado em auditoria.
+
+---
+
+#### Limitações
+
+Mesmo com a delegação, permanecem algumas restrições:
+
+* O usuário delegado precisa possuir conta no sistema;
+* Permissões muito granulares aumentam a complexidade do modelo;
+* Acessos por delegação exigem auditoria específica;
+* Revogações devem ser aplicadas imediatamente;
+* Notificações de acesso não são contempladas.
+
 
 
 ## 4 - DIFICULDADES E APRENDIZADOS
@@ -1751,6 +1826,14 @@ As principais dificuldades da etapa foram:
 - atualização consistente do Swagger após introdução do Transform Interceptor.
 
 A principal solução adotada foi centralizar validações de acesso dentro dos services e manter os controllers responsáveis apenas pela orquestração das requisições.
+
+### Dificuldades encontradas etapa 3
+- Repadronizar o sistema de volta para STI;
+- Exportar para pdf, exportando em bytes, fazer com o o intrceptor n veja essa saida,
+- documentar todo o swaager;
+- como seria o validantion code;
+- qual forma seria adotada para o 
+
 ## Conclusão
 
 Nesta primeira etapa, o objetivo é construir a base funcional do SGCM — modelando o domínio de uma clínica médica, implementando as operações essenciais e organizando o código de forma que o projeto possa evoluir com consistência nas etapas seguintes.
