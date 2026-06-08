@@ -225,15 +225,15 @@ import { randomUUID } from 'crypto';
 
 const report = this.reportRepository.create({
   appointmentId,
-  patientId: dto.patientId,
-  doctorId: dto.doctorId,
+  patientId: appointment.schedule.patientId,
+  doctorId: appointment.schedule.doctorId,
   examType: dto.examType,
   result: dto.result,
   status: ReportStatus.ACTIVE,
   validationCode: randomUUID(), // Gera UUID único
   issuedByUserId: currentUser.sub,
-  issuedByDoctorId:
-    currentUser.type === UserType.DOCTOR ? doctor.id : dto.doctorId,
+  issuedByDoctorId: issuedByDoctorId: doctor.id,
+
 });
 ```
 
