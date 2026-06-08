@@ -241,38 +241,93 @@ const report = this.reportRepository.create({
 
 Controle de acesso por perfil
 A tabela abaixo apresenta, por endpoint, se o perfil Patient, Doctor ou Admin tem acesso (Sim) ou não (Não). Quando o acesso é permitido apenas ao próprio recurso (por exemplo, o paciente acessando apenas seus agendamentos), isso é indicado com Sim* (veja nota).
+# Tabela de Endpoints – SGCM (Sistema de Gestão de Clínica Médica)
 
-| Endpoint | Patient | Doctor | Admin |
-|---|:---:|:---:|:---:|
-| POST /auth/login | Sim | Sim | Sim |
-| POST /auth/refresh | Sim | Sim | Sim |
-| GET /auth/me | Sim* | Sim* | Sim* |
-| POST /auth/logout | Sim* | Sim* | Sim* |
-| POST /users | Não | Não | Sim |
-| GET /users | Não | Não | Sim |
-| GET /users/{id} | Sim* | Sim | Sim |
-| PUT /users/{id} | Sim* | Sim | Sim |
-| DELETE /users/{id} | Não | Não | Sim |
-| GET /doctors | Sim | Sim | Sim |
-| GET /doctors/{id} | Sim | Sim | Sim |
-| GET /doctors/{id}/specialties | Sim | Sim | Sim |
-| POST /doctors/{id}/specialties | Não | Não | Sim |
-| DELETE /doctors/{id}/specialties/{specialtyId} | Não | Não | Sim |
-| GET /doctors/{id}/schedules | Não | Sim* | Sim |
-| GET /patients | Não | Não | Sim |
-| GET /patients/{id} | Sim* | Não | Sim |
-| GET /patients/{id}/schedules | Sim* | Não | Sim |
-| POST /specialties | Não | Não | Sim |
-| GET /specialties | Sim | Sim | Sim |
-| GET /specialties/{id} | Sim | Sim | Sim |
-| PUT /specialties/{id} | Não | Não | Sim |
-| DELETE /specialties/{id} | Não | Não | Sim |
-| GET /specialties/{id}/doctors | Sim | Sim | Sim |
-| POST /schedules | Sim* | Não | Sim |
-| GET /schedules | Não | Não | Sim |
-| GET /schedules/{id} | Sim* | Sim* | Sim |
-| PUT /schedules/{id} | Não | Não | Sim |
-| PATCH /schedules/{id}/status | Sim* | Não | Sim |
-| DELETE /schedules/{id} | Não | Não | Sim |
+| Módulo        | Método | Endpoint                                  | Descrição                          | Autenticação |
+| ------------- | ------ | ----------------------------------------- | ---------------------------------- | ------------ |
+| Auth          | POST   | `/auth/login`                             | Autenticar usuário                 | Não          |
+| Auth          | POST   | `/auth/refresh`                           | Renovar access token               | Não          |
+| Auth          | GET    | `/auth/me`                                | Dados do usuário autenticado       | Sim          |
+| Auth          | POST   | `/auth/logout`                            | Encerrar sessão                    | Sim          |
+| Users         | POST   | `/users`                                  | Criar usuário                      | Sim          |
+| Users         | GET    | `/users`                                  | Listar usuários                    | Sim          |
+| Users         | GET    | `/users/{id}`                             | Buscar usuário por ID              | Sim          |
+| Users         | PUT    | `/users/{id}`                             | Atualizar usuário                  | Sim          |
+| Users         | DELETE | `/users/{id}`                             | Inativar usuário                   | Sim          |
+| Doctors       | GET    | `/doctors`                                | Listar médicos                     | Sim          |
+| Doctors       | GET    | `/doctors/{id}`                           | Buscar médico por ID               | Sim          |
+| Doctors       | GET    | `/doctors/{id}/specialties`               | Listar especialidades do médico    | Sim          |
+| Doctors       | POST   | `/doctors/{id}/specialties`               | Associar especialidade ao médico   | Sim          |
+| Doctors       | DELETE | `/doctors/{id}/specialties/{specialtyId}` | Remover especialidade do médico    | Sim          |
+| Doctors       | GET    | `/doctors/{id}/schedules`                 | Listar agendamentos do médico      | Sim          |
+| Doctors       | GET    | `/doctors/{id}/appointments`              | Listar atendimentos do médico      | Sim          |
+| Patients      | GET    | `/patients`                               | Listar pacientes                   | Sim          |
+| Patients      | GET    | `/patients/{id}`                          | Buscar paciente por ID             | Sim          |
+| Patients      | GET    | `/patients/{id}/schedules`                | Listar agendamentos do paciente    | Sim          |
+| Patients      | GET    | `/patients/{id}/appointments`             | Listar atendimentos do paciente    | Sim          |
+| Schedules     | POST   | `/schedules`                              | Criar agendamento                  | Sim          |
+| Schedules     | GET    | `/schedules`                              | Listar agendamentos                | Sim          |
+| Schedules     | GET    | `/schedules/{id}`                         | Buscar agendamento por ID          | Sim          |
+| Schedules     | PUT    | `/schedules/{id}`                         | Atualizar agendamento              | Sim          |
+| Schedules     | DELETE | `/schedules/{id}`                         | Remover agendamento                | Sim          |
+| Schedules     | PATCH  | `/schedules/{id}/status`                  | Atualizar status do agendamento    | Sim          |
+| Specialties   | POST   | `/specialties`                            | Criar especialidade                | Sim          |
+| Specialties   | GET    | `/specialties`                            | Listar especialidades              | Sim          |
+| Specialties   | GET    | `/specialties/{id}`                       | Buscar especialidade por ID        | Sim          |
+| Specialties   | PUT    | `/specialties/{id}`                       | Atualizar especialidade            | Sim          |
+| Specialties   | DELETE | `/specialties/{id}`                       | Remover especialidade              | Sim          |
+| Specialties   | GET    | `/specialties/{id}/doctors`               | Listar médicos da especialidade    | Sim          |
+| Appointments  | POST   | `/appointments`                           | Criar atendimento                  | Sim          |
+| Appointments  | GET    | `/appointments`                           | Listar atendimentos                | Sim          |
+| Appointments  | GET    | `/appointments/{id}`                      | Buscar atendimento por ID          | Sim          |
+| Appointments  | PUT    | `/appointments/{id}`                      | Atualizar atendimento              | Sim          |
+| Appointments  | PATCH  | `/appointments/{id}/finish`               | Finalizar atendimento              | Sim          |
+| Reports       | POST   | `/appointments/{id}/report`               | Emitir laudo                       | Sim          |
+| Reports       | GET    | `/reports/{id}/pdf`                       | Baixar PDF do laudo                | Sim          |
+| Reports       | GET    | `/reports/validate/{code}`                | Validar laudo por código           | Sim          |
+| Reports       | PATCH  | `/reports/{id}/revoke`                    | Revogar laudo                      | Sim          |
+| Reports       | GET    | `/patients/{id}/reports`                  | Listar laudos do paciente          | Sim          |
+| Reports       | GET    | `/doctors/{id}/reports`                   | Listar laudos emitidos pelo médico | Sim          |
+| Admin Reports | GET    | `/admin/reports/schedules`                | Relatório de agendamentos          | Sim          |
+| Admin Reports | GET    | `/admin/reports/appointments`             | Relatório de atendimentos          | Sim          |
+| Admin Reports | GET    | `/admin/reports/doctors/{id}/occupation`             | Taxa de Ocupação          | Sim          |
 
-> Sim* indica que o acesso está restrito ao recurso próprio (por exemplo, GET /users/{id} com o parâmetro id igual ao sub do token, ou GET /doctors/{id}/schedules quando o Doctor acessa sua própria agenda). O controle por recurso é implementado nos services (comparando currentUser.sub com o proprietário do recurso).
+
+## Total de Endpoints
+
+* Auth: 4
+* Users: 5
+* Doctors: 6
+* Patients: 4
+* Schedules: 6
+* Specialties: 6
+* Appointments: 5
+* Reports: 6
+* Admin Reports: 3
+
+**Total geral: 44 endpoints**
+
+## Taxa de Ocupação
+
+A taxa de ocupação mede a proporção de agendamentos que resultaram efetivamente em atendimento dentro do período analisado.
+
+### Fórmula
+
+```text
+Taxa de Ocupação (%) =
+(COMPLETED / (PENDING + CONFIRMED + COMPLETED + CANCELLED)) × 100
+```
+
+### Justificativa
+
+O denominador considera todos os agendamentos criados no período, independentemente de seu status final, representando a demanda total atendida pela clínica.
+
+O numerador considera apenas os agendamentos com status `COMPLETED`, pois são aqueles que efetivamente resultaram em atendimento realizado.
+
+Os agendamentos com status `CANCELLED` permanecem no denominador porque representam horários que chegaram a ser reservados, mas não geraram atendimento. Sua inclusão permite que a métrica reflita perdas de ocupação decorrentes de cancelamentos, fornecendo uma visão mais fiel da utilização da agenda.
+
+### Interpretação
+
+- **100%**: todos os agendamentos resultaram em atendimento.
+- **Taxas menores**: indicam perdas de ocupação causadas por cancelamentos ou agendamentos que permaneceram pendentes ou apenas confirmados durante o período analisado.
+- **Quanto maior a taxa**, maior a eficiência no aproveitamento da agenda médica.

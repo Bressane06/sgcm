@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { ApiAuthResponses } from '../../../common/swagger';
@@ -8,6 +8,7 @@ import { AdminSchedulesReportQueryDto } from '../dto/admin-schedules-report-quer
 import { AdminReportsService } from '../services/admin-reports.service';
 import { AdminAppointmentsReportDto } from '../dto/admin-appointments-report.dto';
 import { AdminAppointmentsReportQueryDto } from '../dto/admin-appointments-report-query.dto';
+import { OccupationQueryDto } from '../dto/occupation-query.dto';
 
 @ApiTags('Admin Reports')
 @Controller('admin/reports')
@@ -35,6 +36,26 @@ export class AdminReportsController {
     @Query() query: AdminAppointmentsReportQueryDto,
   ): Promise<AdminAppointmentsReportDto> {
     return this.adminReportsService.getAppointmentsReport(query);
+  }
+
+  @Get('doctors/:id/occupation')
+  @Roles(UserType.ADMIN)
+  @ApiOperation({
+    summary: 'Taxa de ocupação da agenda de um médico',
+    description:
+      'Retorna a ocupação da agenda do médico no período informado.\n\n' +
+      '**Fórmula da taxa de ocupação:**\n\n' +
+      '`occupationRate = (COMPLETED / total) * 100`\n\n' +
+      'O denominador inclui todos os agendamentos criados no período ' +
+      '(PENDING + CONFIRMED + CANCELLED + COMPLETED), representando ' +
+      'a demanda real. O numerador considera apenas agendamentos ' +
+      'COMPLETED, que efetivamente geraram um atendimento clínico.',
+  })
+  async getDoctorOccupation(
+    @Param('id') id: number,
+    @Query() query: OccupationQueryDto,
+  ) {
+    return this.adminReportsService.getDoctorOccupation(Number(id), query);
   }
 
 }

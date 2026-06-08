@@ -23,6 +23,9 @@ import {
   ScheduleReportCountRaw,
   ScheduleReportGroupedRaw,
 } from './schedule-report-raw.interface';
+import { OccupationQueryDto } from '../dto/occupation-query.dto';
+import { Doctor } from '../../users/entities/doctor.entity';
+import { NotFoundException } from '../../../common';
 
 interface AppointmentDateFilter {
   createdAt?: FindOperator<Date>;
@@ -35,6 +38,8 @@ export class AdminReportsService {
     private readonly scheduleRepository: Repository<Schedule>,
     @InjectRepository(Appointment)
     private readonly appointmentRepository: Repository<Appointment>,
+    @InjectRepository(Doctor)
+    private readonly doctorRepository: Repository<Doctor>
   ) {}
 
   async getSchedulesReport(
@@ -141,6 +146,53 @@ export class AdminReportsService {
       byType,
     };
   }
+
+  async getDoctorOccupation(doctorId: number, query: OccupationQueryDto){
+
+    const doctor = await this.doctorRepository.findOne({
+      where: { id: doctorId, isActive: true },
+    });
+
+    if(!doctor)
+      throw new NotFoundException('Médico', doctorId)
+
+    const schedules = await this.scheduleRepository.find({
+      where: {
+        doctorId,
+        scheduledAt: Between(new Date(query.startDate), new Date(query.endDate)),
+      },
+    });
+
+    const total = schedules.length
+
+    const byStatus = {
+      PENDING: 0,
+      CONFIRMED: 0,
+      CANCELLED: 0,
+      COMPLETED: 0,
+    };
+
+    for (const s of schedules) {
+      byStatus[s.status]++;
+    }
+
+    const occupationRate = total > 0
+      ? Number(((byStatus.COMPLETED / total) * 100).toFixed(2))
+      : 0;
+
+    return {
+      doctorId,
+      doctorName: doctor.name,
+      period: { startDate: query.startDate, endDate: query.endDate },
+      total,
+      byStatus,
+      occupationRate,
+      occupationRateDescription:
+        'Percentual de agendamentos no período que resultaram em atendimento clínico (COMPLETED / total * 100)',
+    };
+
+  }
+
 
   private buildDateFilter(startDate?: string, endDate?: string): ScheduleDateFilter {
     if(startDate && endDate) 

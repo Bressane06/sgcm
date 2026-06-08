@@ -1549,6 +1549,31 @@ Decisão para laudo `REVOKED`:
 
 Com isso, a política de acesso preserva rastreabilidade clínica e jurídica sem abrir exposição indevida para usuários não autorizados.
 
+### 3.43 Taxa de Ocupação
+
+A taxa de ocupação mede a proporção de agendamentos que resultaram efetivamente em atendimento dentro do período analisado.
+
+#### Fórmula
+
+```text
+Taxa de Ocupação (%) =
+(COMPLETED / (PENDING + CONFIRMED + COMPLETED + CANCELLED)) × 100
+```
+
+#### Justificativa
+
+O denominador considera todos os agendamentos criados no período, independentemente de seu status final, representando a demanda total atendida pela clínica.
+
+O numerador considera apenas os agendamentos com status `COMPLETED`, pois são aqueles que efetivamente resultaram em atendimento realizado.
+
+Os agendamentos com status `CANCELLED` permanecem no denominador porque representam horários que chegaram a ser reservados, mas não geraram atendimento. Sua inclusão permite que a métrica reflita perdas de ocupação decorrentes de cancelamentos, fornecendo uma visão mais fiel da utilização da agenda.
+
+#### Interpretação
+
+- **100%**: todos os agendamentos resultaram em atendimento.
+- **Taxas menores**: indicam perdas de ocupação causadas por cancelamentos ou agendamentos que permaneceram pendentes ou apenas confirmados durante o período analisado.
+- **Quanto maior a taxa**, maior a eficiência no aproveitamento da agenda médica.
+
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
