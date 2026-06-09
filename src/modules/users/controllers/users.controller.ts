@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -50,7 +51,7 @@ export class UsersController {
     return this.usersService.findOneWithAccess(Number(id), user);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @ApiOperation({ summary: 'Atualizar usuário' })
   async update(

@@ -18,7 +18,7 @@ async function bootstrap() {
   // execute primeiro e remova campos marcados com @Exclude() antes de o
   // TransformInterceptor montar o envelope { data, meta }.
   app.useGlobalInterceptors(
-    new TransformInterceptor(),
+    new TransformInterceptor(app.get(Reflector)),
     new ClassSerializerInterceptor(app.get(Reflector)),
   );
 
@@ -76,6 +76,9 @@ As respostas de sucesso seguem o envelope { data, meta } produzido pelo Transfor
           'Patients',
           'Schedules',
           'Specialties',
+          'Appointments',
+          'Reports',
+          'Admin Reports',
         ];
         return order.indexOf(a) - order.indexOf(b);
       },

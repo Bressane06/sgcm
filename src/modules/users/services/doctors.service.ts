@@ -15,6 +15,8 @@ import type { UserPayload } from '../../auth/models/user-payload.model';
 import { ForbiddenException } from '../../../common/exceptions';
 import { UserType } from '../enum/user-type.enum';
 import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
+import { FindAppointmentsQueryDto } from '../../appointments/dto/find-appointments-query.dto';
+import { AppointmentsService } from '../../appointments/appointments.service';
 
 @Injectable()
 export class DoctorsService {
@@ -26,15 +28,15 @@ export class DoctorsService {
     private readonly specialtyRepository: Repository<Specialty>,
     @InjectRepository(DoctorSpecialty)
     private readonly doctorSpecialtyRepository: Repository<DoctorSpecialty>,
+    private readonly appointmentsService: AppointmentsService,
   ) {}
 
   private async findEntityByIdOrFail(id: number): Promise<Doctor> {
     const doctor = await this.doctorRepository.findOne({
       where: { id },
-      relations: { user: true },
     });
 
-    if (!doctor || !doctor.user.isActive) {
+    if (!doctor || !doctor.isActive) {
       throw new NotFoundException('Médico', id);
     }
 
@@ -50,14 +52,11 @@ export class DoctorsService {
     const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
 
     const where = search
-      ? [
-          { user: { name: Like(`%${search}%`), isActive: true } },
-        ]
-      : { user: { isActive: true } };
+      ? [{ name: Like(`%${search}%`), isActive: true }]
+      : { isActive: true };
 
     const [doctors, totalItems] = await this.doctorRepository.findAndCount({
       where,
-      relations: { user: true },
       order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
       skip,
       take: limit,
@@ -76,14 +75,13 @@ export class DoctorsService {
 
   async findOne(
     id: number,
-  ): Promise<{ id: number; userId: number; name: string; email: string; crm: string }> {
+  ): Promise<{ id: number; name: string; email: string; crm: string }> {
     const doctor = await this.findEntityByIdOrFail(id);
 
     return {
       id: doctor.id,
-      userId: doctor.user.id,
-      name: doctor.user.name,
-      email: doctor.user.email,
+      name: doctor.name,
+      email: doctor.email,
       crm: doctor.crm,
     };
   }
@@ -145,15 +143,13 @@ export class DoctorsService {
 
     if (doctorSpecialtyExists) {
       throw ConflictException.businessRule(
-        `O médico ${doctor.user.name} já possui a especialidade ${specialty.name} associada.  `);
+        `O médico ${doctor.name} já possui a especialidade ${specialty.name} associada.  `);
     }
 
     const doctorSpecialty =  this.doctorSpecialtyRepository.create({
       specialtyId: specialty.id,
       doctorId: doctor.id
     });
-
-    console.log(doctorSpecialty);
 
     return await this.doctorSpecialtyRepository.save(doctorSpecialty);
   }
@@ -188,7 +184,7 @@ export class DoctorsService {
 
     if (
       currentUser.type === UserType.DOCTOR &&
-      doctor.user.id !== currentUser.sub
+      doctor.id !== currentUser.sub
     ) {
       throw new ForbiddenException(
         'Você não tem permissão para acessar agendamentos de outro médico.',
@@ -196,5 +192,24 @@ export class DoctorsService {
     }
 
     return this.schedulesService.findByDoctor(doctor.id, query);
+  }
+
+  async findAppointments(
+    id: number,
+    query: FindAppointmentsQueryDto,
+    currentUser: UserPayload,
+  ) {
+    const doctor = await this.findEntityByIdOrFail(id);
+
+    if (
+      currentUser.type === UserType.DOCTOR &&
+      doctor.id !== currentUser.sub
+    ) {
+      throw new ForbiddenException(
+        'Médico só pode acessar seus próprios atendimentos.',
+      );
+    }
+
+    return this.appointmentsService.findByDoctor(doctor.id, query);
   }
 }

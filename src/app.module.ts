@@ -7,6 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from './modules/users/users.module';
 import { SpecialtiesModule } from './modules/specialties/specialties.module';
 import { SchedulesModule } from './modules/schedules/schedules.module';
+import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
@@ -14,6 +15,9 @@ import { LoggingMiddleware } from './common/middlewares/logging.middleware';
 import { StringValue } from 'ms';
 import { RolesGuard } from './common/guards/roles.guard';
 import { ProceduresModule } from './modules/procedures/procedures.module';
+import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -42,8 +46,12 @@ import { ProceduresModule } from './modules/procedures/procedures.module';
     UsersModule,
     SpecialtiesModule,
     SchedulesModule,
+    AppointmentsModule,
     AuthModule,
     ProceduresModule,
+    MedicalRecordsModule,
+    AdminModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [

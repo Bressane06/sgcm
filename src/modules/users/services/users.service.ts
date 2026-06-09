@@ -59,8 +59,7 @@ export class UsersService {
     userId: number,
   ): Promise<void> {
     const doctor = await this.doctorRepository.findOne({
-      where: { user: { id: userId } },
-      relations: { user: true },
+      where: { id: userId  }
     });
 
     if (!doctor) {
@@ -86,8 +85,7 @@ export class UsersService {
     userId: number,
   ): Promise<void> {
     const patient = await this.patientRepository.findOne({
-      where: { user: { id: userId } },
-      relations: { user: true },
+      where: {  id: userId  },
     });
 
     if (!patient) {
@@ -168,7 +166,7 @@ export class UsersService {
   async findByEmail(
     email: string,
     includePassword: boolean = false,
-  ): Promise<User> {
+  ): Promise<User | null>{
     // Esse método será usado principalmente para autenticação, onde precisamos do hash da senha, por isso a opção includePassword.
 
     const user = await this.userRepository
@@ -178,7 +176,7 @@ export class UsersService {
       .getOne();
 
     if (!user) {
-      throw new NotFoundException('Usuário', email); // marcação de duvida: essa exceptiuon ta certa?
+      return null;
     }
 
     if (includePassword) {

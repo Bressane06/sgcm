@@ -85,21 +85,15 @@ export class SchedulesService {
     this.assertAllowedFieldsForType(dto);
     this.assertFutureDate(dto.scheduledAt);
 
-    const patientId =
-      currentUser.type === UserType.PATIENT ? currentUser.sub : dto.patientId;
-
-    if (
-      currentUser.type === UserType.PATIENT &&
-      dto.patientId &&
-      dto.patientId !== currentUser.sub
-    ) {
-      throw new ForbiddenException(
-        'Paciente só pode criar agendamentos para si mesmo.',
-      );
+    if (currentUser.type === UserType.PATIENT) {
+      if (dto.patientId && dto.patientId !== currentUser.sub) {
+        throw new ForbiddenException('Paciente só pode criar agendamentos para si mesmo.');
+      }
+      dto.patientId = currentUser.sub;
     }
 
     const doctor = await this.findDoctorOrFail(dto.doctorId);
-    const patient = await this.findPatientOrFail(patientId);
+    const patient = await this.findPatientOrFail(dto.patientId);
 
     await this.assertNoConfirmedConflict(
       dto.doctorId,
@@ -113,7 +107,7 @@ export class SchedulesService {
       doctor,
       doctorId: dto.doctorId,
       patient,
-      patientId,
+      patientId: dto.patientId,
     };
 
     switch (dto.type) {
@@ -273,7 +267,7 @@ export class SchedulesService {
     const schedule = await this.findEntityOrFail(id);
 
     if (currentUser.type === UserType.PATIENT) {
-      if (schedule.patient?.user?.id !== currentUser.sub) {
+      if (schedule.patient?.id !== currentUser.sub) {
         throw new ForbiddenException(
           'Paciente só pode cancelar seus próprios agendamentos.',
         );
@@ -378,8 +372,7 @@ export class SchedulesService {
 
   private async findDoctorOrFail(id: number): Promise<Doctor> {
     const doctor = await this.doctorRepository.findOne({
-      where: { id, user: { isActive: true } },
-      relations: { user: true },
+      where: { id, isActive: true },
     });
 
     if (!doctor) {
@@ -391,8 +384,7 @@ export class SchedulesService {
 
   private async findPatientOrFail(id: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
-      where: { id, user: { isActive: true } },
-      relations: { user: true },
+      where: { id, isActive: true },
     });
 
     if (!patient) {
@@ -485,17 +477,11 @@ export class SchedulesService {
       return;
     }
 
-    if (
-      currentUser.type === UserType.DOCTOR &&
-      schedule.doctor?.user?.id === currentUser.sub
-    ) {
+    if (currentUser.type === UserType.DOCTOR && schedule.doctor?.id === currentUser.sub) {
       return;
     }
 
-    if (
-      currentUser.type === UserType.PATIENT &&
-      schedule.patient?.user?.id === currentUser.sub
-    ) {
+    if (currentUser.type === UserType.PATIENT && schedule.patient?.id === currentUser.sub) {
       return;
     }
 

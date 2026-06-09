@@ -1,21 +1,9 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToOne,
-  JoinColumn,
-} from 'typeorm';
+import { ChildEntity, Column } from 'typeorm';
 import { User } from './user.entity';
+import { UserType } from '../enum/user-type.enum';
 
-@Entity('admin')
-export class Admin {
-  @PrimaryGeneratedColumn()
-  id!: number;
-
-  @OneToOne(() => User, { cascade: true, eager: true, onDelete: 'CASCADE' })
-  @JoinColumn()
-  user!: User;
-
-  @Column({})
+@ChildEntity(UserType.ADMIN)
+export class Admin extends User {
+  @Column({ nullable: true })
   accessLevel!: string;
 }
