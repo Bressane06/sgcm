@@ -31,7 +31,7 @@ export abstract class Schedule {
   @Column({ type: 'varchar' })
   type!: ScheduleType;
 
-  @ManyToOne(() => Doctor, (doctor) => doctor.schedules, { eager: true })
+  @ManyToOne(() => Doctor, { eager: true })
   @JoinColumn({ name: 'doctorId' })
   doctor!: Doctor;
 

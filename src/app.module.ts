@@ -14,6 +14,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { LoggingMiddleware } from './common/middlewares/logging.middleware';
 import { StringValue } from 'ms';
 import { RolesGuard } from './common/guards/roles.guard';
+import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { ReportsModule } from './modules/reports/reports.module';
 
@@ -30,8 +31,7 @@ import { ReportsModule } from './modules/reports/reports.module';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn:
-            configService.get<StringValue>('JWT_EXPIRES_IN') ?? '15m',
+          expiresIn: configService.get<StringValue>('JWT_EXPIRES_IN') ?? '15m',
         },
       }),
       global: true,
@@ -47,6 +47,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     SchedulesModule,
     AppointmentsModule,
     AuthModule,
+    MedicalRecordsModule,
     AdminModule,
     ReportsModule,
   ],
@@ -54,7 +55,7 @@ import { ReportsModule } from './modules/reports/reports.module';
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard }
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule implements NestModule {

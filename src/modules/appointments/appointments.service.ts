@@ -274,7 +274,13 @@ export class AppointmentsService {
     const normalizedDirection =
       direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
-    const allowedSortFields = ['createdAt', 'updatedAt', 'id', 'status', 'type'];
+    const allowedSortFields = [
+      'createdAt',
+      'updatedAt',
+      'id',
+      'status',
+      'type',
+    ];
     const sortField = allowedSortFields.includes(field) ? field : 'createdAt';
 
     const qb = this.appointmentRepository
@@ -377,9 +383,9 @@ export class AppointmentsService {
 
     if (currentType === AppointmentType.CONSULTATION) {
       const consultation = appointment as Consultation;
-      consultation.reason =
-        dto.reason ?? consultation.reason;
-      consultation.diagnosticHypothesis = dto.diagnosticHypothesis ?? consultation.diagnosticHypothesis;
+      consultation.reason = dto.reason ?? consultation.reason;
+      consultation.diagnosticHypothesis =
+        dto.diagnosticHypothesis ?? consultation.diagnosticHypothesis;
       consultation.prescription = dto.prescription ?? consultation.prescription;
     }
 
