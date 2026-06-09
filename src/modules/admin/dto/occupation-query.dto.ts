@@ -1,14 +1,20 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsDate, IsDateString } from "class-validator";
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsDateString, IsOptional } from 'class-validator';
 
-export class OccupationQueryDto{
+export class OccupationQueryDto {
+  @ApiPropertyOptional({
+    description: 'Data inicial do período (ISO 8601)',
+    example: '2026-05-05',
+  })
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
 
-    @ApiProperty({ example : '2026-05-05'})
-    @IsDateString()
-    startDate!: string;
-
-    @ApiProperty({ example : '2026-06-05'})
-    @IsDateString()
-    endDate!: string;
-
+  @ApiPropertyOptional({
+    description: 'Data final do período (ISO 8601)',
+    example: '2029-06-05',
+  })
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
 }

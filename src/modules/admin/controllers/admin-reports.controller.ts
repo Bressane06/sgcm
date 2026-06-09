@@ -9,6 +9,7 @@ import { AdminReportsService } from '../services/admin-reports.service';
 import { AdminAppointmentsReportDto } from '../dto/admin-appointments-report.dto';
 import { AdminAppointmentsReportQueryDto } from '../dto/admin-appointments-report-query.dto';
 import { OccupationQueryDto } from '../dto/occupation-query.dto';
+import { DoctorOccupationReportDto } from '../dto/doctor-occupation-report.dto';
 
 @ApiTags('Admin Reports')
 @Controller('admin/reports')
@@ -51,11 +52,11 @@ export class AdminReportsController {
       'a demanda real. O numerador considera apenas agendamentos ' +
       'COMPLETED, que efetivamente geraram um atendimento clínico.',
   })
+  @ApiOkResponse({ type: DoctorOccupationReportDto })
   async getDoctorOccupation(
     @Param('id') id: number,
     @Query() query: OccupationQueryDto,
   ) {
     return this.adminReportsService.getDoctorOccupation(Number(id), query);
   }
-
 }

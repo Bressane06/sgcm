@@ -26,6 +26,7 @@ import {
 import { OccupationQueryDto } from '../dto/occupation-query.dto';
 import { Doctor } from '../../users/entities/doctor.entity';
 import { NotFoundException } from '../../../common';
+import { DoctorOccupationReportDto } from '../dto/doctor-occupation-report.dto';
 
 interface AppointmentDateFilter {
   createdAt?: FindOperator<Date>;
@@ -39,7 +40,7 @@ export class AdminReportsService {
     @InjectRepository(Appointment)
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(Doctor)
-    private readonly doctorRepository: Repository<Doctor>
+    private readonly doctorRepository: Repository<Doctor>,
   ) {}
 
   async getSchedulesReport(
@@ -53,7 +54,10 @@ export class AdminReportsService {
     this.applyDateFilter(queryBuilder, where);
 
     const [rawTotal, byStatusRows, byTypeRows] = await Promise.all([
-      queryBuilder.clone().select('COUNT(schedule.id)', 'total').getRawOne<ScheduleReportCountRaw>(),
+      queryBuilder
+        .clone()
+        .select('COUNT(schedule.id)', 'total')
+        .getRawOne<ScheduleReportCountRaw>(),
       queryBuilder
         .clone()
         .select('schedule.status', 'key')
@@ -75,7 +79,7 @@ export class AdminReportsService {
       Object.values(ScheduleType),
     ) as unknown as AdminSchedulesReportDto['byType'];
 
-    for(const row of byStatusRows) {
+    for (const row of byStatusRows) {
       const key = row.key as ScheduleStatus;
       byStatus[key] = Number(row.count);
     }
@@ -102,7 +106,8 @@ export class AdminReportsService {
     const { startDate, endDate } = query;
 
     const where = this.buildAppointmentDateFilter(startDate, endDate);
-    const queryBuilder = this.appointmentRepository.createQueryBuilder('appointment');
+    const queryBuilder =
+      this.appointmentRepository.createQueryBuilder('appointment');
 
     this.applyAppointmentDateFilter(queryBuilder, where);
 
@@ -129,12 +134,11 @@ export class AdminReportsService {
       Object.values(AppointmentType),
     ) as unknown as AdminAppointmentsReportDto['byType'];
 
-    for (const row of byStatusRows) 
+    for (const row of byStatusRows)
       byStatus[row.key as AppointmentStatus] = Number(row.count);
 
-    for (const row of byTypeRows) 
+    for (const row of byTypeRows)
       byType[row.key as AppointmentType] = Number(row.count);
-    
 
     return {
       period: {
@@ -147,75 +151,86 @@ export class AdminReportsService {
     };
   }
 
-  async getDoctorOccupation(doctorId: number, query: OccupationQueryDto){
-
+  async getDoctorOccupation(
+    doctorId: number,
+    query: OccupationQueryDto,
+  ): Promise<DoctorOccupationReportDto> {
     const doctor = await this.doctorRepository.findOne({
-      where: { id: doctorId, isActive: true },
-    });
-
-    if(!doctor)
-      throw new NotFoundException('Médico', doctorId)
-
-    const schedules = await this.scheduleRepository.find({
       where: {
-        doctorId,
-        scheduledAt: Between(new Date(query.startDate), new Date(query.endDate)),
+        id: doctorId,
+        isActive: true,
       },
     });
 
-    const total = schedules.length
+    if (!doctor) {
+      throw new NotFoundException('Médico', doctorId);
+    }
 
-    const byStatus = this.createEmptyAggregationMap(Object.values(ScheduleStatus));
+    const start = query.startDate ? new Date(query.startDate) : new Date(0);
+    const end = query.endDate ? new Date(query.endDate) : new Date();
 
+    const schedules = await this.scheduleRepository.find({
+      where: {
+        doctorId: doctorId, 
+        scheduledAt: Between(start, end),
+      },
+      relations: ['doctor'],
+    });
+
+    const total = schedules.length;
+    const byStatus = this.createEmptyAggregationMap(
+      Object.values(ScheduleStatus),
+    ) as Record<ScheduleStatus, number>;
 
     for (const s of schedules) {
       byStatus[s.status]++;
     }
 
-    const occupationRate = total > 0
-      ? Number(((byStatus.COMPLETED / total) * 100).toFixed(2))
-      : 0;
+    const occupationRate =
+      total > 0 ? Number(((byStatus.COMPLETED / total) * 100).toFixed(2)) : 0;
 
     return {
       doctorId,
       doctorName: doctor.name,
-      period: { startDate: query.startDate, endDate: query.endDate },
+      period: {
+        startDate: query.startDate ?? null,
+        endDate: query.endDate ?? null,
+      },
       total,
       byStatus,
       occupationRate,
       occupationRateDescription:
         'Percentual de agendamentos no período que resultaram em atendimento clínico (COMPLETED / total * 100)',
     };
-
   }
-
-
-  private buildDateFilter(startDate?: string, endDate?: string): ScheduleDateFilter {
-    if(startDate && endDate) 
+  private buildDateFilter(
+    startDate?: string,
+    endDate?: string,
+  ): ScheduleDateFilter {
+    if (startDate && endDate)
       return { scheduledAt: Between(new Date(startDate), new Date(endDate)) };
 
-    if (startDate) 
-      return { scheduledAt: MoreThanOrEqual(new Date(startDate)) };
+    if (startDate) return { scheduledAt: MoreThanOrEqual(new Date(startDate)) };
 
-    if (endDate) 
-      return { scheduledAt: LessThanOrEqual(new Date(endDate)) };
+    if (endDate) return { scheduledAt: LessThanOrEqual(new Date(endDate)) };
 
     return {};
   }
 
-  private buildAppointmentDateFilter(startDate?: string, endDate?: string): AppointmentDateFilter {
-    if(startDate && endDate)
+  private buildAppointmentDateFilter(
+    startDate?: string,
+    endDate?: string,
+  ): AppointmentDateFilter {
+    if (startDate && endDate)
       return { createdAt: Between(new Date(startDate), new Date(endDate)) };
 
-    if (startDate)
-      return { createdAt: MoreThanOrEqual(new Date(startDate)) };
+    if (startDate) return { createdAt: MoreThanOrEqual(new Date(startDate)) };
 
-    if (endDate)
-      return { createdAt: LessThanOrEqual(new Date(endDate)) };
+    if (endDate) return { createdAt: LessThanOrEqual(new Date(endDate)) };
 
     return {};
   }
-  
+
   private applyDateFilter(
     queryBuilder: SelectQueryBuilder<Schedule>,
     filter: ScheduleDateFilter,
@@ -228,8 +243,7 @@ export class AdminReportsService {
     queryBuilder: SelectQueryBuilder<Appointment>,
     filter: AppointmentDateFilter,
   ): void {
-    if (filter.createdAt)
-      queryBuilder.where({ createdAt: filter.createdAt });
+    if (filter.createdAt) queryBuilder.where({ createdAt: filter.createdAt });
   }
 
   private createEmptyAggregationMap<T extends string>(
