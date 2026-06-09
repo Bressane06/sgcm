@@ -16,7 +16,12 @@ import type { UserPayload } from '../auth/models/user-payload.model';
 import { Roles } from '../../common';
 import { UserType } from '../users/enum/user-type.enum';
 import { ApiAuthResponses } from '../../common/swagger';
-import { ApiBody, ApiParam, getSchemaPath } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiExcludeEndpoint,
+  ApiParam,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 @Controller('')
 export class MedicalRecordsController {
@@ -71,18 +76,10 @@ export class MedicalRecordsController {
     return this.medicalRecordsService.update(+id, updateMedicalRecordDto, user);
   }
 
-  @ApiAuthResponses({
-    instance: 'records/:id',
-    unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: Number,
-    description: 'Identificador do prontuário',
-  })
   @Delete('records/:id')
+  @ApiExcludeEndpoint()
   @Roles(UserType.ADMIN, UserType.DOCTOR)
-  delete(@Param('id') id: string) {
+  delete() {
     return this.medicalRecordsService.delete();
   }
 
