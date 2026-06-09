@@ -145,7 +145,7 @@ export class MedicalRecordsService {
 
   delete() {
     throw ConflictException.businessRule(
-      'Um prontuário não pode ser excluído.',
+      'Um prontuário não pode ser excluído',
       'representa um documento clínico permanente.',
     );
   }

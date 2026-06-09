@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+} from '@nestjs/common';
 import { MedicalRecordsService } from './medical-records.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
@@ -7,7 +15,7 @@ import type { UserPayload } from '../auth/models/user-payload.model';
 import { Roles } from '../../common';
 import { UserType } from '../users/enum/user-type.enum';
 import { ApiAuthResponses } from '../../common/swagger';
-import { ApiBody, ApiParam, getSchemaPath } from '@nestjs/swagger';
+import { ApiParam } from '@nestjs/swagger';
 
 @Controller('')
 export class MedicalRecordsController {
@@ -49,7 +57,8 @@ export class MedicalRecordsController {
   ) {
     return this.medicalRecordsService.update(+id, updateMedicalRecordDto, user);
   }
-  @Put('records/:id')
+
+  @Delete('records/:id')
   delete() {
     return this.medicalRecordsService.delete();
   }

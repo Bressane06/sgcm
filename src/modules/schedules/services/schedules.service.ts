@@ -1,12 +1,19 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+  Between,
+  FindOptionsWhere,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { Doctor } from '../../users/entities/doctor.entity';
 import { Patient } from '../../users/entities/patient.entity';
-import { NotFoundException, ConflictException, ForbiddenException } from '../../../common/exceptions';
+import {
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '../../../common/exceptions';
 import { CreateScheduleDto } from '../dto/create-schedule.dto';
 import { FindSchedulesQueryDto } from '../dto/find-schedules-query.dto';
 import { UpdateScheduleDto } from '../dto/update-schedule.dto';
@@ -22,7 +29,6 @@ import { ScheduleResponseDto } from '../dto/schedule-response.dto';
 import type { UserPayload } from '../../auth/models/user-payload.model';
 import { UserType } from '../../users/enum/user-type.enum';
 import { FindRelatedSchedulesQueryDto } from '../dto/find-related-schedules-query.dto';
-
 
 @Injectable()
 export class SchedulesService {
@@ -81,7 +87,9 @@ export class SchedulesService {
 
     if (currentUser.type === UserType.PATIENT) {
       if (dto.patientId && dto.patientId !== currentUser.sub) {
-        throw new ForbiddenException('Paciente só pode criar agendamentos para si mesmo.');
+        throw new ForbiddenException(
+          'Paciente só pode criar agendamentos para si mesmo.',
+        );
       }
       dto.patientId = currentUser.sub;
     }
@@ -89,7 +97,10 @@ export class SchedulesService {
     const doctor = await this.findDoctorOrFail(dto.doctorId);
     const patient = await this.findPatientOrFail(dto.patientId);
 
-    await this.assertNoConfirmedConflict(dto.doctorId, new Date(dto.scheduledAt));
+    await this.assertNoConfirmedConflict(
+      dto.doctorId,
+      new Date(dto.scheduledAt),
+    );
 
     const baseData = {
       scheduledAt: new Date(dto.scheduledAt),
@@ -146,7 +157,17 @@ export class SchedulesService {
   async findAll(
     query: FindSchedulesQueryDto,
   ): Promise<PaginatedResponse<ScheduleResponseDto>> {
-    const { page, limit, sort, doctorId, patientId, status, type, startDate, endDate } = query;
+    const {
+      page,
+      limit,
+      sort,
+      doctorId,
+      patientId,
+      status,
+      type,
+      startDate,
+      endDate,
+    } = query;
 
     const skip = (page - 1) * limit;
     const [field, direction] = sort ? sort.split(':') : ['scheduledAt', 'ASC'];
@@ -199,7 +220,10 @@ export class SchedulesService {
     return this.toResponse(schedule);
   }
 
-  async update(id: number, dto: UpdateScheduleDto): Promise<ScheduleResponseDto> {
+  async update(
+    id: number,
+    dto: UpdateScheduleDto,
+  ): Promise<ScheduleResponseDto> {
     const schedule = await this.findEntityOrFail(id);
 
     if (dto.scheduledAt) {
@@ -455,11 +479,17 @@ export class SchedulesService {
       return;
     }
 
-    if (currentUser.type === UserType.DOCTOR && schedule.doctor?.id === currentUser.sub) {
+    if (
+      currentUser.type === UserType.DOCTOR &&
+      schedule.doctor?.id === currentUser.sub
+    ) {
       return;
     }
 
-    if (currentUser.type === UserType.PATIENT && schedule.patient?.id === currentUser.sub) {
+    if (
+      currentUser.type === UserType.PATIENT &&
+      schedule.patient?.id === currentUser.sub
+    ) {
       return;
     }
 
