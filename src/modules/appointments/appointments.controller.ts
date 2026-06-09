@@ -8,7 +8,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiCreatedResponse, ApiExtraModels, ApiOperation, ApiTags, getSchemaPath } from '@nestjs/swagger';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { FindAppointmentsQueryDto } from './dto/find-appointments-query.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
@@ -18,7 +18,12 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import type { UserPayload } from '../auth/models/user-payload.model';
 import { UserType } from '../users/enum/user-type.enum';
 import { ApiAuthResponses } from '../../common/swagger';
+import { CreateConsultationDto } from './dto/create-consultation-doc.dto';
+import { CreateExamDto } from './dto/create-exam-doc.dto';
+import { CreateFollowUpDto } from './dto/create-follow-up-doc.dto';
+import { AppointmentResponseDto } from './dto/appointment-response.dto';
 
+@ApiExtraModels(CreateConsultationDto, CreateExamDto, CreateFollowUpDto)
 @ApiTags('Appointments')
 @Controller('appointments')
 @ApiAuthResponses({
@@ -31,6 +36,26 @@ export class AppointmentsController {
   @Post()
   @Roles(UserType.ADMIN, UserType.DOCTOR)
   @ApiOperation({ summary: 'Criar atendimento para agendamento confirmado' })
+  @ApiBody({
+    description: 'O corpo varia conforme o tipo do atendimento informado.',
+    schema: {
+      oneOf: [
+        {
+          $ref: getSchemaPath(CreateConsultationDto),
+        },
+        {
+          $ref: getSchemaPath(CreateExamDto),
+        },
+        {
+          $ref: getSchemaPath(CreateFollowUpDto),
+        },
+      ],
+    },
+  })
+  @ApiCreatedResponse({
+    description: 'Atendimento criado com sucesso.',
+    type: AppointmentResponseDto,
+  })
   create(@Body() dto: CreateAppointmentDto, @CurrentUser() user: UserPayload) {
     return this.appointmentsService.create(dto, user);
   }
