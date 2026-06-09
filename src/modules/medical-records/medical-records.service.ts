@@ -16,6 +16,8 @@ import { AppointmentStatus } from '../appointments/enum/appointment-status.enum'
 import { AppointmentType } from '../appointments/enum/appointment-type.enum';
 import { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
 import { Exam } from '../appointments/entities/exam.entity';
+import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 @Injectable()
 export class MedicalRecordsService {
@@ -34,6 +36,7 @@ export class MedicalRecordsService {
       relations: {
         schedule: {
           doctor: true,
+          patient: true,
         },
       },
     });
@@ -77,12 +80,9 @@ export class MedicalRecordsService {
       );
     }
 
-    if (
-      appointment.status !== AppointmentStatus.FINISHED ||
-      appointment.type !== AppointmentType.EXAM
-    ) {
+    if (appointment.status !== AppointmentStatus.FINISHED) {
       throw new BadRequestException(
-        'Somente atendimentos FINISHED do tipo EXAM podem gerar prontuários.',
+        'Somente atendimentos FINISHED podem gerar prontuários.',
       );
     }
 
@@ -99,9 +99,10 @@ export class MedicalRecordsService {
 
     const record = this.medicalRecordRepository.create({
       ...createMedicalRecordDto,
-      updatedBy: user.sub,
       createdBy: user.sub,
-      patient: { ...appointment.schedule.patient },
+      updatedBy: user.sub,
+      appointmentId: id,
+      patient: appointment.schedule.patient,
       appointment: appointment as Exam,
     });
 
@@ -115,8 +116,30 @@ export class MedicalRecordsService {
     return this.toResponse(saved!);
   }
 
-  findAppointmentRecords(id: number) {
-    return `This action returns all medicalRecords`;
+  async findAppointmentRecords(
+    id: number,
+    user: UserPayload,
+  ): Promise<MedicalRecordResponseDto> {
+    const record = await this.medicalRecordRepository.findOne({
+      where: { appointmentId: id },
+      relations: { patient: true },
+    });
+
+    if (!record) throw new NotFoundException('Prontuário', id);
+
+    // Controle por recurso
+    if (user.type === UserType.PATIENT && record.patient.id !== user.sub) {
+      throw new ForbiddenException(
+        'Paciente só pode acessar seus próprios prontuários.',
+      );
+    }
+    if (user.type === UserType.DOCTOR && record.createdBy !== user.sub) {
+      throw new ForbiddenException(
+        'Médico só pode acessar prontuários de seus próprios atendimentos.',
+      );
+    }
+
+    return this.toResponse(record);
   }
 
   async update(
@@ -130,17 +153,25 @@ export class MedicalRecordsService {
       throw new NotFoundException('Prontuário não encontrado.');
     }
 
-    if (record.id !== user.sub && user.type === UserType.DOCTOR) {
+    if (record.createdBy !== user.sub && user.type === UserType.DOCTOR) {
       throw new ForbiddenException(
         'Médico só pode alterar seus próprios prontuários.',
       );
     }
 
-    Object.assign(record, updateMedicalRecordDto);
+    Object.assign(record, {
+      ...updateMedicalRecordDto,
+      updatedBy: user.sub,
+    });
 
-    const saved = await this.medicalRecordRepository.save(record);
+    await this.medicalRecordRepository.save(record);
 
-    return this.toResponse(saved);
+    const saved = await this.medicalRecordRepository.findOne({
+      where: { id },
+      relations: { patient: true },
+    });
+
+    return this.toResponse(saved!);
   }
 
   delete() {
@@ -150,19 +181,84 @@ export class MedicalRecordsService {
     );
   }
 
-  async findPatientRecords(id: number): Promise<MedicalRecord[]> {
-    const records = await this.medicalRecordRepository.find({
+  async findPatientRecords(
+    id: number,
+    user: UserPayload,
+    pagination: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<MedicalRecordResponseDto>> {
+    if (user.type === UserType.PATIENT && user.sub !== id) {
+      throw new ForbiddenException(
+        'Paciente só pode acessar seus próprios prontuários.',
+      );
+    }
+
+    const { page, limit } = pagination;
+
+    const [records, total] = await this.medicalRecordRepository.findAndCount({
       where: { patient: { id } },
+      relations: { patient: true },
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { createdAt: 'DESC' },
     });
-    return records;
+
+    if (!records.length) {
+      throw new NotFoundException('Prontuários', id);
+    }
+
+    return {
+      data: records.map((r) => this.toResponse(r)),
+      meta: {
+        totalItems: total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
-  async findDoctorRecords(id: number): Promise<MedicalRecord[]> {
-    const records = await this.medicalRecordRepository.find({
+  async findDoctorRecords(
+    id: number,
+    user: UserPayload,
+    pagination: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<MedicalRecordResponseDto>> {
+    if (user.type === UserType.DOCTOR && user.sub !== id) {
+      throw new ForbiddenException(
+        'Médico só pode acessar prontuários de seus próprios atendimentos.',
+      );
+    }
+
+    const { page, limit } = pagination;
+
+    const [records, total] = await this.medicalRecordRepository.findAndCount({
       where: {
-        updatedBy: id,
+        appointment: {
+          schedule: {
+            doctor: { id },
+          },
+        },
       },
+      relations: {
+        patient: true,
+        appointment: { schedule: { doctor: true } },
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { createdAt: 'DESC' },
     });
-    return records;
+
+    if (!records.length) {
+      throw new NotFoundException('Prontuários', id);
+    }
+
+    return {
+      data: records.map((r) => this.toResponse(r)),
+      meta: {
+        totalItems: total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }

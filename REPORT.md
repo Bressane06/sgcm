@@ -62,7 +62,6 @@
   </tbody>
 </table>
 
-
 > Todos os membros participaram das Pull Requests e colaboraram entre si sempre que necessário, realizando revisões de código, suporte técnico e auxílio na integração das funcionalidades.
 
 ## 2 - DIAGRAMA DE CLASSES
@@ -91,11 +90,11 @@ O JTI foi escolhido por oferecer o melhor equilíbrio para o contexto do SGCM:
 
 O **TypeORM**, ORM utilizado no projeto com NestJS, **não oferece suporte nativo ao JTI**. As únicas estratégias suportadas nativamente são:
 
-| Estratégia | Suporte no TypeORM |
-|---|---|
-| Single Table Inheritance | ✅ via `@TableInheritance` + `@ChildEntity` |
-| Concrete Table Inheritance | ✅ via `@Entity` independente em cada classe |
-| **Joined Table Inheritance** | ❌ não suportado |
+| Estratégia                   | Suporte no TypeORM                           |
+| ---------------------------- | -------------------------------------------- |
+| Single Table Inheritance     | ✅ via `@TableInheritance` + `@ChildEntity`  |
+| Concrete Table Inheritance   | ✅ via `@Entity` independente em cada classe |
+| **Joined Table Inheritance** | ❌ não suportado                             |
 
 O mecanismo `@TableInheritance` + `@ChildEntity` do TypeORM, apesar de nominalmente chamado de suporte a herança, implementa **exclusivamente STI** — todas as colunas de todas as subclasses vão para a mesma tabela.
 
@@ -109,21 +108,21 @@ Diante dessa limitação, a solução adotada foi **simular o JTI manualmente**,
 
 **Schema resultante:**
 
-tabela user                          
-| id | name  | email | type    | ... |
+tabela user  
+| id | name | email | type | ... |
 |----|-------|-------|---------|-----|
-| 1  | João  | ...   | DOCTOR  |     |
-| 2  | Maria | ...   | PATIENT |     |
+| 1 | João | ... | DOCTOR | |
+| 2 | Maria | ... | PATIENT | |
 
-tabela doctor             
-| id | userId | crm        |
+tabela doctor  
+| id | userId | crm |
 |----|--------|------------|
-| 1  | 1      | CRM/SP-123 |
+| 1 | 1 | CRM/SP-123 |
 
 tabela patient
-| id | userId | cpf      | birthDate  |
+| id | userId | cpf | birthDate |
 |----|--------|----------|------------|
-| 1  | 2      | 123.456  | 1990-01-01 |
+| 1 | 2 | 123.456 | 1990-01-01 |
 
 O processo de criação ficou centralizado no `UsersFactoryService`, que monta a entidade `User` base, aninha dentro do subtipo correto e persiste via repositório da subclasse — aproveitando o `cascade` para salvar as duas tabelas em uma única operação.
 
@@ -176,8 +175,6 @@ Definição de retorno por rota:
 
 - `/users?type=DOCTOR`: retorna a visão base de identidade do usuário (dados comuns de `user`), sem enriquecimento de domínio.
 - `/doctors`: retorna visão de domínio de médico, com dados específicos de doctor e relacionamento com especialidades.
-
-
 
 ---
 
@@ -255,6 +252,7 @@ Foi adotada uma política híbrida:
 Essa decisão mantém o fluxo usável para quem está autenticado corretamente e reduz o risco de revelar informações úteis para ataques de enumeração ou análise de permissões.
 
 ### 3.5 Feature Doctors
+
 A feature **Doctors** tem relação íntima com **Users**: um doctor é, na prática, um user. Por isso, seus arquivos relacionados ficam dentro de `users`.
 
 Outra relação importante de Doctors é com **Specialties**. Como specialties existem separadamente e não representam um user, elas ficam em outra pasta. Essa feature foi implementada um pouco depois, mas ainda em paralelo com Doctors, devido à relação de muitos-para-muitos entre doctors e specialties.
@@ -262,6 +260,7 @@ Outra relação importante de Doctors é com **Specialties**. Como specialties e
 Durante o desenvolvimento dessa feature, decidiu-se criar uma pasta de controllers para melhor organização dos arquivos.
 
 ### 3.6 Feature Specialties
+
 A feature **Specialties** foi desenvolvida depois que a estrutura de **Doctors** já estava pronta, já que não faz sentido existir uma especialidade sem um doctor associado.
 
 Um ponto crítico que exigiu uma decisão não especificada no enunciado foi o endpoint `/doctors/{id}/specialties`, que não informa o identificador da especialidade. Para resolver isso, considerando que o nome da especialidade é único, a requisição HTTP passou a exigir no body um JSON com o campo `name`.
@@ -506,8 +505,6 @@ Justificativa:
 - Mantém separação de responsabilidades e reduz acoplamento do controller com detalhes de persistência.
 - Evita crescimento de complexidade no service principal de usuários.
 - Facilita manutenção do fluxo de criação por perfil em um único ponto.
-
-
 
 ## ETAPA 2
 
@@ -803,7 +800,6 @@ Decisão adotada: manter o payload no menor formato útil para autenticação e 
 - `email`: útil para contexto da sessão e rastreabilidade básica.
 - `type`: necessário para autorização por perfil (ex.: `RolesGuard`).
 
-
 Campos deliberadamente excluídos:
 
 - `password` e `refreshToken`: dados críticos, nunca devem ir no payload.
@@ -931,8 +927,13 @@ Trecho atual:
 Arquivo: `src/modules/auth/auth.service.ts`
 
 ```ts
-if (!user.refreshToken || !this.validateRefreshToken(refreshToken, user.refreshToken)) {
-  throw new UnauthorizedException('O refresh token fornecido é inválido ou já foi utilizado.');
+if (
+  !user.refreshToken ||
+  !this.validateRefreshToken(refreshToken, user.refreshToken)
+) {
+  throw new UnauthorizedException(
+    'O refresh token fornecido é inválido ou já foi utilizado.',
+  );
 }
 ```
 
@@ -1003,11 +1004,11 @@ Diretrizes aplicadas na documentação:
 
 Os seguintes usuários foram documentados como base de teste para os endpoints protegidos:
 
-| Perfil | E-mail | Senha |
-|---|---|---|
-| Admin | admin@sgcm.com | Admin@123 |
-| Doctor | rafael.mendes@sgcm.com | Doctor@123 |
-| Patient | ana.silva@sgcm.com | Patient@123 |
+| Perfil  | E-mail                 | Senha       |
+| ------- | ---------------------- | ----------- |
+| Admin   | admin@sgcm.com         | Admin@123   |
+| Doctor  | rafael.mendes@sgcm.com | Doctor@123  |
+| Patient | ana.silva@sgcm.com     | Patient@123 |
 
 Fluxo de uso no Swagger:
 
@@ -1094,10 +1095,7 @@ export class UsersController {
   @Get(':id')
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @ApiOperation({ summary: 'Buscar usuário por ID' })
-  async findOne(
-    @Param('id') id: number,
-    @CurrentUser() user: UserPayload,
-  ) {
+  async findOne(@Param('id') id: number, @CurrentUser() user: UserPayload) {
     return this.usersService.findOneWithAccess(Number(id), user);
   }
 }
@@ -1153,38 +1151,38 @@ Em resumo: o Swagger não deve mostrar apenas o payload cru do handler; ele deve
 
 A tabela abaixo apresenta, por endpoint, se o perfil `Patient`, `Doctor` ou `Admin` tem acesso (`Sim`) ou não (`Não`). Quando o acesso é permitido apenas ao próprio recurso (por exemplo, o paciente acessando apenas seus agendamentos), isso é indicado com `Sim*` (veja nota).
 
-| Endpoint | Patient | Doctor | Admin |
-|---|:---:|:---:|:---:|
-| POST /auth/login | Sim | Sim | Sim |
-| POST /auth/refresh | Sim | Sim | Sim |
-| GET /auth/me | Sim* | Sim* | Sim* |
-| POST /auth/logout | Sim* | Sim* | Sim* |
-| POST /users | Não | Não | Sim |
-| GET /users | Não | Não | Sim |
-| GET /users/{id} | Sim* | Sim | Sim |
-| PUT /users/{id} | Sim* | Sim | Sim |
-| DELETE /users/{id} | Não | Não | Sim |
-| GET /doctors | Sim | Sim | Sim |
-| GET /doctors/{id} | Sim | Sim | Sim |
-| GET /doctors/{id}/specialties | Sim | Sim | Sim |
-| POST /doctors/{id}/specialties | Não | Não | Sim |
-| DELETE /doctors/{id}/specialties/{specialtyId} | Não | Não | Sim |
-| GET /doctors/{id}/schedules | Não | Sim* | Sim |
-| GET /patients | Não | Não | Sim |
-| GET /patients/{id} | Sim* | Não | Sim |
-| GET /patients/{id}/schedules | Sim* | Não | Sim |
-| POST /specialties | Não | Não | Sim |
-| GET /specialties | Sim | Sim | Sim |
-| GET /specialties/{id} | Sim | Sim | Sim |
-| PUT /specialties/{id} | Não | Não | Sim |
-| DELETE /specialties/{id} | Não | Não | Sim |
-| GET /specialties/{id}/doctors | Sim | Sim | Sim |
-| POST /schedules | Sim* | Não | Sim |
-| GET /schedules | Não | Não | Sim |
-| GET /schedules/{id} | Sim* | Sim* | Sim |
-| PUT /schedules/{id} | Não | Não | Sim |
-| PATCH /schedules/{id}/status | Sim* | Não | Sim |
-| DELETE /schedules/{id} | Não | Não | Sim |
+| Endpoint                                       | Patient | Doctor | Admin |
+| ---------------------------------------------- | :-----: | :----: | :---: |
+| POST /auth/login                               |   Sim   |  Sim   |  Sim  |
+| POST /auth/refresh                             |   Sim   |  Sim   |  Sim  |
+| GET /auth/me                                   |  Sim\*  | Sim\*  | Sim\* |
+| POST /auth/logout                              |  Sim\*  | Sim\*  | Sim\* |
+| POST /users                                    |   Não   |  Não   |  Sim  |
+| GET /users                                     |   Não   |  Não   |  Sim  |
+| GET /users/{id}                                |  Sim\*  |  Sim   |  Sim  |
+| PUT /users/{id}                                |  Sim\*  |  Sim   |  Sim  |
+| DELETE /users/{id}                             |   Não   |  Não   |  Sim  |
+| GET /doctors                                   |   Sim   |  Sim   |  Sim  |
+| GET /doctors/{id}                              |   Sim   |  Sim   |  Sim  |
+| GET /doctors/{id}/specialties                  |   Sim   |  Sim   |  Sim  |
+| POST /doctors/{id}/specialties                 |   Não   |  Não   |  Sim  |
+| DELETE /doctors/{id}/specialties/{specialtyId} |   Não   |  Não   |  Sim  |
+| GET /doctors/{id}/schedules                    |   Não   | Sim\*  |  Sim  |
+| GET /patients                                  |   Não   |  Não   |  Sim  |
+| GET /patients/{id}                             |  Sim\*  |  Não   |  Sim  |
+| GET /patients/{id}/schedules                   |  Sim\*  |  Não   |  Sim  |
+| POST /specialties                              |   Não   |  Não   |  Sim  |
+| GET /specialties                               |   Sim   |  Sim   |  Sim  |
+| GET /specialties/{id}                          |   Sim   |  Sim   |  Sim  |
+| PUT /specialties/{id}                          |   Não   |  Não   |  Sim  |
+| DELETE /specialties/{id}                       |   Não   |  Não   |  Sim  |
+| GET /specialties/{id}/doctors                  |   Sim   |  Sim   |  Sim  |
+| POST /schedules                                |  Sim\*  |  Não   |  Sim  |
+| GET /schedules                                 |   Não   |  Não   |  Sim  |
+| GET /schedules/{id}                            |  Sim\*  | Sim\*  |  Sim  |
+| PUT /schedules/{id}                            |   Não   |  Não   |  Sim  |
+| PATCH /schedules/{id}/status                   |  Sim\*  |  Não   |  Sim  |
+| DELETE /schedules/{id}                         |   Não   |  Não   |  Sim  |
 
 Nota: `Sim*` indica que o acesso está restrito ao recurso próprio (por exemplo, `GET /users/{id}` com o parâmetro `id` igual ao `sub` do token, ou `GET /doctors/{id}/schedules` quando o `Doctor` acessa sua própria agenda). O controle por recurso é implementado nos services (comparando `currentUser.sub` com o proprietário do recurso).
 
@@ -1239,16 +1237,16 @@ Regra de negócio adotada para `Admin`:
 
 Lista completa de endpoints com controle por recurso:
 
-| Endpoint | Dono do recurso | Regra implementada |
-|---|---|---|
-| GET /users/{id} | Usuário do parâmetro `{id}` | `Admin` acessa tudo; `Doctor` e `Patient` só acessam se `currentUser.sub === id`. |
-| PUT /users/{id} | Usuário do parâmetro `{id}` | `Admin` acessa tudo; `Doctor` e `Patient` só atualizam se `currentUser.sub === id`. |
-| GET /doctors/{id}/schedules | Médico do parâmetro `{id}` | `Admin` acessa tudo; `Doctor` só acessa se o `doctor.user.id` for o próprio `sub`. `Patient` não tem acesso. |
-| GET /patients/{id} | Paciente do parâmetro `{id}` | `Admin` acessa tudo; `Patient` só acessa se `patient.user.id === currentUser.sub`. `Doctor` não tem acesso por recurso. |
-| GET /patients/{id}/schedules | Paciente do parâmetro `{id}` | `Admin` acessa tudo; `Patient` só acessa se `patient.user.id === currentUser.sub`. `Doctor` não tem acesso por recurso. |
-| POST /schedules | Paciente indicado no payload (`patientId`) | `Admin` pode criar para qualquer paciente; `Patient` só pode criar para si mesmo (`patientId === currentUser.sub`). |
-| GET /schedules/{id} | Agendamento `{id}` | `Admin` acessa tudo; `Doctor` só acessa se `schedule.doctor.user.id === currentUser.sub`; `Patient` só acessa se `schedule.patient.user.id === currentUser.sub`. |
-| PATCH /schedules/{id}/status | Agendamento `{id}` | `Admin` pode alterar qualquer agendamento; `Patient` só pode cancelar o próprio agendamento (`schedule.patient.user.id === currentUser.sub`) e apenas para `CANCELLED`. |
+| Endpoint                     | Dono do recurso                            | Regra implementada                                                                                                                                                      |
+| ---------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET /users/{id}              | Usuário do parâmetro `{id}`                | `Admin` acessa tudo; `Doctor` e `Patient` só acessam se `currentUser.sub === id`.                                                                                       |
+| PUT /users/{id}              | Usuário do parâmetro `{id}`                | `Admin` acessa tudo; `Doctor` e `Patient` só atualizam se `currentUser.sub === id`.                                                                                     |
+| GET /doctors/{id}/schedules  | Médico do parâmetro `{id}`                 | `Admin` acessa tudo; `Doctor` só acessa se o `doctor.user.id` for o próprio `sub`. `Patient` não tem acesso.                                                            |
+| GET /patients/{id}           | Paciente do parâmetro `{id}`               | `Admin` acessa tudo; `Patient` só acessa se `patient.user.id === currentUser.sub`. `Doctor` não tem acesso por recurso.                                                 |
+| GET /patients/{id}/schedules | Paciente do parâmetro `{id}`               | `Admin` acessa tudo; `Patient` só acessa se `patient.user.id === currentUser.sub`. `Doctor` não tem acesso por recurso.                                                 |
+| POST /schedules              | Paciente indicado no payload (`patientId`) | `Admin` pode criar para qualquer paciente; `Patient` só pode criar para si mesmo (`patientId === currentUser.sub`).                                                     |
+| GET /schedules/{id}          | Agendamento `{id}`                         | `Admin` acessa tudo; `Doctor` só acessa se `schedule.doctor.user.id === currentUser.sub`; `Patient` só acessa se `schedule.patient.user.id === currentUser.sub`.        |
+| PATCH /schedules/{id}/status | Agendamento `{id}`                         | `Admin` pode alterar qualquer agendamento; `Patient` só pode cancelar o próprio agendamento (`schedule.patient.user.id === currentUser.sub`) e apenas para `CANCELLED`. |
 
 Implementação nos services:
 
@@ -1271,7 +1269,8 @@ Arquivo: [src/main.ts](src/main.ts)
 ```ts
 const config = new DocumentBuilder()
   .setTitle('SGCM — Sistema de Gestão de Clínica Médica')
-  .setDescription(`API para gerenciamento de usuários, especialidades e agendamentos.
+  .setDescription(
+    `API para gerenciamento de usuários, especialidades e agendamentos.
 
 Como testar a API no Swagger:
 
@@ -1280,7 +1279,8 @@ Como testar a API no Swagger:
 3. Clique em Authorize no topo da página.
 4. Cole o token no esquema access-token.
 5. Use os endpoints protegidos normalmente; o Swagger enviará o cabeçalho Authorization: Bearer {token} automaticamente nas rotas marcadas com @ApiBearerAuth('access-token').
-`)
+`,
+  )
   .setVersion('2.1')
   .addBearerAuth(
     {
@@ -1352,7 +1352,9 @@ export function ApiAuthResponses(options: ApiAuthResponsesOptions) {
   return applyDecorators(
     ApiBearerAuth(ACCESS_TOKEN_BEARER_SCHEME),
     ApiUnauthorizedResponse({
-      description: options.unauthorizedDescription ?? 'Token ausente, inválido ou expirado.',
+      description:
+        options.unauthorizedDescription ??
+        'Token ausente, inválido ou expirado.',
       schema: {
         example: {
           type: 'https://sgcm.example.com/problems/unauthorized',
@@ -1599,14 +1601,17 @@ Como o TypeORM não oferece JTI nativo (conforme já documentado na seção 3.1.
 #### O que mudou
 
 **Entidades:**
+
 - `User` passou a usar `@TableInheritance({ column: { type: 'varchar', name: 'type' } })`
 - `Admin`, `Doctor` e `Patient` passaram a usar `@ChildEntity` e a **estender** `User` formalmente
 
 **Schema:**
+
 - As tabelas `admin`, `doctor` e `patient` foram eliminadas
 - Todos os campos foram consolidados na tabela `user`, com colunas `nullable` para campos específicos de cada perfil (`crm`, `cpf`, `birthDate`, `accessLevel`)
 
 **Código:**
+
 - Todas as referências a `doctor.user.id`, `patient.user.id`, `doctor.user.name` etc. foram substituídas por `doctor.id`, `doctor.name` etc.
 - `relations: { user: true }` foi removido de todas as queries
 - `UsersFactoryService` foi simplificado — cada subtipo é criado diretamente no repositório correspondente, sem cascade entre tabelas
@@ -1685,15 +1690,15 @@ Decisão adotada: usar **queries SQL com `GROUP BY` e funções de agregação**
 ```typescript
 // Exemplo aplicado em getSchedulesReport
 const [rawTotal, byStatusRows, byTypeRows] = await Promise.all([
-  queryBuilder.clone()
-    .select('COUNT(schedule.id)', 'total')
-    .getRawOne(),
-  queryBuilder.clone()
+  queryBuilder.clone().select('COUNT(schedule.id)', 'total').getRawOne(),
+  queryBuilder
+    .clone()
     .select('schedule.status', 'key')
     .addSelect('COUNT(*)', 'count')
     .groupBy('schedule.status')
     .getRawMany(),
-  queryBuilder.clone()
+  queryBuilder
+    .clone()
     .select('schedule.type', 'key')
     .addSelect('COUNT(*)', 'count')
     .groupBy('schedule.type')
@@ -1706,21 +1711,21 @@ Alternativa considerada: buscar todos os registros brutos e agregar em memória 
 Justificativa da escolha:
 
 - em um sistema real com milhares de agendamentos, trazer todos os registros para memória apenas para contá-los seria ineficiente e potencialmente inviável;
-- `GROUP BY` no banco é a abordagem padrão para agregações — o banco de dados é otimizado para esse tipo de operação;
+- `GROUP BY` no banco é a abordagem padrão para agregações, o banco de dados é otimizado para esse tipo de operação;
 - as três queries são disparadas em paralelo com `Promise.all`, reduzindo a latência total;
 - o uso de `.clone()` no `QueryBuilder` evita recriar o filtro de período a cada query, mantendo consistência e reduzindo duplicação de código.
 
 Limitação reconhecida: para o volume de dados de um projeto didático com SQLite, a abordagem em memória também funcionaria sem impacto perceptível. A escolha por SQL foi feita conscientemente considerando o que seria adequado em ambiente de produção.
 
-### 3.47 Ausência do endpoint `DELETE /records/{id}`
+### 3.47 Endpoint `DELETE /records/{id}`
 
-O endpoint `DELETE /records/{id}` não foi implementado de forma intencional.
+O endpoint `DELETE /records/{id}` foi implementado e retorna `409 Conflict` em qualquer tentativa de exclusão.
 
-Prontuários médicos são registros permanentes e, por regra de negócio, não podem ser excluídos em nenhuma circunstância, independentemente do papel do usuário ou do estado do registro. Nesse contexto, disponibilizar um endpoint de exclusão — mesmo que apenas para retornar `409 Conflict` — sugeriria uma funcionalidade que o sistema jamais oferecerá, contrariando o próprio contrato da API.
+Prontuários médicos são registros permanentes e, por regra de negócio, não podem ser excluídos em nenhuma circunstância, independentemente do papel do usuário ou do estado do registro. A decisão de manter o endpoint, em vez de simplesmente omiti-lo, foi tomada para tornar essa restrição explícita no contrato da API: ao invés de o consumidor receber um `404` genérico por não encontrar a rota, ele recebe um `409 Conflict` com uma mensagem explicativa que comunica o motivo da negativa.
 
-A inexistência do endpoint comunica essa restrição de maneira mais clara. Ao não encontrar uma operação `DELETE` para o recurso, o consumidor da API compreende que a exclusão não faz parte das capacidades do sistema. Essa decisão é reforçada pela documentação no Swagger, que explicita o caráter permanente e imutável dos prontuários.
+Essa abordagem diferencia prontuários de recursos que não possuem operação de exclusão por ausência de funcionalidade. Aqui, a operação existe, é reconhecida pelo sistema e é intencionalmente rejeitada — o que torna o comportamento auditável e rastreável nos logs da aplicação.
 
-Esse cenário difere de restrições condicionais, como a impossibilidade de excluir um médico que possua agendamentos ativos. Nesses casos, o endpoint existe porque a operação é válida em determinadas situações, e o retorno `409 Conflict` representa apenas uma condição temporária que impede sua execução. Para os prontuários, entretanto, a restrição é definitiva e estrutural, o que justifica a ausência completa do endpoint.
+Esse cenário difere de restrições condicionais, como a impossibilidade de excluir um médico que possua agendamentos ativos. Nesses casos, o `409 Conflict` representa uma condição temporária que pode deixar de existir. Para os prontuários, a restrição é definitiva e estrutural — e o endpoint reflete exatamente isso.
 
 ### 3.48 Controle de Acesso com Autorização Delegada
 
@@ -1728,9 +1733,9 @@ Esse cenário difere de restrições condicionais, como a impossibilidade de exc
 
 O modelo **RBAC (Role-Based Access Control)** atende ao controle de acesso padrão, mas não cobre situações comuns em ambientes clínicos, como:
 
-* Pacientes compartilhando prontuários com familiares ou outros médicos;
-* Médicos delegando pacientes durante férias ou afastamentos;
-* Especialistas acessando dados após encaminhamentos.
+- Pacientes compartilhando prontuários com familiares ou outros médicos;
+- Médicos delegando pacientes durante férias ou afastamentos;
+- Especialistas acessando dados após encaminhamentos.
 
 Para esses casos, é necessária uma camada complementar de **autorização delegada**.
 
@@ -1758,15 +1763,15 @@ authorized_access (
 
 **Delegação por Paciente**
 
-* Compartilhar prontuário com familiar;
-* Autorizar acesso a outro médico ou especialista;
-* Revogar acessos quando necessário.
+- Compartilhar prontuário com familiar;
+- Autorizar acesso a outro médico ou especialista;
+- Revogar acessos quando necessário.
 
 **Delegação por Médico**
 
-* Designar médico substituto para todos os pacientes (`all_patients`);
-* Encaminhar paciente para especialista (`specific_patient`);
-* Conceder acesso a equipes de atendimento ou pesquisa.
+- Designar médico substituto para todos os pacientes (`all_patients`);
+- Encaminhar paciente para especialista (`specific_patient`);
+- Conceder acesso a equipes de atendimento ou pesquisa.
 
 ---
 
@@ -1791,13 +1796,11 @@ Todo acesso concedido por delegação deve ser registrado em auditoria.
 
 Mesmo com a delegação, permanecem algumas restrições:
 
-* O usuário delegado precisa possuir conta no sistema;
-* Permissões muito granulares aumentam a complexidade do modelo;
-* Acessos por delegação exigem auditoria específica;
-* Revogações devem ser aplicadas imediatamente;
-* Notificações de acesso não são contempladas.
-
-
+- O usuário delegado precisa possuir conta no sistema;
+- Permissões muito granulares aumentam a complexidade do modelo;
+- Acessos por delegação exigem auditoria específica;
+- Revogações devem ser aplicadas imediatamente;
+- Notificações de acesso não são contempladas.
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
@@ -1828,11 +1831,12 @@ As principais dificuldades da etapa foram:
 A principal solução adotada foi centralizar validações de acesso dentro dos services e manter os controllers responsáveis apenas pela orquestração das requisições.
 
 ### Dificuldades encontradas etapa 3
+
 - Repadronizar o sistema de volta para STI;
 - Exportar para pdf, exportando em bytes, fazer com o o intrceptor n veja essa saida,
 - documentar todo o swaager;
 - como seria o validantion code;
-- qual forma seria adotada para o 
+- qual forma seria adotada para o
 
 ## Conclusão
 
