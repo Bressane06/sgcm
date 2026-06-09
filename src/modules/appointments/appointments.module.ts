@@ -7,6 +7,8 @@ import { FollowUp } from './entities/follow-up.entity';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { AppointmentsController } from './appointments.controller';
 import { AppointmentsService } from './appointments.service';
+import { ProceduresService } from '../procedures/procedures.service';
+import { Procedure } from '../procedures/entities/procedure.entity';
 
 @Module({
   imports: [
@@ -16,10 +18,11 @@ import { AppointmentsService } from './appointments.service';
       Exam,
       FollowUp,
       Schedule,
+      Procedure,
     ]),
   ],
   controllers: [AppointmentsController],
-  providers: [AppointmentsService],
+  providers: [AppointmentsService, ProceduresService],
   exports: [AppointmentsService],
 })
 export class AppointmentsModule {}

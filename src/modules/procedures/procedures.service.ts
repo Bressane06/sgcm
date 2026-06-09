@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateProcedureDto } from './dto/create-procedure.dto';
 import { UpdateProcedureDto } from './dto/update-procedure.dto';
 import { UserPayload } from '../auth/models/user-payload.model';
@@ -11,24 +11,104 @@ import { SpecializedProcedure } from './entities/specialized-procedure.entity';
 import { ProcedureType } from './enum/procedure-type.enum';
 import { AuthorizationStatus } from './enum/authorization-status.enum';
 import { NotFoundException } from '../../common';
+import { Appointment } from '../appointments/entities/appointment.entity';
 
 @Injectable()
 export class ProceduresService {
   constructor(
     @InjectRepository(Procedure)
     private readonly procedureRepository: Repository<Procedure>,
+    private readonly appointmentRepository: Repository<Appointment>,
   ) {}
 
-  create(createProcedureDto: CreateProcedureDto, currentUser: UserPayload) {
-    return 'This action adds a new procedure';
+  private assertAllowedFieldsForType(dto: CreateProcedureDto): void {
+    const receivedWrongFieldsByType: Record<ProcedureType, string[]> = {
+      [ProcedureType.SIMPLE]: [
+        ...(dto.estimatedDuration ? ['estimatedDuration'] : []),
+      ],
+      [ProcedureType.SPECIALIZED]: [
+        ...(dto.complexityLevel ? ['complexityLevel'] : []),
+        ...(dto.requiredEquipment ? ['requiredEquipment'] : []),
+        ...(dto.requiresAuthorization ? ['requiresAuthorization'] : []),
+      ],
+    };
+
+    const wrongFields = receivedWrongFieldsByType[dto.type];
+
+    if (wrongFields.length > 0) {
+      throw new BadRequestException(
+        `Campos inválidos para procedimento ${dto.type}: ${wrongFields.join(', ')}.`,
+      );
+    }
   }
 
-  findAll(currentUser: UserPayload) {
-    return `This action returns all procedures`;
+  private async findProcedureOrFail(id: number): Promise<Procedure> {
+    const procedure = await this.procedureRepository.findOneBy({ id });
+    if (!procedure) {
+      throw new NotFoundException(`Procedure with ID ${id} not found`);
+    }
+
+    return procedure;
   }
 
-  findOne(id: number, CurrentUser: UserPayload) {
-    return `This action returns a #${id} procedure`;
+  private async findAppointmentOrFail(id: number): Promise<Appointment> {
+    const appointment = await this.appointmentRepository.findOneBy({ id });
+    if (!appointment) {
+      throw new NotFoundException(`Procedure with ID ${id} not found`);
+    }
+
+    return appointment;
+  }
+
+  private toResponse(procedure: Procedure): ProcedureResponseDto {
+    const response: ProcedureResponseDto = {
+      id: procedure.id,
+      name: procedure.name,
+      description: procedure.description,
+      type: procedure.type,
+      createdAt: procedure.createdAt,
+      updatedAt: procedure.updatedAt,
+    };
+
+    if (procedure instanceof SimpleProcedure) {
+      response.estimatedDuration = procedure.estimatedDuration;
+    }
+
+    if (procedure instanceof SpecializedProcedure) {
+      response.requiredEquipment = procedure.requiredEquipment;
+      response.complexityLevel = procedure.complexityLevel;
+      response.requiresAuthorization = procedure.requiresAuthorization;
+      response.authorizationStatus = procedure.authorizationStatus;
+      response.authorizedAt = procedure.authorizedAt;
+      response.deniedAt = procedure.deniedAt;
+    }
+
+    return response;
+  }
+
+  async create(
+    id: number,
+    dto: CreateProcedureDto,
+    currentUser: UserPayload,
+  ): Promise<ProcedureResponseDto> {
+    this.assertAllowedFieldsForType(dto);
+    const appointment = await this.findAppointmentOrFail(id);
+
+    const saved = await this.procedureRepository.save(procedure as any);
+    return this.toResponse(saved);
+  }
+
+  async findAll(currentUser: UserPayload): Promise<ProcedureResponseDto[]> {
+    const procedures = await this.procedureRepository.find();
+    return procedures.map((procedure) => this.toResponse(procedure));
+  }
+
+  async findOne(
+    id: number,
+    currentUser: UserPayload,
+  ): Promise<ProcedureResponseDto> {
+    const procedure = await this.findEntityOrFail(id);
+    return this.toResponse(procedure);
   }
 
   async update(
@@ -93,42 +173,8 @@ export class ProceduresService {
     return this.toResponse(procedure);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} procedure`;
-  }
-
-  private async findEntityOrFail(id: number): Promise<Procedure> {
-    const procedure = await this.procedureRepository.findOneBy({ id });
-    if (!procedure) {
-      throw new NotFoundException(`Procedure with ID ${id} not found`);
-    }
-
-    return procedure;
-  }
-
-  private toResponse(procedure: Procedure): ProcedureResponseDto {
-    const response: ProcedureResponseDto = {
-      id: procedure.id,
-      name: procedure.name,
-      description: procedure.description,
-      type: procedure.type,
-      createdAt: procedure.createdAt,
-      updatedAt: procedure.updatedAt,
-    };
-
-    if (procedure instanceof SimpleProcedure) {
-      response.estimatedDuration = procedure.estimatedDuration;
-    }
-
-    if (procedure instanceof SpecializedProcedure) {
-      response.requiredEquipment = procedure.requiredEquipment;
-      response.complexityLevel = procedure.complexityLevel;
-      response.requiresAuthorization = procedure.requiresAuthorization;
-      response.authorizationStatus = procedure.authorizationStatus;
-      response.authorizedAt = procedure.authorizedAt;
-      response.deniedAt = procedure.deniedAt;
-    }
-
-    return response;
+  async remove(id: number): Promise<void> {
+    const procedure = await this.findEntityOrFail(id);
+    await this.procedureRepository.remove(procedure);
   }
 }

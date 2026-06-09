@@ -12,7 +12,7 @@ import { UpdateProcedureDto } from './dto/update-procedure.dto';
 import { UserType } from '../users/enum/user-type.enum';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ApiAuthResponses } from '../../common/swagger';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { UserPayload } from '../auth/models/user-payload.model';
 
@@ -54,6 +54,7 @@ export class ProceduresController {
   }
 
   @Delete(':id')
+  @ApiExcludeEndpoint()
   @Roles(UserType.ADMIN, UserType.DOCTOR)
   remove(@Param('id') id: string) {
     return this.proceduresService.remove(+id);
