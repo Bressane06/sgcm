@@ -15,7 +15,7 @@ import type { UserPayload } from '../auth/models/user-payload.model';
 import { Roles } from '../../common';
 import { UserType } from '../users/enum/user-type.enum';
 import { ApiAuthResponses } from '../../common/swagger';
-import { ApiParam } from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiParam } from '@nestjs/swagger';
 
 @Controller('')
 export class MedicalRecordsController {
@@ -59,6 +59,7 @@ export class MedicalRecordsController {
   }
 
   @Delete('records/:id')
+  @ApiExcludeEndpoint()
   delete() {
     return this.medicalRecordsService.delete();
   }

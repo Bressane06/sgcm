@@ -13,9 +13,7 @@ import { UserPayload } from '../auth/models/user-payload.model';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { UserType } from '../users/enum/user-type.enum';
 import { AppointmentStatus } from '../appointments/enum/appointment-status.enum';
-import { AppointmentType } from '../appointments/enum/appointment-type.enum';
 import { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
-import { Exam } from '../appointments/entities/exam.entity';
 
 @Injectable()
 export class MedicalRecordsService {
@@ -77,10 +75,7 @@ export class MedicalRecordsService {
       );
     }
 
-    if (
-      appointment.status !== AppointmentStatus.FINISHED ||
-      appointment.type !== AppointmentType.EXAM
-    ) {
+    if (appointment.status !== AppointmentStatus.FINISHED) {
       throw new BadRequestException(
         'Somente atendimentos FINISHED do tipo EXAM podem gerar prontuários.',
       );
@@ -102,7 +97,7 @@ export class MedicalRecordsService {
       updatedBy: user.sub,
       createdBy: user.sub,
       patient: { ...appointment.schedule.patient },
-      appointment: appointment as Exam,
+      appointment: appointment,
     });
 
     await this.medicalRecordRepository.save(record);

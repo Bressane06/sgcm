@@ -9,8 +9,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Patient } from '../../users/entities/patient.entity';
-import { Exam } from '../../appointments/entities/exam.entity';
 import { User } from '../../users/entities/user.entity';
+import { Appointment } from '../../appointments/entities/appointment.entity';
 
 @Entity('medical_record')
 export class MedicalRecord {
@@ -42,9 +42,9 @@ export class MedicalRecord {
   @ManyToOne(() => Patient, { nullable: false })
   patient!: Patient;
 
-  @OneToOne(() => Exam, { nullable: false })
+  @OneToOne(() => Appointment, { nullable: false })
   @JoinColumn({ name: 'appointmentId' })
-  appointment!: Exam;
+  appointment!: Appointment;
 
   @Column({ name: 'appointmentId' }) // precisa desse id? achei nada a ver
   appointmentId!: number;
