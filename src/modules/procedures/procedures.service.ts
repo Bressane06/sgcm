@@ -12,6 +12,7 @@ import { ProcedureType } from './enum/procedure-type.enum';
 import { AuthorizationStatus } from './enum/authorization-status.enum';
 import { NotFoundException } from '../../common';
 import { Appointment } from '../appointments/entities/appointment.entity';
+import { AppointmentStatus } from '../appointments/enum/appointment-status.enum';
 
 @Injectable()
 export class ProceduresService {
@@ -19,6 +20,8 @@ export class ProceduresService {
     @InjectRepository(Procedure)
     private readonly procedureRepository: Repository<Procedure>,
     private readonly appointmentRepository: Repository<Appointment>,
+    private readonly simpleProcedureRepository: Repository<SimpleProcedure>,
+    private readonly specializedProcedureRepository: Repository<SpecializedProcedure>,
   ) {}
 
   private assertAllowedFieldsForType(dto: CreateProcedureDto): void {
@@ -40,15 +43,6 @@ export class ProceduresService {
         `Campos inválidos para procedimento ${dto.type}: ${wrongFields.join(', ')}.`,
       );
     }
-  }
-
-  private async findProcedureOrFail(id: number): Promise<Procedure> {
-    const procedure = await this.procedureRepository.findOneBy({ id });
-    if (!procedure) {
-      throw new NotFoundException(`Procedure with ID ${id} not found`);
-    }
-
-    return procedure;
   }
 
   private async findAppointmentOrFail(id: number): Promise<Appointment> {
@@ -89,13 +83,39 @@ export class ProceduresService {
   async create(
     id: number,
     dto: CreateProcedureDto,
-    currentUser: UserPayload,
+    user: UserPayload,
   ): Promise<ProcedureResponseDto> {
     this.assertAllowedFieldsForType(dto);
     const appointment = await this.findAppointmentOrFail(id);
 
-    const saved = await this.procedureRepository.save(procedure as any);
-    return this.toResponse(saved);
+    if (appointment.status !== AppointmentStatus.IN_PROGRESS) {
+      throw new NotFoundException('Atendimento');
+    }
+
+    const baseData = { ...dto };
+
+    switch (dto.type) {
+      case ProcedureType.SIMPLE: {
+        const procedure = await this.simpleProcedureRepository.save(
+          this.simpleProcedureRepository.create({
+            ...baseData,
+            estimatedDuration: dto.estimatedDuration,
+          }),
+        );
+
+        return this.toResponse(procedure);
+      }
+
+      case ProcedureType.SPECIALIZED: {
+        const procedure = await this.specializedProcedureRepository.save(
+          this.specializedProcedureRepository.create({
+            ...baseData,
+            authorizationStatus: AuthorizationStatus.PENDING,
+          }),
+        );
+        return this.toResponse(procedure);
+      }
+    }
   }
 
   async findAll(currentUser: UserPayload): Promise<ProcedureResponseDto[]> {

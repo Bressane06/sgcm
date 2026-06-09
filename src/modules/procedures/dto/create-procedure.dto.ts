@@ -9,6 +9,7 @@ import {
   IsBoolean,
   ValidateIf,
 } from 'class-validator';
+import { ComplexityLevel } from '../enum/complexity-level.enum';
 
 export class CreateProcedureDto {
   @ApiProperty({ example: 'Exame de sangue' })
@@ -48,7 +49,7 @@ export class CreateProcedureDto {
   @ApiProperty({ example: 'Média', required: false })
   @IsString()
   @IsOptional()
-  complexityLevel?: string;
+  complexityLevel?: ComplexityLevel;
 
   @ValidateIf(
     (dto: CreateProcedureDto) => dto.type === ProcedureType.SPECIALIZED,

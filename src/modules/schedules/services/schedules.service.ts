@@ -87,7 +87,9 @@ export class SchedulesService {
 
     if (currentUser.type === UserType.PATIENT) {
       if (dto.patientId && dto.patientId !== currentUser.sub) {
-        throw new ForbiddenException('Paciente só pode criar agendamentos para si mesmo.');
+        throw new ForbiddenException(
+          'Paciente só pode criar agendamentos para si mesmo.',
+        );
       }
       dto.patientId = currentUser.sub;
     }
@@ -477,11 +479,17 @@ export class SchedulesService {
       return;
     }
 
-    if (currentUser.type === UserType.DOCTOR && schedule.doctor?.id === currentUser.sub) {
+    if (
+      currentUser.type === UserType.DOCTOR &&
+      schedule.doctor?.id === currentUser.sub
+    ) {
       return;
     }
 
-    if (currentUser.type === UserType.PATIENT && schedule.patient?.id === currentUser.sub) {
+    if (
+      currentUser.type === UserType.PATIENT &&
+      schedule.patient?.id === currentUser.sub
+    ) {
       return;
     }
 
