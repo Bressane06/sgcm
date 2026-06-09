@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ProcedureType } from '../enum/procedure-type.enum';
+import { IsEnum } from 'class-validator';
 
 export class CreateProcedureDto {
   @ApiProperty({ example: 'Exame de sangue' })
@@ -11,7 +12,8 @@ export class CreateProcedureDto {
   })
   description!: string;
 
-  @ApiProperty({ example: ProcedureType.SIMPLE })
+  @ApiProperty({ enum: ProcedureType, example: ProcedureType.SIMPLE })
+  @IsEnum(ProcedureType)
   type!: ProcedureType;
 
   @ApiProperty({ example: 30, required: false })

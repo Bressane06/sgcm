@@ -68,6 +68,7 @@ As respostas de sucesso seguem o envelope { data, meta } produzido pelo Transfor
   // Ordenando as tags para melhor organização na interface do Swagger UI
   SwaggerModule.setup('api', app, document, {
     swaggerOptions: {
+      docExpansion: 'none',
       tagsSorter: (a, b) => {
         const order = [
           'Auth',
@@ -79,6 +80,8 @@ As respostas de sucesso seguem o envelope { data, meta } produzido pelo Transfor
           'Appointments',
           'Reports',
           'Admin Reports',
+          'Medical Records',
+          'Procedures',
         ];
         return order.indexOf(a) - order.indexOf(b);
       },

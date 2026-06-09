@@ -16,17 +16,15 @@ import type { UserPayload } from '../auth/models/user-payload.model';
 import { Roles } from '../../common';
 import { UserType } from '../users/enum/user-type.enum';
 import { ApiAuthResponses } from '../../common/swagger';
-import {
-  ApiBody,
-  ApiExcludeEndpoint,
-  ApiParam,
-  getSchemaPath,
-} from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiParam, ApiTags } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
-@Controller('')
+
+@ApiTags('Medical Records')
+@Controller()
 export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}
 
+  @ApiTags('Appointments')
   @ApiAuthResponses({
     instance: 'appointments/:id/records',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
@@ -41,6 +39,7 @@ export class MedicalRecordsController {
     return this.medicalRecordsService.create(+id, createMedicalRecordDto, user);
   }
 
+  @ApiTags('Appointments')
   @ApiAuthResponses({
     instance: 'appointments/:id/records',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
@@ -57,6 +56,7 @@ export class MedicalRecordsController {
     );
   }
 
+  @ApiTags('Medical Records')
   @ApiAuthResponses({
     instance: 'records/:id',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
@@ -76,6 +76,7 @@ export class MedicalRecordsController {
     return this.medicalRecordsService.update(+id, updateMedicalRecordDto, user);
   }
 
+  @ApiTags('Medical Records')
   @Delete('records/:id')
   @ApiExcludeEndpoint()
   @Roles(UserType.ADMIN, UserType.DOCTOR)
@@ -83,6 +84,7 @@ export class MedicalRecordsController {
     return this.medicalRecordsService.delete();
   }
 
+  @ApiTags('Medical Records')
   @ApiAuthResponses({
     instance: 'patients/:id/records',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
@@ -97,6 +99,7 @@ export class MedicalRecordsController {
     return this.medicalRecordsService.findPatientRecords(+id, user, pagination);
   }
 
+  @ApiTags('Medical Records')
   @ApiAuthResponses({
     instance: 'doctors/:id/records',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
