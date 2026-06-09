@@ -19,6 +19,7 @@ import { Procedure } from '../procedures/entities/procedure.entity';
       FollowUp,
       Schedule,
       Procedure,
+      Appointment,
     ]),
   ],
   controllers: [AppointmentsController],

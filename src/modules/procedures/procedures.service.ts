@@ -19,9 +19,8 @@ export class ProceduresService {
   constructor(
     @InjectRepository(Procedure)
     private readonly procedureRepository: Repository<Procedure>,
+    @InjectRepository(Appointment)
     private readonly appointmentRepository: Repository<Appointment>,
-    private readonly simpleProcedureRepository: Repository<SimpleProcedure>,
-    private readonly specializedProcedureRepository: Repository<SpecializedProcedure>,
   ) {}
 
   private assertAllowedFieldsForType(dto: CreateProcedureDto): void {
@@ -48,10 +47,19 @@ export class ProceduresService {
   private async findAppointmentOrFail(id: number): Promise<Appointment> {
     const appointment = await this.appointmentRepository.findOneBy({ id });
     if (!appointment) {
-      throw new NotFoundException(`Procedure with ID ${id} not found`);
+      throw new NotFoundException(`Appointment with ID ${id} not found`);
     }
 
     return appointment;
+  }
+
+  private async findEntityOrFail(id: number): Promise<Procedure> {
+    const procedure = await this.procedureRepository.findOneBy({ id });
+    if (!procedure) {
+      throw new NotFoundException(`Procedure with ID ${id} not found`);
+    }
+
+    return procedure;
   }
 
   private toResponse(procedure: Procedure): ProcedureResponseDto {
@@ -76,7 +84,6 @@ export class ProceduresService {
       response.authorizedAt = procedure.authorizedAt;
       response.deniedAt = procedure.deniedAt;
     }
-
     return response;
   }
 
@@ -96,23 +103,21 @@ export class ProceduresService {
 
     switch (dto.type) {
       case ProcedureType.SIMPLE: {
-        const procedure = await this.simpleProcedureRepository.save(
-          this.simpleProcedureRepository.create({
-            ...baseData,
-            estimatedDuration: dto.estimatedDuration,
-          }),
-        );
+        const procedure = new SimpleProcedure();
+        Object.assign(procedure, baseData);
+        procedure.estimatedDuration = dto.estimatedDuration;
+
+        await this.procedureRepository.save(procedure);
 
         return this.toResponse(procedure);
       }
 
       case ProcedureType.SPECIALIZED: {
-        const procedure = await this.specializedProcedureRepository.save(
-          this.specializedProcedureRepository.create({
-            ...baseData,
-            authorizationStatus: AuthorizationStatus.PENDING,
-          }),
-        );
+        const procedure = new SpecializedProcedure();
+        Object.assign(procedure, baseData);
+        procedure.authorizationStatus = AuthorizationStatus.PENDING;
+
+        await this.procedureRepository.save(procedure);
         return this.toResponse(procedure);
       }
     }
@@ -138,15 +143,10 @@ export class ProceduresService {
   ): Promise<ProcedureResponseDto> {
     // Buscar procedimento por ID com todos os atributos do subtipo.
     const procedure = await this.findEntityOrFail(id);
-
-    if (!procedure) {
-      throw new NotFoundException(`Procedure with ID ${id} not found`);
-    }
-
     return this.toResponse(procedure);
   }
 
-  async authorizeProcedure(id: number): Promise<Procedure> {
+  async authorizeProcedure(id: number): Promise<ProcedureResponseDto> {
     const procedure = await this.findEntityOrFail(id);
     if (!(procedure instanceof SpecializedProcedure)) {
       throw new NotFoundException(
@@ -172,7 +172,7 @@ export class ProceduresService {
     return this.toResponse(procedure);
   }
 
-  async denyProcedure(id: number): Promise<Procedure> {
+  async denyProcedure(id: number): Promise<ProcedureResponseDto> {
     const procedure = await this.findEntityOrFail(id);
 
     if (!(procedure instanceof SpecializedProcedure)) {
