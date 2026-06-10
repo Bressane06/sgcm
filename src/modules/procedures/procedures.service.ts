@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { CreateProcedureDto } from './dto/create-procedure.dto';
 import { UpdateProcedureDto } from './dto/update-procedure.dto';
 import { UserPayload } from '../auth/models/user-payload.model';
@@ -69,7 +73,7 @@ export class ProceduresService {
       return;
     }
 
-    throw new BadRequestException('Usuário não tem acesso a este atendimento.');
+    throw new ForbiddenException('Usuário não tem acesso a este atendimento.');
   }
 
   private async findAppointmentOrFail(id: number): Promise<Appointment> {
@@ -108,6 +112,29 @@ export class ProceduresService {
     }
 
     return procedure;
+  }
+
+  async findByAppointment(
+    appointmentId: number,
+    currentUser: UserPayload,
+  ): Promise<ProcedureResponseDto[]> {
+    const appointment = await this.findAppointmentOrFail(appointmentId);
+
+    this.assertCanAccessAppointment(appointment, currentUser);
+
+    const procedures = await this.procedureRepository.find({
+      where: { appointmentId },
+      relations: {
+        appointment: {
+          schedule: {
+            doctor: { user: true },
+            patient: { user: true },
+          },
+        },
+      },
+    });
+
+    return procedures.map((procedure) => this.toResponse(procedure));
   }
 
   private toResponse(procedure: Procedure): ProcedureResponseDto {
@@ -197,6 +224,8 @@ export class ProceduresService {
     currentUser: UserPayload,
   ): Promise<ProcedureResponseDto> {
     const procedure = await this.findEntityOrFail(id);
+    this.assertCanAccessAppointment(procedure.appointment, currentUser);
+
     return this.toResponse(procedure);
   }
 
@@ -302,8 +331,11 @@ export class ProceduresService {
     return this.toResponse(saved);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, currentUser: UserPayload): Promise<void> {
     const procedure = await this.findEntityOrFail(id);
+
+    this.assertCanAccessAppointment(procedure.appointment, currentUser);
+
     await this.procedureRepository.remove(procedure);
   }
 }
