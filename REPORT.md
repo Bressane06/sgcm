@@ -1875,6 +1875,87 @@ Além dos endpoints próprios de procedimentos, foram implementadas rotas relaci
 - `POST /appointments/{id}/procedures`
 - `GET /appointments/{id}/procedures`
 
+### 3.51 Uso de dados no swagger
+
+Durante o desenvolvimento do SGCM, foi dada atenção especial à documentação da API utilizando o Swagger por meio do pacote `@nestjs/swagger`. O objetivo não foi apenas listar os endpoints disponíveis, mas também fornecer informações suficientes para que qualquer consumidor da API pudesse compreender corretamente os parâmetros, corpos de requisição, formatos de resposta e possíveis erros retornados pelo sistema.
+
+Para isso, foram utilizados decorators específicos em cada endpoint, como `@ApiOperation`, `@ApiParam`, `@ApiBody`, `@ApiQuery`, `@ApiResponse` e `@ApiProduces`, permitindo documentar detalhadamente cada operação.
+
+Os DTOs utilizados pela aplicação também foram reaproveitados na documentação, garantindo que as definições exibidas no Swagger permanecessem sincronizadas com as validações efetivamente aplicadas pelo sistema. Dessa forma, qualquer alteração realizada nos contratos da API é refletida automaticamente na documentação.
+
+Além da documentação das respostas de sucesso, também foram documentados cenários de erro comuns, incluindo:
+
+* Falhas de autenticação (`401 Unauthorized`);
+* Erros de validação (`400 Bad Request`);
+* Recursos inexistentes (`404 Not Found`);
+* Violações de regras de negócio.
+
+Para manter consistência entre os módulos, foi criado o decorator customizado `@ApiWrappedResponse`, responsável por documentar o formato padronizado das respostas da aplicação. Da mesma forma, o decorator `@ApiAuthResponses` foi utilizado para centralizar a documentação de erros relacionados à autenticação JWT.
+
+Um caso particular foi o endpoint de download de laudos em PDF (`GET /reports/{id}/pdf`). Como esse endpoint não retorna JSON, foi necessário utilizar recursos específicos do Swagger para documentar corretamente uma resposta binária:
+
+```ts
+@ApiProduces('application/pdf')
+@ApiResponse({
+  status: HttpStatus.OK,
+  description: 'PDF do laudo gerado com sucesso.',
+  content: {
+    'application/pdf': {
+      schema: {
+        type: 'string',
+        format: 'binary',
+      },
+    },
+  },
+})
+```
+
+Essa configuração faz com que o Swagger reconheça corretamente o retorno como um arquivo PDF, permitindo testes e geração de clientes compatíveis.
+
+Outro aspecto importante foi a documentação detalhada dos parâmetros de rota por meio de `@ApiParam`, incluindo exemplos reais e descrições claras para identificadores e códigos de validação. O endpoint público de validação de laudos (`GET /reports/validate/{code}`), por exemplo, documenta explicitamente o formato UUID esperado e apresenta exemplos para respostas de sucesso, código inválido e laudo inexistente.
+
+Como resultado, a documentação gerada pelo Swagger tornou-se uma representação fiel do comportamento real da API, reduzindo ambiguidades, facilitando testes e servindo como principal referência para utilização dos 63 endpoints implementados no sistema.
+
+### 3.52 Dois endpoint para authorize e deny
+
+#### O que o `PATCH /procedures/{id}/authorize` recebe no corpo?
+
+O SGCM adotou a terceira abordagem proposta: **dois endpoints semânticos distintos**, um para autorizar e outro para negar procedimentos especializados:
+
+* `PATCH /procedures/{id}/authorize`
+* `PATCH /procedures/{id}/deny`
+
+Essa decisão foi tomada porque simplifica a API e elimina ambiguidades na interpretação da ação desejada. Em vez de enviar um campo como `action` ou `authorizationStatus` no corpo da requisição, a própria URL já representa claramente a operação a ser executada.
+
+Dessa forma:
+
+* Não é necessário criar DTOs específicos apenas para representar a decisão do administrador;
+* A validação torna-se mais simples;
+* A documentação Swagger fica mais intuitiva;
+* Evita estados inválidos, como o envio de valores não previstos para um campo de ação.
+
+Atualmente, ambos os endpoints **não recebem corpo na requisição**. A mudança de estado é determinada exclusivamente pela rota chamada.
+
+Uma possível evolução futura seria exigir um motivo de negação em `PATCH /procedures/{id}/deny`, armazenando essa justificativa para consulta posterior pelo médico responsável. Entretanto, essa funcionalidade não foi implementada no escopo atual do projeto.
+
+### 3.53 Um procedimento pode ser atualizado após o atendimento ser encerrado?
+
+ **Procedimentos não devem ser alterados após o encerramento do atendimento**.
+
+A regra de negócio já impede a criação de novos procedimentos quando o atendimento não está em estado `IN_PROGRESS`, pois os procedimentos representam atos clínicos realizados durante a consulta. Permitir alterações após o encerramento poderia gerar inconsistências entre os registros clínicos produzidos a partir daquele atendimento, como prontuários e laudos.
+
+Além disso, após a finalização do atendimento, os dados passam a representar um histórico clínico consolidado. Alterações posteriores comprometeriam a rastreabilidade das informações e dificultariam auditorias futuras.
+
+Por esse motivo, em um ambiente de produção, o comportamento recomendado seria:
+
+* Permitir criação e edição apenas enquanto o atendimento estiver em `IN_PROGRESS`;
+* Bloquear alterações após `FINISHED`;
+* Caso seja necessária alguma correção, registrar uma retificação ou uma nova versão do procedimento, preservando o histórico original.
+
+Entretanto, na implementação atual do SGCM, apenas a criação e a exclusão possuem restrições relacionadas ao estado do atendimento. A atualização de procedimentos ainda não verifica se o atendimento associado está finalizado.
+
+Portanto, embora a regra de negócio definida pelo grupo seja impedir alterações após o encerramento do atendimento, essa validação ainda não foi implementada no endpoint de atualização. Essa inconsistência foi identificada como uma limitação da versão atual e está listada entre as possíveis melhorias para uma evolução futura do sistema.
+
 ## 4 Mapa de dependências entre módulos
 
 ### Tabela de Dependências por Módulo (Camada Domain)
