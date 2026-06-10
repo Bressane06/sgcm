@@ -15,8 +15,8 @@ export class LoggingMiddleware implements NestMiddleware {
 
     // finish -> resposta enviada com sucesso (ex: cliente recebeu a resposta)
     // close -> conexão fechada antes da resposta ser enviada (ex: cliente desconectou)
-  
-    // isso foi implementado para garantir que mesmo em casos de desconexão do cliente, 
+
+    // isso foi implementado para garantir que mesmo em casos de desconexão do cliente,
     // o log seja registrado, indicando que a resposta não foi concluída.
     const writeLog = (event: 'finish' | 'close'): void => {
       if (logWritten) {

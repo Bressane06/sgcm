@@ -22,7 +22,7 @@ export class SpecialtiesService {
   async create(dto: CreateSpecialtyDto): Promise<Specialty> {
     const specialty = this.specialtyRepository.create({
       name: dto.name,
-      description: dto.description
+      description: dto.description,
     });
 
     const saved = await this.specialtyRepository.save(specialty);
@@ -30,25 +30,26 @@ export class SpecialtiesService {
   }
 
   async findAll(
-    query: FindSpecialtiesQueryDto
-  ): Promise<PaginatedResponse<Specialty>> { 
-    const {page, limit, sort, search} = query;
+    query: FindSpecialtiesQueryDto,
+  ): Promise<PaginatedResponse<Specialty>> {
+    const { page, limit, sort, search } = query;
 
     const skip = (page - 1) * limit;
     const [field, direction] = sort ? sort.split(':') : ['id', 'ASC'];
 
-    const where = search      ? [
-          { name: Like(`%${search}%`) },
-          { description: Like(`%${search}%`) },
-        ]
+    const where = search
+      ? [{ name: Like(`%${search}%`) }, { description: Like(`%${search}%`) }]
       : undefined;
-    
-    const [specialties, totalItems] = await this.specialtyRepository.findAndCount({
-      where,
-      order: { [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC' },
-      skip,
-      take: limit,
-    });
+
+    const [specialties, totalItems] =
+      await this.specialtyRepository.findAndCount({
+        where,
+        order: {
+          [field]: direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
+        },
+        skip,
+        take: limit,
+      });
 
     return {
       data: specialties,
@@ -57,7 +58,7 @@ export class SpecialtiesService {
         page,
         limit,
         totalPages: Math.ceil(totalItems / limit),
-      }
+      },
     };
   }
 
@@ -65,7 +66,7 @@ export class SpecialtiesService {
     const specialty = await this.specialtyRepository.findOne({
       where: { id },
     });
-    
+
     if (!specialty) {
       throw new NotFoundException('Especialidade', id);
     }
@@ -86,7 +87,10 @@ export class SpecialtiesService {
     return this.specialtyRepository.remove(specialty);
   }
 
-  async findDoctors(query: FindDoctorsQueryDto, id: number): Promise<PaginatedResponse<Doctor>> {
+  async findDoctors(
+    query: FindDoctorsQueryDto,
+    id: number,
+  ): Promise<PaginatedResponse<Doctor>> {
     const specialty = await this.specialtyRepository.findOne({ where: { id } });
     if (!specialty) {
       throw new NotFoundException('Especialidade', id);
@@ -104,12 +108,16 @@ export class SpecialtiesService {
       .andWhere(
         new Brackets((qb) => {
           if (search) {
-            qb.where('user.name LIKE :search', { search: `%${search}%` })
-              .orWhere('user.email LIKE :search', { search: `%${search}%` });
+            qb.where('user.name LIKE :search', {
+              search: `%${search}%`,
+            }).orWhere('user.email LIKE :search', { search: `%${search}%` });
           }
         }),
       )
-      .orderBy(`doctor.${field}`, direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC')
+      .orderBy(
+        `doctor.${field}`,
+        direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
+      )
       .skip(skip)
       .take(limit)
       .getManyAndCount();
@@ -121,7 +129,7 @@ export class SpecialtiesService {
         page: query.page,
         limit: query.limit,
         totalPages: Math.ceil(totalItems / query.limit),
-      }
+      },
     };
   }
 }

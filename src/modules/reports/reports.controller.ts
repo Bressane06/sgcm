@@ -54,6 +54,12 @@ export class ReportsController {
     example: 1,
     description: 'ID do exame',
   })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    example: 1,
+    description: 'ID do exame',
+  })
   @ApiAuthResponses({
     instance: '/appointments/1/report',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
@@ -82,6 +88,12 @@ export class ReportsController {
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @Header('Content-Type', 'application/pdf')
   @Header('Content-Disposition', 'attachment; filename="laudo.pdf"')
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    example: 1,
+    description: 'ID do laudo',
+  })
   @ApiParam({
     name: 'id',
     type: Number,
@@ -166,6 +178,12 @@ export class ReportsController {
     example: 1,
     description: 'ID do laudo',
   })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    example: 1,
+    description: 'ID do laudo',
+  })
   @ApiAuthResponses({
     instance: '/reports/1/revoke',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
@@ -228,6 +246,9 @@ export class ReportsController {
   @ApiAuthResponses({
     instance: '/doctors/1/reports',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+  })
+  @ApiOperation({
+    summary: 'Listar laudos emitidos por um médico com paginação',
   })
   @ApiOperation({
     summary: 'Listar laudos emitidos por um médico com paginação',

@@ -42,7 +42,7 @@
       <td>2</td>
     </tr>
     <tr>
-      <td>• Desenvolvimento do módulo Appointments.</td>
+      <td>• Desenvolvimento do módulo Appointments;<br>• Integração e finalização do módulo Procedures;<br>• Implementação dos endpoints de relacionamento entre Appointments e Procedures;<br>• Revisão das regras de autorização e controle de acesso dos módulos clínicos.</td>
       <td>3</td>
     </tr>
     <tr>
@@ -1801,6 +1801,76 @@ Mesmo com a delegação, permanecem algumas restrições:
 - Acessos por delegação exigem auditoria específica;
 - Revogações devem ser aplicadas imediatamente;
 - Notificações de acesso não são contempladas.
+
+### 3.49 Como o grupo lidou com DTOs de hierarquias nas etapas anteriores, e o que aprendeu?
+
+Na Etapa 1, o grupo definiu uma estratégia para estruturar os DTOs da hierarquia de Schedule: utilizar um único DTO com campos opcionais por modalidade ou criar DTOs separados para cada subtipo. Essa escolha impactou diretamente a validação, a documentação no Swagger e a clareza do código.
+
+Agora, ao lidar com Appointment e Procedure, é importante revisitar essa decisão com senso crítico:
+
+A abordagem adotada anteriormente funcionou bem na prática?
+- Na prática, existe um equilibrio entre economia de memória, espaços em branco na tabela, em relação à complexidade. 
+- Na etapa 1, foi implementado herança em duas features principais: Usuarios e Schedules.
+- A feature Usuarios foi implementada utilizando uma relação Joined Table Inheritance feita sem o auxilio de bibliotecas, foi um sacrifício de complexidade em troca de otimização de tabelas que custou caro, dificultando as consultas por ID em certos pontos, já que cada tabela PRECISA apresentar um atributo identificador.
+- Já a feature Schedules se mostrou consistente quando avaliada do ponto de vista prático, de cumprir o seu propósito. Além de facilitar queries eficientes quando precisou retornar agendamentos de todas as modalidades misturados.
+
+Gerou dificuldades de manutenção, validação ou documentação?'
+- Sim, a decisão tomada na feature Users gerou dificuldade na manutenção, validação e também na documentação.
+
+Faz sentido reaplicar o mesmo padrão neste contexto?
+- Sim, faz sentido reaplicar a abordagem STI no contexto das procedures pois, não é um disperdício grande de atributos nesse caso, já que as classes apresentam mais atributos em comum com a subclasse do que o contrário.
+
+Ou existem razões técnicas para adotar uma estratégia diferente?
+- Não, será implementado de acordo com a questão esclarecida a cima.
+
+A análise acima refletiu aprendizado real ao longo do projeto. Registrando no relatório não apenas a decisão atual, mas também a avaliação da escolha feita na Etapa 1, destacando o que funcionou, o que não funcionou e por quê.
+
+### 3.50 O que o PATCH /procedures/{id}/authorization recebe no corpo?
+
+Por motivos de melhor modularização, implementar uma abordagem mais semântica, com dois endpoints distintos:
+- PATCH /procedures/{id}/authorize
+- PATCH /procedures/{id}/deny
+Abordagem essa que dispensa o corpo da requisição.
+
+### 3.50 Módulo Procedures e vínculo com atendimentos
+
+O módulo Procedures foi desenvolvido para registrar procedimentos realizados durante um atendimento médico. Cada procedimento pertence obrigatoriamente a um único atendimento (Appointment), garantindo rastreabilidade clínica e integridade dos dados.
+
+Para suportar diferentes tipos de procedimento, foi adotada uma estratégia de herança utilizando Table Inheritance do TypeORM. A entidade abstrata Procedure concentra os atributos comuns, enquanto as subclasses SimpleProcedure e SpecializedProcedure armazenam informações específicas de cada categoria.
+
+#### Procedimentos Simples
+
+Os procedimentos simples armazenam apenas informações básicas e uma duração estimada para execução.
+
+#### Procedimentos Especializados
+
+Os procedimentos especializados possuem informações adicionais, como:
+
+- Equipamentos necessários;
+- Nível de complexidade;
+- Necessidade de autorização prévia;
+- Status de autorização;
+- Datas de autorização ou negativa.
+
+Foi implementado um fluxo de autorização para procedimentos especializados, permitindo que apenas usuários administradores aprovem ou neguem sua execução.
+
+#### Controle de acesso
+
+As operações do módulo seguem as mesmas regras de segurança adotadas nos demais módulos clínicos:
+
+- Administradores possuem acesso completo;
+- Médicos podem manipular apenas procedimentos vinculados aos seus próprios atendimentos;
+- Pacientes podem visualizar apenas procedimentos relacionados aos seus atendimentos;
+- Usuários sem vínculo com o atendimento recebem resposta HTTP 403 (Forbidden).
+
+#### Integração com Appointments
+
+Além dos endpoints próprios de procedimentos, foram implementadas rotas relacionadas aos atendimentos:
+
+- `POST /appointments/{id}/procedures`
+- `GET /appointments/{id}/procedures`
+
+Essa abordagem mantém o relacionamento explícito entre atendimento e procedimento, facilitando consultas clínicas e futuras expansões do sistema.
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 

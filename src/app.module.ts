@@ -14,6 +14,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { LoggingMiddleware } from './common/middlewares/logging.middleware';
 import { StringValue } from 'ms';
 import { RolesGuard } from './common/guards/roles.guard';
+import { ProceduresModule } from './modules/procedures/procedures.module';
 import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { ReportsModule } from './modules/reports/reports.module';
@@ -47,6 +48,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     SchedulesModule,
     AppointmentsModule,
     AuthModule,
+    ProceduresModule,
     MedicalRecordsModule,
     AdminModule,
     ReportsModule,

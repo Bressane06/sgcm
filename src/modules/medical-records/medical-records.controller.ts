@@ -19,6 +19,7 @@ import { UserType } from '../users/enum/user-type.enum';
 import { ApiAuthResponses, ApiWrappedResponse } from '../../common/swagger';
 import {
   ApiBody,
+  ApiExcludeEndpoint,
   ApiOperation,
   ApiParam,
   ApiTags,
@@ -135,8 +136,9 @@ export class MedicalRecordsController {
     description: 'Identificador do prontuário',
   })
   @Delete('records/:id')
+  //@ApiExcludeEndpoint()
   @Roles(UserType.ADMIN, UserType.DOCTOR)
-  delete(@Param('id') id: string) {
+  delete() {
     return this.medicalRecordsService.delete();
   }
 
