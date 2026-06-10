@@ -42,7 +42,7 @@
       <td>2</td>
     </tr>
     <tr>
-      <td>• Desenvolvimento do módulo Appointments.</td>
+      <td>• Desenvolvimento do módulo Appointments;<br>• Integração e finalização do módulo Procedures;<br>• Implementação dos endpoints de relacionamento entre Appointments e Procedures;<br>• Revisão das regras de autorização e controle de acesso dos módulos clínicos.</td>
       <td>3</td>
     </tr>
     <tr>
@@ -1831,6 +1831,46 @@ Por motivos de melhor modularização, implementar uma abordagem mais semântica
 - PATCH /procedures/{id}/authorize
 - PATCH /procedures/{id}/deny
 Abordagem essa que dispensa o corpo da requisição.
+
+### 3.50 Módulo Procedures e vínculo com atendimentos
+
+O módulo Procedures foi desenvolvido para registrar procedimentos realizados durante um atendimento médico. Cada procedimento pertence obrigatoriamente a um único atendimento (Appointment), garantindo rastreabilidade clínica e integridade dos dados.
+
+Para suportar diferentes tipos de procedimento, foi adotada uma estratégia de herança utilizando Table Inheritance do TypeORM. A entidade abstrata Procedure concentra os atributos comuns, enquanto as subclasses SimpleProcedure e SpecializedProcedure armazenam informações específicas de cada categoria.
+
+#### Procedimentos Simples
+
+Os procedimentos simples armazenam apenas informações básicas e uma duração estimada para execução.
+
+#### Procedimentos Especializados
+
+Os procedimentos especializados possuem informações adicionais, como:
+
+- Equipamentos necessários;
+- Nível de complexidade;
+- Necessidade de autorização prévia;
+- Status de autorização;
+- Datas de autorização ou negativa.
+
+Foi implementado um fluxo de autorização para procedimentos especializados, permitindo que apenas usuários administradores aprovem ou neguem sua execução.
+
+#### Controle de acesso
+
+As operações do módulo seguem as mesmas regras de segurança adotadas nos demais módulos clínicos:
+
+- Administradores possuem acesso completo;
+- Médicos podem manipular apenas procedimentos vinculados aos seus próprios atendimentos;
+- Pacientes podem visualizar apenas procedimentos relacionados aos seus atendimentos;
+- Usuários sem vínculo com o atendimento recebem resposta HTTP 403 (Forbidden).
+
+#### Integração com Appointments
+
+Além dos endpoints próprios de procedimentos, foram implementadas rotas relacionadas aos atendimentos:
+
+- `POST /appointments/{id}/procedures`
+- `GET /appointments/{id}/procedures`
+
+Essa abordagem mantém o relacionamento explícito entre atendimento e procedimento, facilitando consultas clínicas e futuras expansões do sistema.
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
