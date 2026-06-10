@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -46,14 +47,11 @@ export class UsersController {
   @Get(':id')
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @ApiOperation({ summary: 'Buscar usuário por ID' })
-  async findOne(
-    @Param('id') id: number,
-    @CurrentUser() user: UserPayload,
-  ) {
+  async findOne(@Param('id') id: number, @CurrentUser() user: UserPayload) {
     return this.usersService.findOneWithAccess(Number(id), user);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @ApiOperation({ summary: 'Atualizar usuário' })
   async update(
@@ -68,10 +66,7 @@ export class UsersController {
   @Roles(UserType.ADMIN)
   @HttpCode(204)
   @ApiOperation({ summary: 'Inativar usuário' })
-  async remove(
-    @Param('id') id: number,
-    @CurrentUser() user: UserPayload,
-  ) {
+  async remove(@Param('id') id: number, @CurrentUser() user: UserPayload) {
     return this.usersService.removeWithAccess(Number(id), user);
   }
 }

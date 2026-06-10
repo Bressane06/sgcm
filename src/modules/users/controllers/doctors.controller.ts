@@ -9,7 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { DoctorsService } from '../services/doctors.service';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { FindDoctorsQueryDto } from '../dto/find-doctors-query.dto';
 import { UpdateSpecialtyDto } from '../../specialties/dto/update-specialty.dto';
 import { FindRelatedSchedulesQueryDto } from '../../schedules/dto/find-related-schedules-query.dto';
@@ -46,13 +46,23 @@ export class DoctorsController {
   @Get(':id/specialties')
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @ApiOperation({ summary: 'Listar especialidades do médico' })
-  async findSpecialties(@Query() query: FindDoctorsQueryDto, @Param('id') id: number) {
+  async findSpecialties(
+    @Query() query: FindDoctorsQueryDto,
+    @Param('id') id: number,
+  ) {
     return await this.doctorsService.findSpecialties(query, Number(id));
   }
 
   @Post(':id/specialties')
   @Roles(UserType.ADMIN)
   @ApiOperation({ summary: 'Associar especialidade ao médico' })
+    @ApiBody({
+    schema: {
+      example: {
+        name: 'Cardiologia'
+      }
+    }
+  })
   async associateSpecialty(@Param('id') id: number, @Body() specialtyDto: UpdateSpecialtyDto) {
     return await this.doctorsService.associateSpecialty(
       Number(id),
@@ -64,7 +74,7 @@ export class DoctorsController {
   @Roles(UserType.ADMIN)
   @HttpCode(204)
   @ApiOperation({ summary: 'Remover especialidade do médico' })
-  async removeSpecialty(  
+  async removeSpecialty(
     @Param('id') id: number,
     @Param('specialtyId') specialtyId: number,
   ) {
@@ -73,7 +83,7 @@ export class DoctorsController {
       Number(specialtyId),
     );
   }
-  
+
   @Get(':id/schedules')
   @Roles(UserType.ADMIN, UserType.DOCTOR)
   @ApiOperation({ description: 'Listar agendamentos de um médico' })

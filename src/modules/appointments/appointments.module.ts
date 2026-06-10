@@ -7,6 +7,7 @@ import { FollowUp } from './entities/follow-up.entity';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { AppointmentsController } from './appointments.controller';
 import { AppointmentsService } from './appointments.service';
+import { ProceduresModule } from '../procedures/procedures.module';
 
 @Module({
   imports: [
@@ -16,7 +17,9 @@ import { AppointmentsService } from './appointments.service';
       Exam,
       FollowUp,
       Schedule,
+      Appointment,
     ]),
+    ProceduresModule,
   ],
   controllers: [AppointmentsController],
   providers: [AppointmentsService],

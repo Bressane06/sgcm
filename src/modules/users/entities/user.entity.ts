@@ -1,18 +1,12 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  BeforeInsert,
-  BeforeUpdate,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, TableInheritance,
+  CreateDateColumn, UpdateDateColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Exclude } from 'class-transformer';
 import { UserType } from '../enum/user-type.enum';
 
 @Entity('user')
-export abstract class User {
+@TableInheritance({ column: { type: 'varchar', name: 'type' } })
+export class User {
   @PrimaryGeneratedColumn()
   id!: number;
 
@@ -23,7 +17,7 @@ export abstract class User {
   email!: string;
 
   @Exclude()
-  @Column()
+  @Column({ select: false })
   password!: string;
 
   @Column({ type: 'varchar' })
@@ -42,12 +36,8 @@ export abstract class User {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  activate() {
-    this.isActive = true;
-  }
-  deactivate() {
-    this.isActive = false;
-  }
+  activate() { this.isActive = true; }
+  deactivate() { this.isActive = false; }
 
   @BeforeInsert()
   @BeforeUpdate()

@@ -29,10 +29,7 @@ export class PatientsController {
   @Get(':id')
   @Roles(UserType.ADMIN, UserType.PATIENT)
   @ApiOperation({ summary: 'Buscar paciente por ID' })
-  findOne(
-    @Param('id') id: number,
-    @CurrentUser() user: UserPayload,
-  ) {
+  findOne(@Param('id') id: number, @CurrentUser() user: UserPayload) {
     return this.patientsService.findOneWithAccess(Number(id), user);
   }
 

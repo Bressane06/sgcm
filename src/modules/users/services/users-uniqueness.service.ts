@@ -50,11 +50,10 @@ export class UsersUniquenessService {
     if (!crm) return;
 
     const existingDoctor = await this.doctorRepository.findOne({
-      where: { crm },
-      relations: { user: true },
+      where: { crm }
     });
 
-    if (existingDoctor && existingDoctor.user.id !== currentUserId) {
+    if (existingDoctor && existingDoctor.id !== currentUserId) {
       throw new ConflictException(`CRM "${crm}" já existe`);
     }
   }
@@ -67,11 +66,10 @@ export class UsersUniquenessService {
     if (!cpf) return;
 
     const existingPatient = await this.patientRepository.findOne({
-      where: { cpf },
-      relations: { user: true },
+      where: { cpf }
     });
 
-    if (existingPatient && existingPatient.user.id !== currentUserId) {
+    if (existingPatient && existingPatient.id !== currentUserId) {
       throw new ConflictException(`CPF "${cpf}" já existe`);
     }
   }

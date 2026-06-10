@@ -34,10 +34,7 @@ export class SchedulesController {
   @Post()
   @Roles(UserType.ADMIN, UserType.PATIENT)
   @ApiOperation({ summary: 'Criar agendamento' })
-  create(
-    @Body() dto: CreateScheduleDto,
-    @CurrentUser() user: UserPayload,
-  ) {
+  create(@Body() dto: CreateScheduleDto, @CurrentUser() user: UserPayload) {
     return this.schedulesService.create(dto, user);
   }
 
@@ -51,10 +48,7 @@ export class SchedulesController {
   @Get(':id')
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @ApiOperation({ summary: 'Buscar agendamento por ID' })
-  findOne(
-    @Param('id') id: number,
-    @CurrentUser() user: UserPayload,
-  ) {
+  findOne(@Param('id') id: number, @CurrentUser() user: UserPayload) {
     return this.schedulesService.findOneWithAccess(Number(id), user);
   }
 
