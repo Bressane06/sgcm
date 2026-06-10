@@ -69,12 +69,11 @@ export class ProceduresController {
   }
 
   @Patch(':id/authorize')
-  @ApiOperation({ summary: 'Autorizar procedimento especializado' })
   @ApiOkResponse({ type: ProcedureResponseDto })
-  @ApiResponse({
-    status: 400,
+  @ApiOperation({
+    summary: 'Autorizar procedimento especializado',
     description:
-      'Procedimento não é SPECIALIZED, não requer autorização ou não está PENDING.',
+      'Disponível apenas para Administradores. Autoriza um procedimento especializado com status PENDING.',
   })
   authorizeProcedure(@Param('id') id: string) {
     return this.proceduresService.authorizeProcedure(+id);
@@ -84,7 +83,7 @@ export class ProceduresController {
   @ApiOperation({
     summary: 'Negar procedimento especializado',
     description:
-      'A negação é definitiva — transição DENIED → PENDING não é permitida.',
+      'Disponível apenas para Administradores. A negação é definitiva e a transição DENIED → PENDING não é permitida.',
   })
   @ApiOkResponse({ type: ProcedureResponseDto })
   @ApiResponse({

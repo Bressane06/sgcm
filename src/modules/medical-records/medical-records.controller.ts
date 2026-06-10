@@ -136,7 +136,7 @@ export class MedicalRecordsController {
     description: 'Identificador do prontuário',
   })
   @Delete('records/:id')
-  //@ApiExcludeEndpoint()
+  @ApiExcludeEndpoint()
   @Roles(UserType.ADMIN, UserType.DOCTOR)
   delete() {
     return this.medicalRecordsService.delete();

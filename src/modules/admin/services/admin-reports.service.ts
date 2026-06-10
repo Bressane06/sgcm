@@ -27,6 +27,11 @@ import { OccupationQueryDto } from '../dto/occupation-query.dto';
 import { Doctor } from '../../users/entities/doctor.entity';
 import { NotFoundException } from '../../../common';
 import { DoctorOccupationReportDto } from '../dto/doctor-occupation-report.dto';
+import { AuthorizationStatus } from '../../procedures/enum/authorization-status.enum';
+import { ComplexityLevel } from '../../procedures/enum/complexity-level.enum';
+import { ProcedureType } from '../../procedures/enum/procedure-type.enum';
+import { AdminProceduresReportDto } from '../dto/admin-procedures-reports.dto';
+import { Procedure } from '../../procedures/entities/procedure.entity';
 
 interface AppointmentDateFilter {
   createdAt?: FindOperator<Date>;
@@ -41,6 +46,8 @@ export class AdminReportsService {
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(Doctor)
     private readonly doctorRepository: Repository<Doctor>,
+    @InjectRepository(Procedure)
+    private readonly procedureRepository: Repository<Procedure>,
   ) {}
 
   async getSchedulesReport(
@@ -151,6 +158,71 @@ export class AdminReportsService {
     };
   }
 
+  async getProceduresReport(): Promise<AdminProceduresReportDto> {
+    const queryBuilder =
+      this.procedureRepository.createQueryBuilder('procedure');
+
+    const [byTypeRows, byAuthorizationRows, byComplexityRows] =
+      await Promise.all([
+        queryBuilder
+          .clone()
+          .select('procedure.type', 'key')
+          .addSelect('COUNT(*)', 'count')
+          .groupBy('procedure.type')
+          .getRawMany(),
+
+        queryBuilder
+          .clone()
+          .select('procedure.authorizationStatus', 'key')
+          .addSelect('COUNT(*)', 'count')
+          .where('procedure.type = :type', {
+            type: ProcedureType.SPECIALIZED,
+          })
+          .groupBy('procedure.authorizationStatus')
+          .getRawMany(),
+
+        queryBuilder
+          .clone()
+          .select('procedure.complexityLevel', 'key')
+          .addSelect('COUNT(*)', 'count')
+          .where('procedure.type = :type', {
+            type: ProcedureType.SPECIALIZED,
+          })
+          .groupBy('procedure.complexityLevel')
+          .getRawMany(),
+      ]);
+
+    const byType = this.createEmptyAggregationMap(
+      Object.values(ProcedureType),
+    ) as AdminProceduresReportDto['byType'];
+
+    const byAuthorizationStatus = this.createEmptyAggregationMap(
+      Object.values(AuthorizationStatus),
+    ) as AdminProceduresReportDto['byAuthorizationStatus'];
+
+    const byComplexityLevel = this.createEmptyAggregationMap(
+      Object.values(ComplexityLevel),
+    ) as AdminProceduresReportDto['byComplexityLevel'];
+
+    for (const row of byTypeRows) {
+      byType[row.key as ProcedureType] = Number(row.count);
+    }
+
+    for (const row of byAuthorizationRows) {
+      byAuthorizationStatus[row.key as AuthorizationStatus] = Number(row.count);
+    }
+
+    for (const row of byComplexityRows) {
+      byComplexityLevel[row.key as ComplexityLevel] = Number(row.count);
+    }
+
+    return {
+      byType,
+      byAuthorizationStatus,
+      byComplexityLevel,
+    };
+  }
+
   async getDoctorOccupation(
     doctorId: number,
     query: OccupationQueryDto,
@@ -171,7 +243,7 @@ export class AdminReportsService {
 
     const schedules = await this.scheduleRepository.find({
       where: {
-        doctorId: doctorId, 
+        doctorId: doctorId,
         scheduledAt: Between(start, end),
       },
       relations: ['doctor'],
