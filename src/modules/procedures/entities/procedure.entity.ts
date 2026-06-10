@@ -2,10 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   TableInheritance,
   UpdateDateColumn,
 } from 'typeorm';
+import { Appointment } from '../../appointments/entities/appointment.entity';
 import { ProcedureType } from '../enum/procedure-type.enum';
 
 @Entity('procedure')
@@ -22,6 +25,13 @@ export abstract class Procedure {
 
   @Column({ type: 'varchar', name: 'type', insert: false, update: false })
   type!: ProcedureType;
+
+  @ManyToOne(() => Appointment, { eager: true })
+  @JoinColumn({ name: 'appointmentId' })
+  appointment!: Appointment;
+
+  @Column()
+  appointmentId!: number;
 
   @CreateDateColumn()
   createdAt!: Date;

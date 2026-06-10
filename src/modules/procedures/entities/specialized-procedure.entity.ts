@@ -11,18 +11,16 @@ export class SpecializedProcedure extends Procedure {
 
   @Column({
     type: 'varchar',
-    enum: ComplexityLevel,
     nullable: true,
   })
   complexityLevel?: ComplexityLevel;
 
-  @Column({ nullable: true })
-  requiresAuthorization?: boolean;
+  @Column({ default: true })
+  requiresAuthorization!: boolean;
 
   @Column({
     type: 'varchar',
-    enum: AuthorizationStatus,
-    nullable: true,
+    default: AuthorizationStatus.PENDING,
   })
   authorizationStatus?: AuthorizationStatus;
 
@@ -33,30 +31,22 @@ export class SpecializedProcedure extends Procedure {
   deniedAt?: Date;
 
   authorize(): void {
-    if (!this.requiresAuthorization) {
-      this.authorizationStatus = AuthorizationStatus.AUTHORIZED;
-      this.authorizedAt = new Date();
-      return;
-    }
-
     this.authorizationStatus = AuthorizationStatus.AUTHORIZED;
     this.authorizedAt = new Date();
+    this.deniedAt = undefined;
   }
 
   deny(): void {
     this.authorizationStatus = AuthorizationStatus.DENIED;
     this.deniedAt = new Date();
+    this.authorizedAt = undefined;
   }
 
-  isPending(): boolean | undefined {
-    return (
-      this.requiresAuthorization &&
-      this.authorizationStatus === AuthorizationStatus.PENDING
-    );
+  isPending(): boolean {
+    return this.authorizationStatus === AuthorizationStatus.PENDING;
   }
 
   canBePerformed(): boolean {
-    if (!this.requiresAuthorization) return true;
     return this.authorizationStatus === AuthorizationStatus.AUTHORIZED;
   }
 }
