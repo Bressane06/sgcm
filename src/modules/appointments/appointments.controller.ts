@@ -87,6 +87,6 @@ export class AppointmentsController {
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
   @ApiOperation({ summary: 'Listar procedimentos' })
   findAllProcedures(@Param('id') id: number, @CurrentUser() user: UserPayload) {
-    return this.proceduresService.findAll(user);
+    return this.proceduresService.findByAppointment(Number(id), user);
   }
 }

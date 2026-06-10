@@ -61,14 +61,14 @@ export class ProceduresService {
 
     if (
       currentUser.type === 'DOCTOR' &&
-      appointment.schedule.doctor.user.id === currentUser.sub
+      appointment.schedule.doctorId === currentUser.sub
     ) {
       return;
     }
 
     if (
       currentUser.type === 'PATIENT' &&
-      appointment.schedule.patient.user.id === currentUser.sub
+      appointment.schedule.patientId === currentUser.sub
     ) {
       return;
     }
@@ -80,10 +80,7 @@ export class ProceduresService {
     const appointment = await this.appointmentRepository.findOne({
       where: { id },
       relations: {
-        schedule: {
-          doctor: { user: true },
-          patient: { user: true },
-        },
+        schedule: true,
       },
     });
 
@@ -99,10 +96,7 @@ export class ProceduresService {
       where: { id },
       relations: {
         appointment: {
-          schedule: {
-            doctor: { user: true },
-            patient: { user: true },
-          },
+          schedule: true,
         },
       },
     });
@@ -126,10 +120,7 @@ export class ProceduresService {
       where: { appointmentId },
       relations: {
         appointment: {
-          schedule: {
-            doctor: { user: true },
-            patient: { user: true },
-          },
+          schedule: true,
         },
       },
     });

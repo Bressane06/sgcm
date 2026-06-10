@@ -54,9 +54,11 @@ export class ProceduresController {
   }
 
   @Delete(':id')
-  @ApiExcludeEndpoint()
   @Roles(UserType.ADMIN, UserType.DOCTOR)
-  remove(@Param('id') id: string) {
-    return this.proceduresService.remove(+id);
+  remove(
+    @Param('id') id: string,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.proceduresService.remove(+id, user);
   }
 }

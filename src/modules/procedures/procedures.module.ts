@@ -5,6 +5,7 @@ import { Procedure } from './entities/procedure.entity';
 import { SimpleProcedure } from './entities/simple-procedure.entity';
 import { SpecializedProcedure } from './entities/specialized-procedure.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Appointment } from '../appointments/entities/appointment.entity';
 
 @Module({
   imports: [
@@ -12,9 +13,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       Procedure,
       SimpleProcedure,
       SpecializedProcedure,
+      Appointment,
     ]),
   ],
   controllers: [ProceduresController],
   providers: [ProceduresService],
+  exports: [ProceduresService],
 })
 export class ProceduresModule {}
