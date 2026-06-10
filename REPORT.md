@@ -55,7 +55,7 @@
       <td>2</td>
     </tr>
     <tr>
-      <td>• Desenvolvimento do módulo Reports;<br>• Desenvolvimento dos relatórios administrativos (Admin Reports);<br>• Atualização, revisão e organização da documentação técnica e Swagger.</td>
+      <td>• Desenvolvimento do módulo Reports;<br>• Desenvolvimento dos relatórios administrativos (Admin Reports);<br>• Atualização, revisão e organização da documentação técnica e Swagger.<br>• Testes finais</td>
       <td>3</td>
     </tr>
 
@@ -1719,13 +1719,13 @@ Limitação reconhecida: para o volume de dados de um projeto didático com SQLi
 
 ### 3.47 Endpoint `DELETE /records/{id}`
 
-O endpoint `DELETE /records/{id}` foi implementado e retorna `409 Conflict` em qualquer tentativa de exclusão.
+O endpoint `DELETE /records/{id}` foi implementado na aplicação, porém foi ocultado da documentação Swagger utilizando `@ApiExcludeEndpoint()`.
 
-Prontuários médicos são registros permanentes e, por regra de negócio, não podem ser excluídos em nenhuma circunstância, independentemente do papel do usuário ou do estado do registro. A decisão de manter o endpoint, em vez de simplesmente omiti-lo, foi tomada para tornar essa restrição explícita no contrato da API: ao invés de o consumidor receber um `404` genérico por não encontrar a rota, ele recebe um `409 Conflict` com uma mensagem explicativa que comunica o motivo da negativa.
+Prontuários médicos são registros permanentes e, por regra de negócio, não podem ser excluídos em nenhuma circunstância, independentemente do perfil do usuário ou do estado do registro. Como a operação nunca é permitida, optou-se por não expor esse endpoint na documentação pública da API, evitando que consumidores interpretem a exclusão de prontuários como uma funcionalidade disponível.
 
-Essa abordagem diferencia prontuários de recursos que não possuem operação de exclusão por ausência de funcionalidade. Aqui, a operação existe, é reconhecida pelo sistema e é intencionalmente rejeitada — o que torna o comportamento auditável e rastreável nos logs da aplicação.
+A rota permanece implementada internamente para tornar explícita a restrição no domínio da aplicação e permitir tratamento consistente de tentativas indevidas de exclusão. Entretanto, por não representar um caso de uso válido para clientes da API, sua documentação foi removida do Swagger.
 
-Esse cenário difere de restrições condicionais, como a impossibilidade de excluir um médico que possua agendamentos ativos. Nesses casos, o `409 Conflict` representa uma condição temporária que pode deixar de existir. Para os prontuários, a restrição é definitiva e estrutural — e o endpoint reflete exatamente isso.
+Essa decisão difere de cenários em que a exclusão é suportada, mas pode ser bloqueada por condições específicas de negócio — como a tentativa de remover um médico que possua agendamentos ativos. Nesses casos, a operação continua documentada porque pode ser executada em determinadas circunstâncias. Para prontuários, a restrição é permanente e estrutural, razão pela qual o endpoint não é apresentado ao consumidor da API.
 
 ### 3.48 Controle de Acesso com Autorização Delegada
 
@@ -1809,18 +1809,22 @@ Na Etapa 1, o grupo definiu uma estratégia para estruturar os DTOs da hierarqui
 Agora, ao lidar com Appointment e Procedure, é importante revisitar essa decisão com senso crítico:
 
 A abordagem adotada anteriormente funcionou bem na prática?
-- Na prática, existe um equilibrio entre economia de memória, espaços em branco na tabela, em relação à complexidade. 
+
+- Na prática, existe um equilibrio entre economia de memória, espaços em branco na tabela, em relação à complexidade.
 - Na etapa 1, foi implementado herança em duas features principais: Usuarios e Schedules.
 - A feature Usuarios foi implementada utilizando uma relação Joined Table Inheritance feita sem o auxilio de bibliotecas, foi um sacrifício de complexidade em troca de otimização de tabelas que custou caro, dificultando as consultas por ID em certos pontos, já que cada tabela PRECISA apresentar um atributo identificador.
 - Já a feature Schedules se mostrou consistente quando avaliada do ponto de vista prático, de cumprir o seu propósito. Além de facilitar queries eficientes quando precisou retornar agendamentos de todas as modalidades misturados.
 
 Gerou dificuldades de manutenção, validação ou documentação?'
+
 - Sim, a decisão tomada na feature Users gerou dificuldade na manutenção, validação e também na documentação.
 
 Faz sentido reaplicar o mesmo padrão neste contexto?
+
 - Sim, faz sentido reaplicar a abordagem STI no contexto das procedures pois, não é um disperdício grande de atributos nesse caso, já que as classes apresentam mais atributos em comum com a subclasse do que o contrário.
 
 Ou existem razões técnicas para adotar uma estratégia diferente?
+
 - Não, será implementado de acordo com a questão esclarecida a cima.
 
 A análise acima refletiu aprendizado real ao longo do projeto. Registrando no relatório não apenas a decisão atual, mas também a avaliação da escolha feita na Etapa 1, destacando o que funcionou, o que não funcionou e por quê.
@@ -1828,9 +1832,10 @@ A análise acima refletiu aprendizado real ao longo do projeto. Registrando no r
 ### 3.50 O que o PATCH /procedures/{id}/authorization recebe no corpo?
 
 Por motivos de melhor modularização, implementar uma abordagem mais semântica, com dois endpoints distintos:
+
 - PATCH /procedures/{id}/authorize
 - PATCH /procedures/{id}/deny
-Abordagem essa que dispensa o corpo da requisição.
+  Abordagem essa que dispensa o corpo da requisição.
 
 ### 3.50 Módulo Procedures e vínculo com atendimentos
 
