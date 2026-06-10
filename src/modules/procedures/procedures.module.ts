@@ -18,6 +18,6 @@ import { Appointment } from '../appointments/entities/appointment.entity';
   ],
   controllers: [ProceduresController],
   providers: [ProceduresService],
-  exports: [ProceduresService],
+  exports: [ProceduresService], // <-- isso aqui
 })
 export class ProceduresModule {}

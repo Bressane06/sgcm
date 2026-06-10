@@ -55,7 +55,7 @@
       <td>2</td>
     </tr>
     <tr>
-      <td>• Desenvolvimento do módulo Reports;<br>• Desenvolvimento dos relatórios administrativos (Admin Reports);<br>• Atualização, revisão e organização da documentação técnica e Swagger.</td>
+      <td>• Desenvolvimento do módulo Reports;<br>• Desenvolvimento dos relatórios administrativos (Admin Reports);<br>• Atualização, revisão e organização da documentação técnica e Swagger.<br>• Testes finais</td>
       <td>3</td>
     </tr>
 
@@ -1719,13 +1719,13 @@ Limitação reconhecida: para o volume de dados de um projeto didático com SQLi
 
 ### 3.47 Endpoint `DELETE /records/{id}`
 
-O endpoint `DELETE /records/{id}` foi implementado e retorna `409 Conflict` em qualquer tentativa de exclusão.
+O endpoint `DELETE /records/{id}` foi implementado na aplicação, porém foi ocultado da documentação Swagger utilizando `@ApiExcludeEndpoint()`.
 
-Prontuários médicos são registros permanentes e, por regra de negócio, não podem ser excluídos em nenhuma circunstância, independentemente do papel do usuário ou do estado do registro. A decisão de manter o endpoint, em vez de simplesmente omiti-lo, foi tomada para tornar essa restrição explícita no contrato da API: ao invés de o consumidor receber um `404` genérico por não encontrar a rota, ele recebe um `409 Conflict` com uma mensagem explicativa que comunica o motivo da negativa.
+Prontuários médicos são registros permanentes e, por regra de negócio, não podem ser excluídos em nenhuma circunstância, independentemente do perfil do usuário ou do estado do registro. Como a operação nunca é permitida, optou-se por não expor esse endpoint na documentação pública da API, evitando que consumidores interpretem a exclusão de prontuários como uma funcionalidade disponível.
 
-Essa abordagem diferencia prontuários de recursos que não possuem operação de exclusão por ausência de funcionalidade. Aqui, a operação existe, é reconhecida pelo sistema e é intencionalmente rejeitada — o que torna o comportamento auditável e rastreável nos logs da aplicação.
+A rota permanece implementada internamente para tornar explícita a restrição no domínio da aplicação e permitir tratamento consistente de tentativas indevidas de exclusão. Entretanto, por não representar um caso de uso válido para clientes da API, sua documentação foi removida do Swagger.
 
-Esse cenário difere de restrições condicionais, como a impossibilidade de excluir um médico que possua agendamentos ativos. Nesses casos, o `409 Conflict` representa uma condição temporária que pode deixar de existir. Para os prontuários, a restrição é definitiva e estrutural — e o endpoint reflete exatamente isso.
+Essa decisão difere de cenários em que a exclusão é suportada, mas pode ser bloqueada por condições específicas de negócio — como a tentativa de remover um médico que possua agendamentos ativos. Nesses casos, a operação continua documentada porque pode ser executada em determinadas circunstâncias. Para prontuários, a restrição é permanente e estrutural, razão pela qual o endpoint não é apresentado ao consumidor da API.
 
 ### 3.48 Controle de Acesso com Autorização Delegada
 
@@ -1809,18 +1809,22 @@ Na Etapa 1, o grupo definiu uma estratégia para estruturar os DTOs da hierarqui
 Agora, ao lidar com Appointment e Procedure, é importante revisitar essa decisão com senso crítico:
 
 A abordagem adotada anteriormente funcionou bem na prática?
-- Na prática, existe um equilibrio entre economia de memória, espaços em branco na tabela, em relação à complexidade. 
+
+- Na prática, existe um equilibrio entre economia de memória, espaços em branco na tabela, em relação à complexidade.
 - Na etapa 1, foi implementado herança em duas features principais: Usuarios e Schedules.
 - A feature Usuarios foi implementada utilizando uma relação Joined Table Inheritance feita sem o auxilio de bibliotecas, foi um sacrifício de complexidade em troca de otimização de tabelas que custou caro, dificultando as consultas por ID em certos pontos, já que cada tabela PRECISA apresentar um atributo identificador.
 - Já a feature Schedules se mostrou consistente quando avaliada do ponto de vista prático, de cumprir o seu propósito. Além de facilitar queries eficientes quando precisou retornar agendamentos de todas as modalidades misturados.
 
 Gerou dificuldades de manutenção, validação ou documentação?'
+
 - Sim, a decisão tomada na feature Users gerou dificuldade na manutenção, validação e também na documentação.
 
 Faz sentido reaplicar o mesmo padrão neste contexto?
+
 - Sim, faz sentido reaplicar a abordagem STI no contexto das procedures pois, não é um disperdício grande de atributos nesse caso, já que as classes apresentam mais atributos em comum com a subclasse do que o contrário.
 
 Ou existem razões técnicas para adotar uma estratégia diferente?
+
 - Não, será implementado de acordo com a questão esclarecida a cima.
 
 A análise acima refletiu aprendizado real ao longo do projeto. Registrando no relatório não apenas a decisão atual, mas também a avaliação da escolha feita na Etapa 1, destacando o que funcionou, o que não funcionou e por quê.
@@ -1828,9 +1832,10 @@ A análise acima refletiu aprendizado real ao longo do projeto. Registrando no r
 ### 3.50 O que o PATCH /procedures/{id}/authorization recebe no corpo?
 
 Por motivos de melhor modularização, implementar uma abordagem mais semântica, com dois endpoints distintos:
+
 - PATCH /procedures/{id}/authorize
 - PATCH /procedures/{id}/deny
-Abordagem essa que dispensa o corpo da requisição.
+  Abordagem essa que dispensa o corpo da requisição.
 
 ### 3.50 Módulo Procedures e vínculo com atendimentos
 
@@ -1870,7 +1875,125 @@ Além dos endpoints próprios de procedimentos, foram implementadas rotas relaci
 - `POST /appointments/{id}/procedures`
 - `GET /appointments/{id}/procedures`
 
-Essa abordagem mantém o relacionamento explícito entre atendimento e procedimento, facilitando consultas clínicas e futuras expansões do sistema.
+### 3.51 Uso de dados no swagger
+
+Durante o desenvolvimento do SGCM, foi dada atenção especial à documentação da API utilizando o Swagger por meio do pacote `@nestjs/swagger`. O objetivo não foi apenas listar os endpoints disponíveis, mas também fornecer informações suficientes para que qualquer consumidor da API pudesse compreender corretamente os parâmetros, corpos de requisição, formatos de resposta e possíveis erros retornados pelo sistema.
+
+Para isso, foram utilizados decorators específicos em cada endpoint, como `@ApiOperation`, `@ApiParam`, `@ApiBody`, `@ApiQuery`, `@ApiResponse` e `@ApiProduces`, permitindo documentar detalhadamente cada operação.
+
+Os DTOs utilizados pela aplicação também foram reaproveitados na documentação, garantindo que as definições exibidas no Swagger permanecessem sincronizadas com as validações efetivamente aplicadas pelo sistema. Dessa forma, qualquer alteração realizada nos contratos da API é refletida automaticamente na documentação.
+
+Além da documentação das respostas de sucesso, também foram documentados cenários de erro comuns, incluindo:
+
+* Falhas de autenticação (`401 Unauthorized`);
+* Erros de validação (`400 Bad Request`);
+* Recursos inexistentes (`404 Not Found`);
+* Violações de regras de negócio.
+
+Para manter consistência entre os módulos, foi criado o decorator customizado `@ApiWrappedResponse`, responsável por documentar o formato padronizado das respostas da aplicação. Da mesma forma, o decorator `@ApiAuthResponses` foi utilizado para centralizar a documentação de erros relacionados à autenticação JWT.
+
+Um caso particular foi o endpoint de download de laudos em PDF (`GET /reports/{id}/pdf`). Como esse endpoint não retorna JSON, foi necessário utilizar recursos específicos do Swagger para documentar corretamente uma resposta binária:
+
+```ts
+@ApiProduces('application/pdf')
+@ApiResponse({
+  status: HttpStatus.OK,
+  description: 'PDF do laudo gerado com sucesso.',
+  content: {
+    'application/pdf': {
+      schema: {
+        type: 'string',
+        format: 'binary',
+      },
+    },
+  },
+})
+```
+
+Essa configuração faz com que o Swagger reconheça corretamente o retorno como um arquivo PDF, permitindo testes e geração de clientes compatíveis.
+
+Outro aspecto importante foi a documentação detalhada dos parâmetros de rota por meio de `@ApiParam`, incluindo exemplos reais e descrições claras para identificadores e códigos de validação. O endpoint público de validação de laudos (`GET /reports/validate/{code}`), por exemplo, documenta explicitamente o formato UUID esperado e apresenta exemplos para respostas de sucesso, código inválido e laudo inexistente.
+
+Como resultado, a documentação gerada pelo Swagger tornou-se uma representação fiel do comportamento real da API, reduzindo ambiguidades, facilitando testes e servindo como principal referência para utilização dos 63 endpoints implementados no sistema.
+
+### 3.52 Dois endpoint para authorize e deny
+
+#### O que o `PATCH /procedures/{id}/authorize` recebe no corpo?
+
+O SGCM adotou a terceira abordagem proposta: **dois endpoints semânticos distintos**, um para autorizar e outro para negar procedimentos especializados:
+
+* `PATCH /procedures/{id}/authorize`
+* `PATCH /procedures/{id}/deny`
+
+Essa decisão foi tomada porque simplifica a API e elimina ambiguidades na interpretação da ação desejada. Em vez de enviar um campo como `action` ou `authorizationStatus` no corpo da requisição, a própria URL já representa claramente a operação a ser executada.
+
+Dessa forma:
+
+* Não é necessário criar DTOs específicos apenas para representar a decisão do administrador;
+* A validação torna-se mais simples;
+* A documentação Swagger fica mais intuitiva;
+* Evita estados inválidos, como o envio de valores não previstos para um campo de ação.
+
+Atualmente, ambos os endpoints **não recebem corpo na requisição**. A mudança de estado é determinada exclusivamente pela rota chamada.
+
+Uma possível evolução futura seria exigir um motivo de negação em `PATCH /procedures/{id}/deny`, armazenando essa justificativa para consulta posterior pelo médico responsável. Entretanto, essa funcionalidade não foi implementada no escopo atual do projeto.
+
+### 3.53 Um procedimento pode ser atualizado após o atendimento ser encerrado?
+
+ **Procedimentos não devem ser alterados após o encerramento do atendimento**.
+
+A regra de negócio já impede a criação de novos procedimentos quando o atendimento não está em estado `IN_PROGRESS`, pois os procedimentos representam atos clínicos realizados durante a consulta. Permitir alterações após o encerramento poderia gerar inconsistências entre os registros clínicos produzidos a partir daquele atendimento, como prontuários e laudos.
+
+Além disso, após a finalização do atendimento, os dados passam a representar um histórico clínico consolidado. Alterações posteriores comprometeriam a rastreabilidade das informações e dificultariam auditorias futuras.
+
+Por esse motivo, em um ambiente de produção, o comportamento recomendado seria:
+
+* Permitir criação e edição apenas enquanto o atendimento estiver em `IN_PROGRESS`;
+* Bloquear alterações após `FINISHED`;
+* Caso seja necessária alguma correção, registrar uma retificação ou uma nova versão do procedimento, preservando o histórico original.
+
+Entretanto, na implementação atual do SGCM, apenas a criação e a exclusão possuem restrições relacionadas ao estado do atendimento. A atualização de procedimentos ainda não verifica se o atendimento associado está finalizado.
+
+Portanto, embora a regra de negócio definida pelo grupo seja impedir alterações após o encerramento do atendimento, essa validação ainda não foi implementada no endpoint de atualização. Essa inconsistência foi identificada como uma limitação da versão atual e está listada entre as possíveis melhorias para uma evolução futura do sistema.
+
+## 4 Mapa de dependências entre módulos
+
+### Tabela de Dependências por Módulo (Camada Domain)
+
+| Módulo (Domain) | Depende de                  | Motivo                                                                                                            | Dependência Circular |
+| --------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------- |
+| Users           | Nenhum                      | Módulo base responsável pelas entidades `User`, `Patient`, `Doctor` e `Admin`.                                    | ❌ Não               |
+| Specialties     | Users (`Doctor`)            | As especialidades são associadas aos médicos por meio da entidade de relacionamento `DoctorSpecialty`.            | ❌ Não               |
+| Schedules       | Users (`Doctor`, `Patient`) | Um agendamento sempre relaciona um médico e um paciente.                                                          | ❌ Não               |
+| Appointments    | Schedules, Users            | Um atendimento é criado a partir de um agendamento previamente confirmado e mantém vínculo com médico e paciente. | ❌ Não               |
+| Procedures      | Appointments                | Procedimentos são registrados dentro de um atendimento específico.                                                | ❌ Não               |
+| Medical Records | Appointments, Users         | Prontuários pertencem a um atendimento e referenciam médico e paciente.                                           | ❌ Não               |
+| Reports         | Appointments, Users         | Laudos são emitidos a partir de um atendimento e vinculados ao médico emissor e ao paciente.                      | ❌ Não               |
+
+#### Observações
+
+- A direção das dependências segue a hierarquia de negócio do sistema, evitando acoplamentos bidirecionais.
+- O módulo **Users** atua como módulo base e não depende de nenhum outro módulo do domínio.
+- Os módulos **Procedures**, **Medical Records** e **Reports** dependem de **Appointments**, mas **Appointments** não depende deles, eliminando ciclos de dependência.
+- Não foi necessária a utilização de `forwardRef()` na camada de domínio, pois todas as dependências são unidirecionais.
+
+### Matriz de Dependências entre Módulos
+
+| Módulo ↓ / Dependência → | Users | Specialties | Schedules | Appointments | Procedures | Medical Records | Reports |
+| ------------------------ | :---: | :---------: | :-------: | :----------: | :--------: | :-------------: | :-----: |
+| **Users**                |   -   |     ❌      |    ❌     |      ❌      |     ❌     |       ❌        |   ❌    |
+| **Specialties**          |  ✅   |      -      |    ❌     |      ❌      |     ❌     |       ❌        |   ❌    |
+| **Schedules**            |  ✅   |     ❌      |     -     |      ❌      |     ❌     |       ❌        |   ❌    |
+| **Appointments**         |  ✅   |     ❌      |    ✅     |      -       |     ❌     |       ❌        |   ❌    |
+| **Procedures**           |  ❌   |     ❌      |    ❌     |      ✅      |     -      |       ❌        |   ❌    |
+| **Medical Records**      |  ✅   |     ❌      |    ❌     |      ✅      |     ❌     |        -        |   ❌    |
+| **Reports**              |  ✅   |     ❌      |    ❌     |      ✅      |     ❌     |       ❌        |    -    |
+
+**Legenda:**
+
+- ✅ = Depende do módulo
+- ❌ = Não depende do módulo
+- `-` = Próprio módulo
 
 ## 4 - DIFICULDADES E APRENDIZADOS
 
@@ -1900,32 +2023,235 @@ As principais dificuldades da etapa foram:
 
 A principal solução adotada foi centralizar validações de acesso dentro dos services e manter os controllers responsáveis apenas pela orquestração das requisições.
 
-### Dificuldades encontradas etapa 3
+### Dificuldades Encontradas na Etapa 3
 
-- Repadronizar o sistema de volta para STI;
-- Exportar para pdf, exportando em bytes, fazer com o o intrceptor n veja essa saida,
-- documentar todo o swaager;
-- como seria o validantion code;
-- qual forma seria adotada para o
+- Repadronização do sistema para utilização de STI (_Single Table Inheritance_);
+- Implementação da exportação de laudos em PDF, incluindo o envio do arquivo em bytes e o tratamento para que o interceptor global não processasse essa resposta;
+- Documentação completa dos endpoints no Swagger;
+- Definição e implementação do mecanismo de **Validation Code** para validação pública de laudos;
+- Construção do mapa de dependências entre os módulos do sistema.
 
-## Conclusão
+## Limitações Reconhecidas
 
-Nesta primeira etapa, o objetivo é construir a base funcional do SGCM — modelando o domínio de uma clínica médica, implementando as operações essenciais e organizando o código de forma que o projeto possa evoluir com consistência nas etapas seguintes.
+### 1. Banco de Dados (SQLite)
 
-Durante a execução, foram alcançados os seguintes marcos:
+| Limitação                       | Impacto                                                                                                                                        | Contexto                                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| SQLite em ambiente de produção  | Não suporta alta concorrência de escrita, possui limitações em conexões simultâneas e não oferece recursos avançados como _row-level locking_. | Adequado para fins acadêmicos, mas inadequado para produção com múltiplos usuários simultâneos. |
+| Ausência de índices otimizados  | Consultas com JOINs e filtros podem apresentar degradação de desempenho à medida que o volume de dados cresce.                                 | Relatórios administrativos e listagens de agendamentos.                                         |
+| Sem suporte nativo a replicação | Impossibilita escalar operações de leitura por meio de _read replicas_.                                                                        | Limitação para expansão futura do sistema.                                                      |
 
-**Modelagem do domínio da aplicação** — representamos usuários, especialidades e agendamentos como entidades com atributos, relacionamentos e hierarquias de herança bem definidas no banco de dados. A adoção do JTI manual para a hierarquia `User` e do STI para `Schedule` refletiu decisões técnicas conscientes de normalização e performance.
+---
 
-**Aplicação da arquitetura do NestJS** — organizamos o código em módulos (`UsersModule`, `SpecialtiesModule`, `SchedulesModule`) com controllers, services e repositórios que mantêm responsabilidades claramente separadas. A injeção de dependência foi aplicada de forma consistente, evitando acoplamentos desnecessários entre módulos.
+## 2. Segurança
 
-**Validação robusta de dados de entrada** — implementamos camada de validação com DTOs e class-validator, rejeição prévia de requisições inválidas antes que cheguem aos services, e mensagens de erro descritivas conforme o padrão RFC 7807.
+| Limitação                                     | Impacto                                                              | Contexto                                           |
+| --------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------- |
+| Ausência de _rate limiting_                   | Vulnerável a ataques de força bruta no endpoint de autenticação.     | Endpoint público `/auth/login`.                    |
+| Refresh token sem revogação por dispositivo   | Um token comprometido pode ser reutilizado em qualquer dispositivo.  | Compartilhamento entre múltiplas sessões.          |
+| Ausência de autenticação multifator (2FA)     | Contas administrativas dependem exclusivamente de senha.             | Risco elevado para perfis administrativos.         |
+| Ausência de trilha de auditoria (_audit log_) | Não é possível identificar quem alterou prontuários ou laudos.       | Limita rastreabilidade e conformidade regulatória. |
+| Validação pública de laudos simplificada      | Códigos previsíveis poderiam permitir tentativas de acesso indevido. | Endpoint `/reports/validate/{code}`.               |
+| Política de CORS permissiva                   | Possibilita requisições provenientes de origens não autorizadas.     | Configuração adequada apenas para desenvolvimento. |
+| Janela de risco após logout                   | O access token permanece válido até sua expiração.                   | Possível uso indevido por até 15 minutos.          |
 
-**Operações essenciais do domínio** — implementamos cadastro, consulta, listagem, atualização e remoção de entidades (CRUD completo) respeitando as regras da clínica médica. Cada operação foi testada e documentada.
+---
 
-**Controle de estados e regras de negócio** — o sistema agora rejeita operações inválidas (ex.: conflito de horário, duplicidade de CPF/CRM/email) e mantém consistência de dados em qualquer sequência de requisições.
+## 3. Performance
 
-**Documentação com Swagger** — todos os endpoints foram documentados de forma acessível, com exemplos de requisição, resposta e tratamento de erros padronizado.
+| Limitação                        | Impacto                                                                | Contexto                                 |
+| -------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------- |
+| Possível problema N+1            | Carregamento ineficiente de relacionamentos gera consultas adicionais. | Endpoints com múltiplos relacionamentos. |
+| Ausência de _connection pooling_ | Pode causar esgotamento de conexões sob carga elevada.                 | Agravado pelas limitações do SQLite.     |
 
-**Preparação para evolução** — as decisões tomadas nesta etapa (separação de controllers por domínio, factory pattern para criação de usuários, inativação lógica em vez de deleção física, conceito de `traceId` no filtro de erros) facilitam a introdução futura de autenticação JWT (Etapa 2), controle de acesso por perfil (Etapa 2) e entidades clínicas complexas como atendimentos, procedimentos, prontuários e laudos (Etapa 3).
+---
 
-Ao longo das três etapas do projeto, foi desenvolvido o SGCM (Sistema de Gerenciamento de Clínica Médica), contemplando autenticação, controle de acesso, gerenciamento de usuários, especialidades, agendamentos e atendimentos clínicos.
+## 4. Modelagem de Dados
+
+| Limitação                                          | Impacto                                                             | Contexto                                                  |
+| -------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------- |
+| Uso de STI (_Single Table Inheritance_)            | Presença de colunas nulas para determinados perfis de usuário.      | Trade-off aceito para simplificação da modelagem.         |
+| Soft delete não implementado em todas as entidades | Possibilidade de exclusão permanente de dados relevantes.           | Nem todas as entidades utilizam `@DeleteDateColumn()`.    |
+| Ausência de versionamento                          | Não há histórico de alterações em prontuários e laudos.             | Limita auditoria e conformidade.                          |
+| Validação limitada de CPF                          | Possibilidade de inconsistências caso a validação de negócio falhe. | Dependência principal da restrição de unicidade do banco. |
+
+---
+
+## 5. Escalabilidade
+
+| Limitação                     | Impacto                                            | Contexto                                          |
+| ----------------------------- | -------------------------------------------------- | ------------------------------------------------- |
+| Banco de dados único          | Torna-se um gargalo para operações de escrita.     | Limitação estrutural para crescimento do sistema. |
+| Ausência de filas assíncronas | Processamentos pesados podem bloquear requisições. | Relatórios e geração de documentos.               |
+
+---
+
+## 6. Regras de Negócio
+
+| Limitação                                           | Impacto                                                    | Contexto                                                |
+| --------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------- |
+| Ausência de bloqueio transacional para agendamentos | Possibilidade de condições de corrida (_race conditions_). | Agendamentos simultâneos para o mesmo horário.          |
+| Médico pode atender fora de sua especialidade       | Possível inconsistência operacional.                       | Falta validação entre especialidade e atendimento.      |
+| Ausência de notificações                            | Pacientes podem esquecer consultas agendadas.              | Não há integração com e-mail, SMS ou push notification. |
+| Ausência de controle de indisponibilidade médica    | Horários de férias ou almoço não são considerados.         | Falta de módulo de indisponibilidade.                   |
+| Ausência de controle de faltas (_no-show_)          | Não há acompanhamento de pacientes ausentes.               | Impacto operacional e financeiro.                       |
+
+---
+
+## 7. Autorização e Controle de Acesso
+
+| Limitação                           | Impacto                                                     | Contexto                                              |
+| ----------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
+| Ausência de delegação de acesso     | Não permite compartilhamento controlado de informações.     | Pacientes e médicos não podem delegar acessos.        |
+| Controle de permissões simplificado | Não existem níveis intermediários de autorização.           | Apenas acesso próprio ou acesso administrativo total. |
+| Revogação não imediata de acesso    | Usuários inativados mantêm acesso até a expiração do token. | Verificação de `isActive` ocorre apenas no login.     |
+
+---
+
+### Considerações Finais
+
+As limitações apresentadas não comprometem os objetivos acadêmicos do SGCM, mas evidenciam aspectos que precisariam ser aprimorados para utilização em um ambiente de produção real. A evolução do sistema exigiria investimentos em infraestrutura, segurança, auditoria, escalabilidade e observabilidade, além da adoção de padrões arquiteturais voltados para alta disponibilidade e conformidade regulatória.
+
+## Reflexão sobre herança no banco de dados
+
+Ao longo do desenvolvimento do SGCM, o grupo enfrentou quatro decisões relacionadas ao uso de herança no modelo de domínio. Cada caso exigiu uma análise específica, considerando as limitações do TypeORM, o volume esperado de dados, a frequência das consultas e a complexidade de manutenção da solução.
+
+---
+
+### 1. User (Etapa 1 → Migrado na Etapa 3)
+
+| Aspecto        | Decisão Inicial (Etapa 1)                  | Decisão Final (Etapa 3)                                                 |
+| -------------- | ------------------------------------------ | ----------------------------------------------------------------------- |
+| Estratégia     | JTI manual (simulada com `@OneToOne`)      | STI nativo (`@TableInheritance`)                                        |
+| Motivo inicial | Normalização e eliminação de colunas nulas | Conformidade com herança nativa do TypeORM e simplificação da modelagem |
+| Dependências   | Nenhuma (módulo base)                      | Nenhuma (módulo base)                                                   |
+| Resultado      | Solução correta, porém complexa            | Solução mais simples, porém com colunas nulas                           |
+
+### #O que aconteceu
+
+Na Etapa 1, foi adotada uma implementação manual do padrão **JTI (Joined Table Inheritance)**, uma vez que o TypeORM não oferece suporte nativo para essa estratégia. A solução utilizava composição por meio de relacionamentos `@OneToOne` entre a entidade base `User` e as entidades específicas `Admin`, `Doctor` e `Patient`.
+
+Durante a Etapa 3, observou-se que essa implementação não atendia ao requisito de utilização de herança nativa. Dessa forma, o modelo foi migrado para **STI (Single Table Inheritance)** utilizando `@TableInheritance` e `@ChildEntity`, consolidando todos os perfis na tabela `user`.
+
+O principal trade-off foi a introdução de colunas nulas para atributos específicos de determinados perfis.
+
+---
+
+### 2. Schedule (Etapa 1)
+
+| Aspecto            | Decisão                                                                             |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| Estratégia         | STI nativo (`@TableInheritance`)                                                    |
+| Subtipos           | `InPersonSchedule`, `OnlineSchedule`, `HomeSchedule`                                |
+| Motivo             | Necessidade de consultar agendamentos de diferentes modalidades em uma única agenda |
+| Campos comuns      | `scheduledAt`, `status`, `type`, `doctorId`, `patientId`                            |
+| Campos específicos | `room`, `unit`, `accessLink`, `platform`, `fullAddress`, `accessNotes`              |
+
+#### Por que o STI funcionou bem
+
+A principal operação envolvendo agendamentos consiste em listar toda a agenda de um médico independentemente da modalidade da consulta.
+
+Com STI, todos os registros ficam armazenados em uma única tabela, permitindo consultas simples e eficientes sem necessidade de JOINs entre tabelas de subtipos.
+
+Além disso, o volume esperado de agendamentos em uma clínica de pequeno ou médio porte não justifica a complexidade adicional de estratégias como JTI. Nesse cenário, o custo das colunas nulas é considerado aceitável.
+
+---
+
+### 3. Appointment (Etapa 3)
+
+| Aspecto    | Decisão                                                          |
+| ---------- | ---------------------------------------------------------------- |
+| Estratégia | Sem herança                                                      |
+| Motivo     | Não existem subtipos de atendimento no domínio                   |
+| Campos     | `id`, `scheduleId`, `notes`, `status`, `startedAt`, `finishedAt` |
+
+### Por que não há herança
+
+Após análise do domínio, concluiu-se que todos os atendimentos compartilham exatamente a mesma estrutura e comportamento.
+
+As diferenças entre consultas presenciais, online ou domiciliares já são representadas pela entidade `Schedule`, tornando desnecessária a criação de subclasses para `Appointment`.
+
+Essa decisão reforça um princípio importante de modelagem orientada a objetos:
+
+> Nem toda entidade deve utilizar herança. A herança deve ser aplicada apenas quando existem diferenças reais de atributos ou comportamento entre os subtipos.
+
+Nesse caso, a utilização de uma única entidade simplifica o modelo sem perda de expressividade.
+
+---
+
+### 4. Procedure (Etapa 3)
+
+| Aspecto            | Decisão                                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| Estratégia         | STI nativo (`@TableInheritance`)                                                               |
+| Subtipos           | `SimpleProcedure`, `SpecializedProcedure`                                                      |
+| Motivo             | Procedimentos especializados possuem atributos e regras adicionais                             |
+| Campos comuns      | `name`, `description`, `appointmentId`, `status`                                               |
+| Campos específicos | `duration` (simples) e `equipment`, `complexityLevel`, `requiresAuthorization` (especializado) |
+
+#### Por que o STI foi adequado
+
+Os procedimentos simples e especializados compartilham grande parte de sua estrutura, diferenciando-se principalmente pelas informações adicionais exigidas pelos procedimentos especializados.
+
+Além disso, as consultas mais frequentes envolvem a listagem de todos os procedimentos associados a um atendimento, independentemente do tipo.
+
+Assim como ocorreu com a entidade `Schedule`, a utilização de STI permite recuperar todos os procedimentos em uma única consulta, sem necessidade de JOINs adicionais.
+
+Como o volume de procedimentos acompanha proporcionalmente o número de atendimentos, o impacto das colunas nulas é reduzido e aceitável para o contexto do sistema.
+
+---
+
+## 5. Lições Aprendidas sobre Herança em Banco de Dados
+
+### 1. Limitações do TypeORM
+
+Durante o projeto, observou-se que o TypeORM oferece suporte nativo principalmente à estratégia **STI (Single Table Inheritance)**, mas não ao **JTI (Joined Table Inheritance)**. A tentativa de implementar JTI manualmente aumentou significativamente a complexidade da aplicação sem trazer benefícios proporcionais para o contexto do SGCM.
+
+### 2. Normalização nem sempre é a melhor escolha
+
+Embora o JTI elimine colunas nulas e favoreça a normalização do banco de dados, ele também exige mais JOINs, aumenta a complexidade das consultas e dificulta o gerenciamento de identificadores e regras de acesso. A migração para STI simplificou consideravelmente o código e a manutenção do sistema.
+
+### 3. A estratégia depende do contexto
+
+Não existe uma única abordagem ideal para todos os cenários. Em geral:
+
+| Cenário                                            | Estratégia Recomendada |
+| -------------------------------------------------- | ---------------------- |
+| Consultas frequentes envolvendo múltiplos subtipos | STI                    |
+| Poucos atributos específicos por subtipo           | STI                    |
+| Subtipos consultados separadamente                 | JTI ou TPC             |
+| Ausência de diferenças reais entre subtipos        | Sem herança            |
+
+No SGCM, as entidades **Schedule** e **Procedure** se beneficiaram do STI, enquanto **Appointment** não exigiu herança.
+
+### 4. Complexidade da implementação manual
+
+A implementação manual de JTI exigiu fábricas de criação, relacionamentos adicionais, JOINs específicos e regras de acesso mais complexas. Para um projeto acadêmico utilizando SQLite, esse custo de desenvolvimento não se mostrou justificável.
+
+### 5. Impacto nos identificadores
+
+A utilização de STI simplificou o controle de acesso ao manter um único identificador para cada usuário. Durante o desenvolvimento, verificou-se que a existência de identificadores distintos entre entidade base e subtipo gerava inconsistências e aumentava a probabilidade de erros.
+
+---
+
+## 6. O que Faríamos Diferente em um Próximo Projeto
+
+- Utilizar STI como estratégia padrão para hierarquias simples;
+- Avaliar previamente o volume esperado de dados antes de escolher uma estratégia de herança;
+- Evitar implementações manuais de JTI quando o ORM não oferecer suporte nativo;
+- Considerar o uso de UUIDs em sistemas distribuídos ou de grande escala;
+- Documentar explicitamente as decisões arquiteturais relacionadas à herança para facilitar a manutenção futura.
+
+## 7. Conclusão
+
+Ao longo das três etapas do projeto, foi desenvolvido o SGCM (Sistema de Gerenciamento de Clínica Médica), contemplando autenticação, controle de acesso, gerenciamento de usuários, especialidades, agendamentos, atendimentos, procedimentos, prontuários médicos, laudos e relatórios administrativos. O resultado foi uma aplicação modular e funcional, capaz de representar os principais processos de uma clínica médica e servir como base para futuras evoluções.
+
+Além da implementação dos requisitos funcionais, o projeto proporcionou uma compreensão prática de conceitos fundamentais de engenharia de software, como modelagem de domínio, arquitetura em camadas, injeção de dependência, persistência de dados, autenticação baseada em JWT, autorização por papéis e recursos, documentação de APIs e tratamento consistente de erros.
+
+Um dos aprendizados mais relevantes foi perceber que decisões arquiteturais envolvem constantes trade-offs. Durante o desenvolvimento, o grupo precisou revisar escolhas iniciais, como a implementação manual de JTI para a entidade `User`, migrando posteriormente para STI após uma análise mais profunda das limitações do TypeORM e dos impactos na complexidade do sistema. Esse processo reforçou a importância de avaliar não apenas a teoria por trás de cada solução, mas também seu custo de implementação, manutenção e evolução.
+
+Outro aprendizado importante foi a necessidade de projetar o sistema pensando em crescimento. A construção do mapa de dependências, a preocupação com a ausência de ciclos entre módulos e a análise das limitações de escalabilidade demonstraram que a qualidade de um software não depende apenas de suas funcionalidades, mas também da forma como sua arquitetura suporta mudanças futuras.
+
+Se o projeto fosse iniciado novamente, algumas decisões provavelmente seriam diferentes. O grupo adotaria STI desde o início para hierarquias simples, documentaria de forma mais explícita as decisões arquiteturais tomadas ao longo do desenvolvimento e investiria mais cedo em mecanismos de auditoria, testes automatizados e observabilidade. Também seriam considerados recursos voltados para produção, como cache, filas assíncronas, armazenamento externo de arquivos e estratégias mais robustas de segurança.
+
+Por fim, o SGCM atingiu os objetivos propostos para a disciplina e serviu como um exercício completo de desenvolvimento backend. Mais do que entregar uma aplicação funcional, o projeto permitiu compreender na prática os desafios de modelar domínios reais, tomar decisões arquiteturais fundamentadas e lidar com as limitações e compromissos inerentes ao desenvolvimento de software profissional.

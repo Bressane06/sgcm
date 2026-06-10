@@ -1,59 +1,51 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+// procedure-response.dto.ts
+import { ApiProperty } from '@nestjs/swagger';
+import { ProcedureType } from '../enum/procedure-type.enum';
 import { AuthorizationStatus } from '../enum/authorization-status.enum';
 import { ComplexityLevel } from '../enum/complexity-level.enum';
-import { ProcedureType } from '../enum/procedure-type.enum';
 
 export class ProcedureResponseDto {
   @ApiProperty({ example: 1 })
-  id!: number;
+  id: number;
 
   @ApiProperty({ example: 1 })
-  appointmentId!: number;
+  appointmentId: number;
 
-  @ApiProperty({ example: 'Exame de sangue' })
-  name!: string;
+  @ApiProperty({ example: 'Curativo simples' })
+  name: string;
 
-  @ApiProperty({
-    example:
-      'Procedimento laboratorial que analisa amostras de sangue para diagnóstico.',
-  })
-  description!: string;
+  @ApiProperty({ example: 'Limpeza e curativo em ferida superficial' })
+  description: string;
 
-  @ApiProperty({ enum: ProcedureType, example: ProcedureType.SIMPLE })
-  type!: ProcedureType;
+  @ApiProperty({ enum: ProcedureType })
+  type: ProcedureType;
 
-  @ApiProperty({ example: '2026-06-03T17:00:00.000Z' })
-  createdAt!: Date;
-
-  @ApiProperty({ example: '2026-06-03T17:00:00.000Z' })
-  updatedAt!: Date;
-
-  // Campos específicos para SimpleProcedure
-  @ApiPropertyOptional({ example: 30 })
+  // SimpleProcedure
+  @ApiProperty({ required: false, example: 15 })
   estimatedDuration?: number;
 
-  // Campos específicos para SpecializedProcedure
-  @ApiPropertyOptional({ example: 'Aparelho de ultrassom' })
+  // SpecializedProcedure
+  @ApiProperty({ required: false, example: 'Bisturi elétrico' })
   requiredEquipment?: string;
 
-  @ApiPropertyOptional({
-    enum: ComplexityLevel,
-    example: ComplexityLevel.MEDIUM,
-  })
+  @ApiProperty({ required: false, enum: ComplexityLevel })
   complexityLevel?: ComplexityLevel;
 
-  @ApiPropertyOptional({ example: true })
+  @ApiProperty({ required: false, example: true })
   requiresAuthorization?: boolean;
 
-  @ApiPropertyOptional({
-    enum: AuthorizationStatus,
-    example: AuthorizationStatus.PENDING,
-  })
+  @ApiProperty({ required: false, enum: AuthorizationStatus })
   authorizationStatus?: AuthorizationStatus;
 
-  @ApiPropertyOptional({ example: '2026-06-03T17:00:00.000Z' })
+  @ApiProperty({ required: false, example: '2026-06-10T14:00:00.000Z' })
   authorizedAt?: Date;
 
-  @ApiPropertyOptional({ example: '2026-06-03T17:00:00.000Z' })
+  @ApiProperty({ required: false, example: null })
   deniedAt?: Date;
+
+  @ApiProperty({ example: '2026-06-10T12:00:00.000Z' })
+  createdAt: Date;
+
+  @ApiProperty({ example: '2026-06-10T12:00:00.000Z' })
+  updatedAt: Date;
 }

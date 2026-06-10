@@ -25,6 +25,12 @@ export class SpecializedProcedure extends Procedure {
   authorizationStatus?: AuthorizationStatus;
 
   @Column({ nullable: true })
+  authorizedBy?: number; // ID do Admin autenticado
+
+  @Column({ nullable: true })
+  denialReason?: string;
+
+  @Column({ nullable: true })
   authorizedAt?: Date;
 
   @Column({ nullable: true })
@@ -36,12 +42,12 @@ export class SpecializedProcedure extends Procedure {
     this.deniedAt = undefined;
   }
 
-  deny(): void {
+  deny(reason?: string): void {
     this.authorizationStatus = AuthorizationStatus.DENIED;
     this.deniedAt = new Date();
+    this.denialReason = reason;
     this.authorizedAt = undefined;
   }
-
   isPending(): boolean {
     return this.authorizationStatus === AuthorizationStatus.PENDING;
   }

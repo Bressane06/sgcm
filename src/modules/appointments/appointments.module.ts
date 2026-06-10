@@ -8,6 +8,7 @@ import { Schedule } from '../schedules/entities/schedule.entity';
 import { AppointmentsController } from './appointments.controller';
 import { AppointmentsService } from './appointments.service';
 import { ProceduresModule } from '../procedures/procedures.module';
+import { Procedure } from '../procedures/entities/procedure.entity';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { ProceduresModule } from '../procedures/procedures.module';
       Exam,
       FollowUp,
       Schedule,
-      Appointment,
+      Procedure,
     ]),
     ProceduresModule,
   ],

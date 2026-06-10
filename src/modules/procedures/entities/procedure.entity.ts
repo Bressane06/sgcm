@@ -23,7 +23,7 @@ export abstract class Procedure {
   @Column()
   description!: string;
 
-  @Column({ type: 'varchar', name: 'type', insert: false, update: false })
+  @Column({ type: 'varchar', name: 'type', update: false })
   type!: ProcedureType;
 
   @ManyToOne(() => Appointment, { eager: true })

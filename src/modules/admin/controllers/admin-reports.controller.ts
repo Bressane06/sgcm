@@ -9,6 +9,8 @@ import { AdminReportsService } from '../services/admin-reports.service';
 import { AdminAppointmentsReportDto } from '../dto/admin-appointments-report.dto';
 import { AdminAppointmentsReportQueryDto } from '../dto/admin-appointments-report-query.dto';
 import { OccupationQueryDto } from '../dto/occupation-query.dto';
+import { DoctorOccupationReportDto } from '../dto/doctor-occupation-report.dto';
+import { AdminProceduresReportDto } from '../dto/admin-procedures-reports.dto';
 
 @ApiTags('Admin Reports')
 @Controller('admin/reports')
@@ -51,6 +53,7 @@ export class AdminReportsController {
       'a demanda real. O numerador considera apenas agendamentos ' +
       'COMPLETED, que efetivamente geraram um atendimento clínico.',
   })
+  @ApiOkResponse({ type: DoctorOccupationReportDto })
   async getDoctorOccupation(
     @Param('id') id: number,
     @Query() query: OccupationQueryDto,
@@ -58,4 +61,14 @@ export class AdminReportsController {
     return this.adminReportsService.getDoctorOccupation(Number(id), query);
   }
 
+  @Get('procedures')
+  @ApiOperation({
+    summary: 'Gerar relatório de procedimentos',
+  })
+  @ApiOkResponse({
+    type: AdminProceduresReportDto,
+  })
+  async getProceduresReport(): Promise<AdminProceduresReportDto> {
+    return this.adminReportsService.getProceduresReport();
+  }
 }

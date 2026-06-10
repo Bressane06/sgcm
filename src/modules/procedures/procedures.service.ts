@@ -14,7 +14,7 @@ import { SimpleProcedure } from './entities/simple-procedure.entity';
 import { SpecializedProcedure } from './entities/specialized-procedure.entity';
 import { ProcedureType } from './enum/procedure-type.enum';
 import { AuthorizationStatus } from './enum/authorization-status.enum';
-import { NotFoundException } from '../../common';
+import { ConflictException, NotFoundException } from '../../common';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { AppointmentStatus } from '../appointments/enum/appointment-status.enum';
 
@@ -23,6 +23,10 @@ export class ProceduresService {
   constructor(
     @InjectRepository(Procedure)
     private readonly procedureRepository: Repository<Procedure>,
+    @InjectRepository(SimpleProcedure)
+    private readonly simpleProcedureRepository: Repository<SimpleProcedure>,
+    @InjectRepository(SpecializedProcedure)
+    private readonly specializedProcedureRepository: Repository<SpecializedProcedure>,
     @InjectRepository(Appointment)
     private readonly appointmentRepository: Repository<Appointment>,
   ) {}
@@ -179,24 +183,24 @@ export class ProceduresService {
     switch (dto.type) {
       case ProcedureType.SIMPLE: {
         const procedure = new SimpleProcedure();
-
         Object.assign(procedure, baseData);
         procedure.estimatedDuration = dto.estimatedDuration;
 
-        const saved = await this.procedureRepository.save(procedure);
+        const saved = await this.simpleProcedureRepository.save(procedure); // <--
         return this.toResponse(saved);
       }
 
       case ProcedureType.SPECIALIZED: {
         const procedure = new SpecializedProcedure();
-
         Object.assign(procedure, baseData);
         procedure.requiredEquipment = dto.requiredEquipment;
         procedure.complexityLevel = dto.complexityLevel;
         procedure.requiresAuthorization = dto.requiresAuthorization ?? true;
-        procedure.authorizationStatus = AuthorizationStatus.PENDING;
+        procedure.authorizationStatus = procedure.requiresAuthorization
+          ? AuthorizationStatus.PENDING
+          : AuthorizationStatus.AUTHORIZED;
 
-        const saved = await this.procedureRepository.save(procedure);
+        const saved = await this.specializedProcedureRepository.save(procedure); // <--
         return this.toResponse(saved);
       }
 
@@ -283,21 +287,23 @@ export class ProceduresService {
   async authorizeProcedure(id: number): Promise<ProcedureResponseDto> {
     const procedure = await this.findEntityOrFail(id);
 
-    if (!(procedure instanceof SpecializedProcedure)) {
+    if (procedure.type !== ProcedureType.SPECIALIZED) {
       throw new BadRequestException(
         'Apenas procedimentos especializados podem ser autorizados.',
       );
     }
 
-    if (!procedure.isPending()) {
+    const specialized = procedure as SpecializedProcedure;
+
+    if (!specialized.isPending()) {
       throw new BadRequestException(
         'Este procedimento não está pendente de autorização.',
       );
     }
 
-    procedure.authorize();
+    specialized.authorize();
 
-    const saved = await this.procedureRepository.save(procedure);
+    const saved = await this.procedureRepository.save(specialized);
     return this.toResponse(saved);
   }
 
@@ -324,8 +330,13 @@ export class ProceduresService {
 
   async remove(id: number, currentUser: UserPayload): Promise<void> {
     const procedure = await this.findEntityOrFail(id);
-
     this.assertCanAccessAppointment(procedure.appointment, currentUser);
+
+    if (procedure.appointment.status === AppointmentStatus.FINISHED) {
+      throw new ConflictException(
+        'Não é possível excluir procedimentos de atendimentos encerrados.',
+      );
+    }
 
     await this.procedureRepository.remove(procedure);
   }

@@ -7,6 +7,7 @@ import {
   Put,
   Delete,
   Query,
+  HttpStatus,
 } from '@nestjs/common';
 import { MedicalRecordsService } from './medical-records.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
@@ -15,16 +16,39 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { UserPayload } from '../auth/models/user-payload.model';
 import { Roles } from '../../common';
 import { UserType } from '../users/enum/user-type.enum';
-import { ApiAuthResponses } from '../../common/swagger';
-import { ApiExcludeEndpoint, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiAuthResponses, ApiWrappedResponse } from '../../common/swagger';
+import {
+  ApiBody,
+  ApiExcludeEndpoint,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
 
 @ApiTags('Medical Records')
-@Controller()
+@Controller('')
 export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}
 
-  @ApiTags('Appointments')
+  @ApiOperation({
+    summary: 'Criar prontuário médico',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Identificador do atendimento',
+  })
+  @ApiBody({
+    type: CreateMedicalRecordDto,
+  })
+  @ApiWrappedResponse({
+    description: 'Prontuário criado com sucesso.',
+    model: MedicalRecordResponseDto,
+    status: HttpStatus.CREATED,
+  })
   @ApiAuthResponses({
     instance: 'appointments/:id/records',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
@@ -39,10 +63,23 @@ export class MedicalRecordsController {
     return this.medicalRecordsService.create(+id, createMedicalRecordDto, user);
   }
 
-  @ApiTags('Appointments')
+  @ApiOperation({
+    summary: 'Listar prontuários de um atendimento',
+  })
   @ApiAuthResponses({
     instance: 'appointments/:id/records',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Identificador do atendimento',
+  })
+  @ApiWrappedResponse({
+    description: 'Prontuários do atendimento retornados com sucesso.',
+    model: MedicalRecordResponseDto,
+    isArray: true,
+    status: HttpStatus.OK,
   })
   @Get('appointments/:id/records')
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
@@ -56,7 +93,9 @@ export class MedicalRecordsController {
     );
   }
 
-  @ApiTags('Medical Records')
+  @ApiOperation({
+    summary: 'Atualizar prontuário',
+  })
   @ApiAuthResponses({
     instance: 'records/:id',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
@@ -65,6 +104,14 @@ export class MedicalRecordsController {
     name: 'id',
     type: Number,
     description: 'Identificador do prontuário',
+  })
+  @ApiBody({
+    type: UpdateMedicalRecordDto,
+  })
+  @ApiWrappedResponse({
+    description: 'Prontuário atualizado com sucesso.',
+    model: MedicalRecordResponseDto,
+    status: HttpStatus.OK,
   })
   @Put('records/:id')
   @Roles(UserType.ADMIN, UserType.DOCTOR)
@@ -76,7 +123,18 @@ export class MedicalRecordsController {
     return this.medicalRecordsService.update(+id, updateMedicalRecordDto, user);
   }
 
-  @ApiTags('Medical Records')
+  @ApiOperation({
+    summary: 'Remover prontuário',
+  })
+  @ApiAuthResponses({
+    instance: 'records/:id',
+    unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Identificador do prontuário',
+  })
   @Delete('records/:id')
   @ApiExcludeEndpoint()
   @Roles(UserType.ADMIN, UserType.DOCTOR)
@@ -84,10 +142,23 @@ export class MedicalRecordsController {
     return this.medicalRecordsService.delete();
   }
 
-  @ApiTags('Medical Records')
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Identificador do paciente',
+  })
+  @ApiOperation({
+    summary: 'Listar prontuários de um paciente',
+  })
   @ApiAuthResponses({
     instance: 'patients/:id/records',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+  })
+  @ApiWrappedResponse({
+    description: 'Prontuários do paciente retornados com sucesso.',
+    model: MedicalRecordResponseDto,
+    isArray: true,
+    status: HttpStatus.OK,
   })
   @Get('patients/:id/records')
   @Roles(UserType.ADMIN, UserType.DOCTOR, UserType.PATIENT)
@@ -99,10 +170,23 @@ export class MedicalRecordsController {
     return this.medicalRecordsService.findPatientRecords(+id, user, pagination);
   }
 
-  @ApiTags('Medical Records')
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Identificador do médico',
+  })
+  @ApiOperation({
+    summary: 'Listar prontuários de um médico',
+  })
   @ApiAuthResponses({
     instance: 'doctors/:id/records',
     unauthorizedDetail: 'Token JWT ausente, inválido ou expirado.',
+  })
+  @ApiWrappedResponse({
+    description: 'Prontuários do médico retornados com sucesso.',
+    model: MedicalRecordResponseDto,
+    isArray: true,
+    status: HttpStatus.OK,
   })
   @Get('doctors/:id/records')
   @Roles(UserType.ADMIN, UserType.DOCTOR)

@@ -5,9 +5,10 @@ import { Appointment } from '../appointments/entities/appointment.entity';
 import { AdminReportsController } from './controllers/admin-reports.controller';
 import { AdminReportsService } from './services/admin-reports.service';
 import { Doctor } from '../users/entities/doctor.entity';
+import { Procedure } from '../procedures/entities/procedure.entity';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([Schedule, Appointment, Doctor])],
+	imports: [TypeOrmModule.forFeature([Schedule, Appointment, Doctor, Procedure])],
 	controllers: [AdminReportsController],
 	providers: [AdminReportsService],
 })

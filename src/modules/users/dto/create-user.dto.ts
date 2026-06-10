@@ -1,32 +1,21 @@
-import {
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsString,
-  MinLength,
-  ValidateIf,
-  IsDate,
-  MaxDate,
-  MaxLength,
-  Matches,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UserType } from '../enum/user-type.enum';
-import { Type, Transform } from 'class-transformer';
-import { IsCPF } from 'class-validator-cpf';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Transform, Type } from "class-transformer";
+import { IsDate, IsEmail, IsEnum, IsNotEmpty, IsString, Matches, MaxDate, MaxLength, MinLength, ValidateIf } from "class-validator";
+import { IsCPF } from "class-validator-cpf";
+import { UserType } from "../enum/user-type.enum";
 
 export class CreateUserDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'Augusto Silva' })
   @IsString()
   @IsNotEmpty({ message: 'Nome é obrigatório' })
   name!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'augusto.silva@email.com' })
   @IsEmail({}, { message: 'E-mail deve ser um formato válido' })
   @IsNotEmpty({ message: 'E-mail é obrigatório' })
   email!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Senha@123' })
   @IsNotEmpty({ message: 'Senha é obrigatória' })
   @IsString()
   @MinLength(4)
@@ -36,21 +25,21 @@ export class CreateUserDto {
   })
   password!: string;
 
-  @ApiProperty({ enum: UserType })
+  @ApiProperty({ enum: UserType, example: UserType.PATIENT })
   @IsEnum(UserType, { message: 'Tipo de usuário inválido' })
   type!: UserType;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: 'Nível 1' })
   @ValidateIf((o: CreateUserDto) => o.type === UserType.ADMIN)
   @IsNotEmpty()
   accessLevel?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: '123456-SP' })
   @ValidateIf((o: CreateUserDto) => o.type === UserType.DOCTOR)
   @IsNotEmpty()
   crm?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: '12345678901' })
   @ValidateIf((o: CreateUserDto) => o.type === UserType.PATIENT)
   @IsNotEmpty()
   @Transform(({ value }) =>
@@ -59,7 +48,7 @@ export class CreateUserDto {
   @IsCPF({ message: 'CPF inválido' })
   cpf?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: '1995-03-10' })
   @ValidateIf((o: CreateUserDto) => o.type === UserType.PATIENT)
   @IsDate()
   @MaxDate(new Date(), { message: 'Data de nascimento deve estar no passado' })
