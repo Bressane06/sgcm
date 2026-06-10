@@ -47,19 +47,64 @@ export class ProceduresService {
     }
   }
 
+  private assertCanAccessAppointment(
+    appointment: Appointment,
+    currentUser: UserPayload,
+  ): void {
+    if (currentUser.type === 'ADMIN') {
+      return;
+    }
+
+    if (
+      currentUser.type === 'DOCTOR' &&
+      appointment.schedule.doctor.user.id === currentUser.sub
+    ) {
+      return;
+    }
+
+    if (
+      currentUser.type === 'PATIENT' &&
+      appointment.schedule.patient.user.id === currentUser.sub
+    ) {
+      return;
+    }
+
+    throw new BadRequestException('Usuário não tem acesso a este atendimento.');
+  }
+
   private async findAppointmentOrFail(id: number): Promise<Appointment> {
-    const appointment = await this.appointmentRepository.findOneBy({ id });
+    const appointment = await this.appointmentRepository.findOne({
+      where: { id },
+      relations: {
+        schedule: {
+          doctor: { user: true },
+          patient: { user: true },
+        },
+      },
+    });
+
     if (!appointment) {
-      throw new NotFoundException(`Appointment with ID ${id} not found`);
+      throw new NotFoundException('Atendimento', id);
     }
 
     return appointment;
   }
 
   private async findEntityOrFail(id: number): Promise<Procedure> {
-    const procedure = await this.procedureRepository.findOneBy({ id });
+    const procedure = await this.procedureRepository.findOne({
+      where: { id },
+      relations: {
+        appointment: {
+          schedule: {
+            doctor: { user: true },
+            patient: { user: true },
+          },
+        },
+      },
+    });
+
     if (!procedure) {
-      throw new NotFoundException(`Procedure with ID ${id} not found`);
+      throw new NotFoundException('Procedimento', id);
     }
 
     return procedure;
@@ -68,6 +113,7 @@ export class ProceduresService {
   private toResponse(procedure: Procedure): ProcedureResponseDto {
     const response: ProcedureResponseDto = {
       id: procedure.id,
+      appointmentId: procedure.appointmentId,
       name: procedure.name,
       description: procedure.description,
       type: procedure.type,
@@ -97,9 +143,12 @@ export class ProceduresService {
   ): Promise<ProcedureResponseDto> {
     this.assertAllowedFieldsForType(dto);
     const appointment = await this.findAppointmentOrFail(id);
+    this.assertCanAccessAppointment(appointment, user);
 
     if (appointment.status !== AppointmentStatus.IN_PROGRESS) {
-      throw new NotFoundException('Atendimento');
+      throw new BadRequestException(
+        'Procedimentos só podem ser criados para atendimentos em andamento.',
+      );
     }
 
     const baseData = {
@@ -132,6 +181,9 @@ export class ProceduresService {
         const saved = await this.procedureRepository.save(procedure);
         return this.toResponse(saved);
       }
+
+      default:
+        throw new BadRequestException('Tipo de procedimento inválido.');
     }
   }
 
@@ -153,56 +205,101 @@ export class ProceduresService {
     updateProcedureDto: UpdateProcedureDto,
     currentUser: UserPayload,
   ): Promise<ProcedureResponseDto> {
-    // Buscar procedimento por ID com todos os atributos do subtipo.
     const procedure = await this.findEntityOrFail(id);
-    return this.toResponse(procedure);
+
+    this.assertCanAccessAppointment(procedure.appointment, currentUser);
+
+    if (procedure instanceof SimpleProcedure) {
+      if (updateProcedureDto.requiredEquipment !== undefined) {
+        throw new BadRequestException(
+          'requiredEquipment não é permitido para procedimento simples.',
+        );
+      }
+
+      if (updateProcedureDto.complexityLevel !== undefined) {
+        throw new BadRequestException(
+          'complexityLevel não é permitido para procedimento simples.',
+        );
+      }
+
+      if (updateProcedureDto.requiresAuthorization !== undefined) {
+        throw new BadRequestException(
+          'requiresAuthorization não é permitido para procedimento simples.',
+        );
+      }
+
+      Object.assign(procedure, {
+        name: updateProcedureDto.name ?? procedure.name,
+        description: updateProcedureDto.description ?? procedure.description,
+        estimatedDuration:
+          updateProcedureDto.estimatedDuration ?? procedure.estimatedDuration,
+      });
+    }
+
+    if (procedure instanceof SpecializedProcedure) {
+      if (updateProcedureDto.estimatedDuration !== undefined) {
+        throw new BadRequestException(
+          'estimatedDuration não é permitido para procedimento especializado.',
+        );
+      }
+
+      Object.assign(procedure, {
+        name: updateProcedureDto.name ?? procedure.name,
+        description: updateProcedureDto.description ?? procedure.description,
+        requiredEquipment:
+          updateProcedureDto.requiredEquipment ?? procedure.requiredEquipment,
+        complexityLevel:
+          updateProcedureDto.complexityLevel ?? procedure.complexityLevel,
+        requiresAuthorization:
+          updateProcedureDto.requiresAuthorization ??
+          procedure.requiresAuthorization,
+      });
+    }
+
+    const saved = await this.procedureRepository.save(procedure);
+    return this.toResponse(saved);
   }
 
   async authorizeProcedure(id: number): Promise<ProcedureResponseDto> {
     const procedure = await this.findEntityOrFail(id);
+
     if (!(procedure instanceof SpecializedProcedure)) {
-      throw new NotFoundException(
-        'Only specialized procedures can be authorized',
+      throw new BadRequestException(
+        'Apenas procedimentos especializados podem ser autorizados.',
       );
     }
 
     if (!procedure.isPending()) {
-      throw new NotFoundException(
-        'This procedure does not require authorization',
+      throw new BadRequestException(
+        'Este procedimento não está pendente de autorização.',
       );
     }
 
-    if (procedure.authorizationStatus === AuthorizationStatus.DENIED) {
-      throw new NotFoundException('This procedure is already denied');
-    }
+    procedure.authorize();
 
-    procedure.authorizationStatus = AuthorizationStatus.AUTHORIZED;
-    procedure.authorizedAt = new Date();
-
-    await this.procedureRepository.save(procedure);
-
-    return this.toResponse(procedure);
+    const saved = await this.procedureRepository.save(procedure);
+    return this.toResponse(saved);
   }
 
   async denyProcedure(id: number): Promise<ProcedureResponseDto> {
     const procedure = await this.findEntityOrFail(id);
 
     if (!(procedure instanceof SpecializedProcedure)) {
-      throw new NotFoundException('Only specialized procedures can be denied');
-    }
-
-    if (!procedure.isPending()) {
-      throw new NotFoundException(
-        'This procedure does not require authorization',
+      throw new BadRequestException(
+        'Apenas procedimentos especializados podem ser negados.',
       );
     }
 
-    procedure.authorizationStatus = AuthorizationStatus.DENIED;
-    procedure.deniedAt = new Date();
+    if (!procedure.isPending()) {
+      throw new BadRequestException(
+        'Este procedimento não está pendente de autorização.',
+      );
+    }
 
-    await this.procedureRepository.save(procedure);
+    procedure.deny();
 
-    return this.toResponse(procedure);
+    const saved = await this.procedureRepository.save(procedure);
+    return this.toResponse(saved);
   }
 
   async remove(id: number): Promise<void> {
