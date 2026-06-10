@@ -1,145 +1,326 @@
-@startuml SGCM
+@startuml
+' ============================================
+' ENUMS GLOBAIS
+' ============================================
 
-package "SGCM" {
+enum UserType {
+    ADMIN
+    DOCTOR
+    PATIENT
+}
 
-    package "Modules" {
+enum ScheduleStatus {
+    PENDING
+    CONFIRMED
+    CANCELLED
+    COMPLETED
+}
 
-        package "Users" {
-            
-            enum UserType {
-                ADMIN
-                DOCTOR
-                PATIENT
-            }
+enum ScheduleType {
+    IN_PERSON
+    ONLINE
+    HOME
+}
 
-            abstract class User {
-                +id: number
-                +name: string
-                +email: string
-                -password: string
-                +type: UserType
-                +isActive: boolean
-                -refreshToken: string?
-                +createdAt: Date
-                +updatedAt: Date
+enum AppointmentStatus {
+    IN_PROGRESS
+    FINISHED
+    CANCELLED
+}
 
-                +activate(): void
-                +deactivate(): void
-                +hashPassword(): Promise<void>
-                +validatePassword(password: string): Promise<boolean>
-            }
+enum ProcedureStatus {
+    PENDING
+    AUTHORIZED
+    DENIED
+    COMPLETED
+}
 
-            User --> UserType : type
+enum ReportStatus {
+    ACTIVE
+    REVOKED
+}
 
-            class Patient {
-                +id: number
-                +user: User
-                +cpf: string
-                +birthDate: Date
+' ============================================
+' PACKAGE: USERS
+' ============================================
 
-                +getAge(): number
-            }
+package "Users" {
 
-            class Admin {
-                +id: number
-                +user: User
-                +accessLevel: string
-            }
-
-            class Doctor {
-                +id: number
-                +user: User
-                +crm: string
-                +specialties: DoctorSpecialty[]
-
-                +getActiveSchedules(): Schedules[]
-            }
-
-            Patient --> User : user
-            Admin --> User : user
-            Doctor --> User : user
-
-        }
-
-        package "Specialties" {
-
-            class Specialty {
-                +id: number
-                +name: string
-                +description: string
-                +createdAt: Date
-                +updatedAt: Date
-            }
-
-            class DoctorSpecialty {
-                +id: number
-                +doctor: Doctor
-                +specialty: Specialty
-                +createdAt: Date
-                +updatedAt: Date
-            }
-
-            Doctor "1" -- "0..*" DoctorSpecialty
-            Specialty "1" -- "0..*" DoctorSpecialty
-        }
-
-        package "Schedules" {
-
-            enum ScheduleStatus {
-                PENDING
-                CONFIRMED
-                CANCELLED
-                COMPLETED
-            }
-
-            enum ScheduleType {
-                IN_PERSON
-                ONLINE
-                HOME
-            }
-
-            abstract class Schedule {
-                +id: number
-                +scheduledAt: Date
-                +status: ScheduleStatus
-                +type: ScheduleType
-                +doctorId: number
-                +patientId: number
-                +cancelledAt: Date?
-                +cancellationReason: string?
-                +cancelledBy: string?
-                +createdAt: Date
-                +updatedAt: Date
-            }
-
-            Schedule --> ScheduleStatus : status
-            Schedule --> ScheduleType : type
-
-            class InPersonSchedule {
-                +room: string
-                +unit: string
-            }
-
-            class OnlineSchedule {
-                +accessLink: string
-                +platform: string
-            }
-
-            class HomeSchedule {
-                +fullAddress: string
-                +accessNotes: string?
-            }
-
-            InPersonSchedule --|> Schedule
-            OnlineSchedule --|> Schedule
-            HomeSchedule --|> Schedule
-
-            Doctor "1" -- "0..*" Schedule : doctor
-            Patient "1" -- "0..*" Schedule : patient
-        }
-
+    abstract class User {
+        +id: number
+        +name: string
+        +email: string
+        -password: string
+        +type: UserType
+        +isActive: boolean
+        -refreshToken: string?
+        +createdAt: Date
+        +updatedAt: Date
+        --
+        +activate(): void
+        +deactivate(): void
+        +hashPassword(): Promise<void>
+        +validatePassword(password: string): Promise<boolean>
     }
+
+    class Patient {
+        +id: number
+        +cpf: string
+        +birthDate: Date
+        --
+        +getAge(): number
+    }
+
+    class Admin {
+        +id: number
+        +accessLevel: string
+    }
+
+    class Doctor {
+        +id: number
+        +crm: string
+        --
+        +getActiveSchedules(): Schedule[]
+    }
+
+    User --> UserType
+    Patient --> User
+    Admin --> User
+    Doctor --> User
 
 }
 
+' ============================================
+' PACKAGE: SPECIALTIES
+' ============================================
+
+package "Specialties" {
+
+    class Specialty {
+        +id: number
+        +name: string
+        +description: string
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    class DoctorSpecialty {
+        +id: number
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    Doctor "1" -- "0..*" DoctorSpecialty
+    Specialty "1" -- "0..*" DoctorSpecialty
+    DoctorSpecialty --> Doctor
+    DoctorSpecialty --> Specialty
+
+}
+
+' ============================================
+' PACKAGE: SCHEDULES
+' ============================================
+
+package "Schedules" {
+
+    abstract class Schedule {
+        +id: number
+        +scheduledAt: Date
+        +status: ScheduleStatus
+        +type: ScheduleType
+        +doctorId: number
+        +patientId: number
+        +cancelledAt: Date?
+        +cancellationReason: string?
+        +cancelledBy: string?
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    class InPersonSchedule {
+        +room: string
+        +unit: string
+    }
+
+    class OnlineSchedule {
+        +accessLink: string
+        +platform: string
+    }
+
+    class HomeSchedule {
+        +fullAddress: string
+        +accessNotes: string?
+    }
+
+    Schedule --> ScheduleStatus
+    Schedule --> ScheduleType
+
+    InPersonSchedule --|> Schedule
+    OnlineSchedule --|> Schedule
+    HomeSchedule --|> Schedule
+
+    Doctor "1" -- "0..*" Schedule
+    Patient "1" -- "0..*" Schedule
+
+}
+
+' ============================================
+' PACKAGE: APPOINTMENTS
+' ============================================
+
+package "Appointments" {
+
+    class Appointment {
+        +id: number
+        +scheduleId: number
+        +notes: string?
+        +status: AppointmentStatus
+        +startedAt: Date
+        +finishedAt: Date?
+        +createdAt: Date
+        +updatedAt: Date
+        --
+        +finish(): void
+    }
+
+    Appointment --> AppointmentStatus
+
+    Schedule "1" -- "0..1" Appointment
+
+}
+
+' ============================================
+' PACKAGE: PROCEDURES
+' ============================================
+
+package "Procedures" {
+
+    class Procedure {
+        +id: number
+        +appointmentId: number
+        +name: string
+        +description: string
+        +requiresAuthorization: boolean
+        +status: ProcedureStatus
+        +createdAt: Date
+        +updatedAt: Date
+        --
+        +authorize(): void
+        +deny(): void
+    }
+
+    Procedure --> ProcedureStatus
+
+    Appointment "1" -- "0..*" Procedure
+
+}
+
+' ============================================
+' PACKAGE: MEDICAL RECORDS
+' ============================================
+
+package "MedicalRecords" {
+
+    class MedicalRecord {
+        +id: number
+        +appointmentId: number
+        +patientId: number
+        +doctorId: number
+        +description: string
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    Appointment "1" -- "0..*" MedicalRecord
+    Doctor "1" -- "0..*" MedicalRecord
+    Patient "1" -- "0..*" MedicalRecord
+
+}
+
+' ============================================
+' PACKAGE: REPORTS
+' ============================================
+
+package "Reports" {
+
+    class Report {
+        +id: number
+        +appointmentId: number
+        +patientId: number
+        +doctorId: number
+        +examType: string
+        +result: string
+        +validationCode: string
+        +status: ReportStatus
+        +issuedAt: Date
+        +revokedAt: Date?
+        +createdAt: Date
+        +updatedAt: Date
+        --
+        +revoke(): void
+    }
+
+    Report --> ReportStatus
+
+    Appointment "1" -- "0..1" Report
+    Doctor "1" -- "0..*" Report
+    Patient "1" -- "0..*" Report
+
+}
+
+' ============================================
+' NOTE: ENDPOINTS MAPPING REFERENCE
+' ============================================
+
+note top of Schedule
+    **Endpoints relacionados:**
+    - POST   /schedules
+    - GET    /schedules
+    - GET    /schedules/{id}
+    - PUT    /schedules/{id}
+    - DELETE /schedules/{id}
+    - PATCH  /schedules/{id}/status
+end note
+
+note top of Appointment
+    **Endpoints relacionados:**
+    - POST   /appointments
+    - GET    /appointments
+    - GET    /appointments/{id}
+    - PUT    /appointments/{id}
+    - PATCH  /appointments/{id}/finish
+    - POST   /appointments/{id}/procedures
+    - GET    /appointments/{id}/procedures
+    - POST   /appointments/{id}/records
+    - GET    /appointments/{id}/records
+    - POST   /appointments/{id}/report
+end note
+
+note top of Procedure
+    **Endpoints relacionados:**
+    - GET    /procedures/{id}
+    - PUT    /procedures/{id}
+    - DELETE /procedures/{id}
+    - PATCH  /procedures/{id}/authorize
+    - PATCH  /procedures/{id}/deny
+end note
+
+note top of MedicalRecord
+    **Endpoints relacionados:**
+    - POST   /appointments/{id}/records
+    - GET    /appointments/{id}/records
+    - PUT    /records/{id}
+    - GET    /doctors/{id}/records
+    - GET    /patients/{id}/records
+end note
+
+note top of Report
+    **Endpoints relacionados:**
+    - POST   /appointments/{id}/report
+    - GET    /reports/{id}/pdf
+    - PATCH  /reports/{id}/revoke
+    - GET    /reports/validate/{code}
+    - GET    /doctors/{id}/reports
+    - GET    /patients/{id}/reports
+end note
 @enduml
