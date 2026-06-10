@@ -24,22 +24,25 @@ export class ProceduresService {
   ) {}
 
   private assertAllowedFieldsForType(dto: CreateProcedureDto): void {
-    const receivedWrongFieldsByType: Record<ProcedureType, string[]> = {
-      [ProcedureType.SIMPLE]: [
-        ...(dto.estimatedDuration ? ['estimatedDuration'] : []),
-      ],
-      [ProcedureType.SPECIALIZED]: [
-        ...(dto.complexityLevel ? ['complexityLevel'] : []),
-        ...(dto.requiredEquipment ? ['requiredEquipment'] : []),
-        ...(dto.requiresAuthorization ? ['requiresAuthorization'] : []),
-      ],
-    };
+    const invalidFields: string[] = [];
 
-    const wrongFields = receivedWrongFieldsByType[dto.type];
+    if (dto.type === ProcedureType.SIMPLE) {
+      if (dto.requiredEquipment) invalidFields.push('requiredEquipment');
+      if (dto.complexityLevel) invalidFields.push('complexityLevel');
+      if (dto.requiresAuthorization !== undefined) {
+        invalidFields.push('requiresAuthorization');
+      }
+    }
 
-    if (wrongFields.length > 0) {
+    if (dto.type === ProcedureType.SPECIALIZED) {
+      if (dto.estimatedDuration !== undefined) {
+        invalidFields.push('estimatedDuration');
+      }
+    }
+
+    if (invalidFields.length > 0) {
       throw new BadRequestException(
-        `Campos inválidos para procedimento ${dto.type}: ${wrongFields.join(', ')}.`,
+        `Campos inválidos para procedimento ${dto.type}: ${invalidFields.join(', ')}.`,
       );
     }
   }
@@ -99,26 +102,35 @@ export class ProceduresService {
       throw new NotFoundException('Atendimento');
     }
 
-    const baseData = { ...dto };
+    const baseData = {
+      name: dto.name,
+      description: dto.description,
+      appointment,
+      appointmentId: appointment.id,
+    };
 
     switch (dto.type) {
       case ProcedureType.SIMPLE: {
         const procedure = new SimpleProcedure();
+
         Object.assign(procedure, baseData);
         procedure.estimatedDuration = dto.estimatedDuration;
 
-        await this.procedureRepository.save(procedure);
-
-        return this.toResponse(procedure);
+        const saved = await this.procedureRepository.save(procedure);
+        return this.toResponse(saved);
       }
 
       case ProcedureType.SPECIALIZED: {
         const procedure = new SpecializedProcedure();
+
         Object.assign(procedure, baseData);
+        procedure.requiredEquipment = dto.requiredEquipment;
+        procedure.complexityLevel = dto.complexityLevel;
+        procedure.requiresAuthorization = dto.requiresAuthorization ?? true;
         procedure.authorizationStatus = AuthorizationStatus.PENDING;
 
-        await this.procedureRepository.save(procedure);
-        return this.toResponse(procedure);
+        const saved = await this.procedureRepository.save(procedure);
+        return this.toResponse(saved);
       }
     }
   }
