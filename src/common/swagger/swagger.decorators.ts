@@ -96,7 +96,8 @@ export function ApiAuthResponses(options: ApiAuthResponsesOptions) {
     ApiBearerAuth(ACCESS_TOKEN_BEARER_SCHEME),
     ApiUnauthorizedResponse({
       description:
-        options.unauthorizedDescription ?? 'Token ausente, inválido ou expirado.',
+        options.unauthorizedDescription ??
+        'Token ausente, inválido ou expirado.',
       schema: {
         example: {
           type: 'https://sgcm.example.com/problems/unauthorized',
@@ -113,7 +114,8 @@ export function ApiAuthResponses(options: ApiAuthResponsesOptions) {
     decorators.push(
       ApiForbiddenResponse({
         description:
-          options.forbiddenDescription ?? 'Perfil sem permissão para este endpoint.',
+          options.forbiddenDescription ??
+          'Perfil sem permissão para este endpoint.',
         schema: {
           example: {
             type: 'https://sgcm.example.com/problems/forbidden',

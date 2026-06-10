@@ -13,7 +13,9 @@ export class UpdateScheduleStatusDto {
   @ApiPropertyOptional({
     example: 'Paciente solicitou cancelamento.',
   })
-  @ValidateIf((dto: UpdateScheduleStatusDto) => dto.status === ScheduleStatus.CANCELLED)
+  @ValidateIf(
+    (dto: UpdateScheduleStatusDto) => dto.status === ScheduleStatus.CANCELLED,
+  )
   @IsString()
   cancellationReason?: string;
 
@@ -22,7 +24,9 @@ export class UpdateScheduleStatusDto {
     description:
       'Campo temporário até a autenticação ser implementada na Etapa 2.',
   })
-  @ValidateIf((dto: UpdateScheduleStatusDto) => dto.status === ScheduleStatus.CANCELLED)
+  @ValidateIf(
+    (dto: UpdateScheduleStatusDto) => dto.status === ScheduleStatus.CANCELLED,
+  )
   @IsString()
   cancelledBy?: string;
 }

@@ -1,10 +1,10 @@
 export interface PaginatedResponseDto<List> {
-	data: List[];
+  data: List[];
 
-	meta: {
-		totalItems: number;
-		page: number;
-		limit: number;
-		totalPages: number;
-	};
+  meta: {
+    totalItems: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }

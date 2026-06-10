@@ -1,25 +1,13 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToOne,
-  JoinColumn,
-} from 'typeorm';
+import { ChildEntity, Column } from 'typeorm';
 import { User } from './user.entity';
+import { UserType } from '../enum/user-type.enum';
 
-@Entity('patient')
-export class Patient {
-  @PrimaryGeneratedColumn()
-  id!: number;
-
-  @OneToOne(() => User, { cascade: true, eager: true, onDelete: 'CASCADE' })
-  @JoinColumn()
-  user!: User;
-
-  @Column({ unique: true })
+@ChildEntity(UserType.PATIENT)
+export class Patient extends User {
+  @Column({ unique: true, nullable: true })
   cpf!: string;
 
-  @Column({ })
+  @Column({ nullable: true })
   birthDate!: Date;
 
   getAge(): number {
@@ -27,13 +15,8 @@ export class Patient {
     const today = new Date();
     const birth = new Date(this.birthDate);
     let age = today.getFullYear() - birth.getFullYear();
-    const diffMonth = today.getMonth() - birth.getMonth();
-    if (
-      diffMonth < 0 ||
-      (diffMonth === 0 && today.getDate() < birth.getDate())
-    ) {
-      age--;
-    }
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
     return age;
   }
 }

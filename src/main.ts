@@ -9,7 +9,6 @@ import { ACCESS_TOKEN_BEARER_SCHEME } from './common/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
 
   // Global exception filter (RFC 7807 - Problem Details for HTTP APIs)
   app.useGlobalFilters(new HttpExceptionFilter());
@@ -19,7 +18,7 @@ async function bootstrap() {
   // execute primeiro e remova campos marcados com @Exclude() antes de o
   // TransformInterceptor montar o envelope { data, meta }.
   app.useGlobalInterceptors(
-    new TransformInterceptor(),
+    new TransformInterceptor(app.get(Reflector)),
     new ClassSerializerInterceptor(app.get(Reflector)),
   );
 
@@ -33,7 +32,8 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('SGCM — Sistema de Gestão de Clínica Médica')
-    .setDescription(`API para gerenciamento de usuários, especialidades e agendamentos.
+    .setDescription(
+      `API para gerenciamento de usuários, especialidades e agendamentos.
 
 Como testar a API no Swagger:
 
@@ -49,7 +49,8 @@ Rotas públicas de autenticação:
 - POST /auth/refresh
 
 As respostas de sucesso seguem o envelope { data, meta } produzido pelo TransformInterceptor.
-`)
+`,
+    )
     .setVersion('2.1')
     .addBearerAuth(
       {
@@ -67,8 +68,21 @@ As respostas de sucesso seguem o envelope { data, meta } produzido pelo Transfor
   // Ordenando as tags para melhor organização na interface do Swagger UI
   SwaggerModule.setup('api', app, document, {
     swaggerOptions: {
+      docExpansion: 'none',
       tagsSorter: (a, b) => {
-        const order = ['Auth', 'Users', 'Doctors', 'Patients', 'Schedules', 'Specialties'];
+        const order = [
+          'Auth',
+          'Users',
+          'Doctors',
+          'Patients',
+          'Schedules',
+          'Specialties',
+          'Appointments',
+          'Reports',
+          'Admin Reports',
+          'Medical Records',
+          'Procedures',
+        ];
         return order.indexOf(a) - order.indexOf(b);
       },
     },

@@ -4,8 +4,12 @@ export class NotFoundException extends AppException {
   // Assinaturas de sobrecarga (sem corpo)
   constructor(resource: string, identifier?: string | number);
   constructor(resource: string, identifier: string, identifierIsName: boolean);
-  
-  constructor(resource: string, identifier?: string | number, identifierIsName?: boolean) {
+
+  constructor(
+    resource: string,
+    identifier?: string | number,
+    identifierIsName?: boolean,
+  ) {
     const detail = identifier
       ? `${resource} com ${identifierIsName ? 'nome' : 'id'} ${identifier} não foi encontrado.`
       : `${resource} não foi encontrado.`;

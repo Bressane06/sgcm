@@ -35,8 +35,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     _context: ExecutionContext,
     _status?: any,
   ): TUser {
-    if (user) 
-      return user;
+    if (user) return user;
 
     const infoName = (info as { name?: string } | undefined)?.name;
     const infoMessage =
@@ -45,35 +44,36 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       '';
 
     // token expirado
-    if (infoName === 'TokenExpiredError') 
+    if (infoName === 'TokenExpiredError')
       throw new UnauthorizedException(
         'O token de acesso expirou. Utilize o endpoint /auth/refresh para renová-lo.',
       );
-    
 
     // token inválido ou adulterado
     if (
       infoName === 'JsonWebTokenError' ||
       infoName === 'NotBeforeError' ||
       /invalid|malformed|signature|jwt/i.test(infoMessage)
-    ) 
+    )
       throw new UnauthorizedException(
         'O token fornecido é inválido ou foi adulterado.',
       );
-    
 
     // token ausente
-    if (/no auth token|missing auth token|no authorization token/i.test(infoMessage)) 
+    if (
+      /no auth token|missing auth token|no authorization token/i.test(
+        infoMessage,
+      )
+    )
       throw new UnauthorizedException(
         'Nenhum token de autenticação foi fornecido.',
       );
-  
+
     // outros erros relacionados à autenticação
-    if (err || !user) 
+    if (err || !user)
       throw new UnauthorizedException(
         'Nenhum token de autenticação foi fornecido.',
       );
-    
 
     return user;
   }

@@ -1,0 +1,23 @@
+import { Module } from '@nestjs/common';
+import { ProceduresService } from './procedures.service';
+import { ProceduresController } from './procedures.controller';
+import { Procedure } from './entities/procedure.entity';
+import { SimpleProcedure } from './entities/simple-procedure.entity';
+import { SpecializedProcedure } from './entities/specialized-procedure.entity';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Appointment } from '../appointments/entities/appointment.entity';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([
+      Procedure,
+      SimpleProcedure,
+      SpecializedProcedure,
+      Appointment,
+    ]),
+  ],
+  controllers: [ProceduresController],
+  providers: [ProceduresService],
+  exports: [ProceduresService], // <-- isso aqui
+})
+export class ProceduresModule {}
